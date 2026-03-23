@@ -741,8 +741,17 @@
                                                         <label class="mr-sm-2" for="inlineFormCustomSelect">Select</label>
                                                         <select class="form-select mr-sm-2" id="inlineFormCustomSelect">
                                                             <option selected="">Choose ...</option>
-                                                            <option value="1">/home/jjrosat/git/icas-lvnl/idas_tool_mkbuild</option>
                                                         </select>
+                                                    </div>
+                                                    <div class="col-lg-12 text-center">
+                                                        <div class="btn-list">
+                                                            <button type="button" id="btn-search-roles"
+                                                                class="btn waves-effect waves-light btn-lg btn-rounded btn-primary"
+                                                                onclick="buscarRoles()">
+                                                                <i class="fas fa-search"></i> Search Roles
+                                                            </button>
+                                                        </div>
+                                                        <div id="resultado-roles" class="mt-3"></div>
                                                     </div>
                                                 </form>
                                             </div>
@@ -751,9 +760,14 @@
                                     <!-- Rol selection end -->
                                     <div class="col-lg-12 text-center">
                                         <div class="btn-list">
-                                            <button type="button"
-                                                class="btn waves-effect waves-light btn-lg btn-rounded btn-success"><i class="fas fa-check"></i> Make Build </button>
+                                            <button type="button" id="btn-make-build"
+                                                class="btn waves-effect waves-light btn-lg btn-rounded btn-success"
+                                                onclick="ejecutarPathfinder()">
+                                                <i class="fas fa-check"></i> Make Build
+                                            </button>
                                         </div>
+                                        <!-- Aquí aparecerá el resultado -->
+                                        <div id="resultado" class="mt-4"></div>
                                     </div>
                                 </div>
                             </div>
@@ -828,6 +842,47 @@
     <!-- Chart JS -->
     <script src="../dist/js/pages/chartjs/chartjs.init.js"></script>
     <script src="../assets/libs/chart.js/dist/Chart.min.js"></script>
+    <script>
+    async function buscarRoles() {
+        const btn = document.getElementById('btn-search-roles');
+        const select = document.getElementById('inlineFormCustomSelect');
+        const resultado = document.getElementById('resultado-roles');
+
+        // Deshabilita el botón y muestra spinner
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+        resultado.innerHTML = '';
+
+        try {
+            const response = await fetch('http://localhost:5000/buscar-roles');
+            const data = await response.json();
+
+            if (data.error && data.error.trim() !== '') {
+                resultado.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            } else if (data.rutas.length === 0) {
+                resultado.innerHTML = `<div class="alert alert-warning">No se encontraron rutas.</div>`;
+            } else {
+                // Limpia el select y añade la opción por defecto
+                select.innerHTML = '<option selected="">Choose ...</option>';
+
+                // Añade cada ruta encontrada como opción
+                data.rutas.forEach(function(ruta) {
+                    const option = document.createElement('option');
+                    option.value = ruta;
+                    option.textContent = ruta;
+                    select.appendChild(option);
+                });
+
+                resultado.innerHTML = `<div class="alert alert-success">Se encontraron ${data.rutas.length} ruta(s).</div>`;
+            }
+        } catch (e) {
+            resultado.innerHTML = `<div class="alert alert-danger">No se pudo conectar con el servidor. ¿Está corriendo <code>server.py</code>?</div>`;
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-search"></i> Search Roles';
+    }
+    </script>
 </body>
 
 </html>
