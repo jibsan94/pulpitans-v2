@@ -13,17 +13,17 @@ sys.path.insert(0, script_dir)
 
 import path_finder
 
-@app.route('/buscar-roles')
-def buscar_roles():
+@app.route('/search-roles')
+def search_roles():
     try:
-        rutas = path_finder.buscar_carpeta("idas_tool_mkbuild", "/home")
+        routes = path_finder.search_folder("idas_tool_mkbuild", "/home")
         return jsonify({
-            "rutas": rutas,
+            "routes": routes,
             "error": ""
         })
     except Exception as e:
         return jsonify({
-            "rutas": [],
+            "routes": [],
             "error": str(e)
         })
 

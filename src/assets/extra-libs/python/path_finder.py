@@ -1,19 +1,19 @@
 import os
 
-def buscar_carpeta(nombre_carpeta, ruta_base="/home"):
-    resultados = []
-    for root, dirs, files in os.walk(ruta_base):
-        if nombre_carpeta in dirs:
-            ruta_completa = os.path.join(root, nombre_carpeta)
-            resultados.append(ruta_completa)
-    return resultados
+def search_folder(folder_name, base_route="/home"):
+    results = []
+    for root, dirs, files in os.walk(base_route):
+        if folder_name in dirs:
+            full_route = os.path.join(root, folder_name)
+            results.append(full_route)
+    return results
 
 # Solo se ejecuta si lo llamas directamente con python3 path-finder.py
 if __name__ == '__main__':
-    rutas = buscar_carpeta("idas_tool_mkbuild")
-    if rutas:
-        print(f"Se encontraron {len(rutas)} resultado(s):")
-        for r in rutas:
+    routes = search_folder("idas_tool_mkbuild")
+    if routes:
+        print(f"There are {len(routes)} result(s):")
+        for r in routes:
             print(f"  -> {r}")
     else:
-        print("No se encontró ninguna carpeta.")
+        print("No folder(s) were found.")
