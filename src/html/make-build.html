@@ -870,23 +870,46 @@
     <script>
     const ansi_up = new AnsiUp();
 
+    // ============================================================
+    // Config & helper
+    // ============================================================
+    let MESSAGE_TIMEOUT = 10000; // default 10s fallback
+    fetch('http://localhost:5000/get-config')
+        .then(r => r.json())
+        .then(data => { MESSAGE_TIMEOUT = data.message_timeout * 1000; })
+        .catch(() => {});
+
+    function showMessage(elementId, html) {
+        const el = document.getElementById(elementId);
+        el.innerHTML = html;
+        el.style.opacity = '1';
+        el.style.transition = '';
+
+        setTimeout(() => {
+            el.style.transition = 'opacity 1s ease';
+            el.style.opacity = '0';
+            setTimeout(() => { el.innerHTML = ''; el.style.opacity = '1'; }, 1000);
+        }, MESSAGE_TIMEOUT);
+    }
+
+    // ============================================================
+    // Search Roles
+    // ============================================================
     async function searchRoles() {
         const btn = document.getElementById('btn-search-roles');
         const select = document.getElementById('inlineFormCustomSelect');
-        const result = document.getElementById('roles-result');
 
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
-        result.innerHTML = '';
 
         try {
             const response = await fetch('http://localhost:5000/search-roles');
             const data = await response.json();
 
             if (data.error && data.error.trim() !== '') {
-                result.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
+                showMessage('roles-result', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
             } else if (data.routes.length === 0) {
-                result.innerHTML = `<div class="alert alert-warning">No routes found.</div>`;
+                showMessage('roles-result', `<div class="alert alert-warning">No routes found.</div>`);
             } else {
                 select.innerHTML = '<option value="" selected>Choose ...</option>';
                 data.routes.forEach(function(route) {
@@ -895,40 +918,41 @@
                     option.textContent = route;
                     select.appendChild(option);
                 });
-                result.innerHTML = `<div class="alert alert-success">${data.routes.length} route(s) found.</div>`;
+                showMessage('roles-result', `<div class="alert alert-success">${data.routes.length} route(s) found.</div>`);
             }
         } catch (e) {
-            result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
+            showMessage('roles-result', `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`);
         }
 
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-search"></i> Search Roles';
     }
 
+    // ============================================================
+    // Generate Playbook
+    // ============================================================
     async function generatePlaybook() {
         const btn = document.getElementById('btn-generate-playbook');
-        const result = document.getElementById('resultado');
         const select = document.getElementById('inlineFormCustomSelect');
         const selectedRole = select.value;
         const branchName = document.getElementById('branch_name').value;
 
         // Validate role
         if (!selectedRole || selectedRole.trim() === '') {
-            result.innerHTML = `<div class="alert alert-warning">Please select a role before generating the playbook.</div>`;
+            showMessage('resultado', `<div class="alert alert-warning">Please select a role before generating the playbook.</div>`);
             return;
         }
 
         // Validate branch name
         if (!branchName || branchName.trim() === '') {
             document.getElementById('branch_name').classList.add('is-invalid');
-            result.innerHTML = `<div class="alert alert-warning">Branch Name is required.</div>`;
+            showMessage('resultado', `<div class="alert alert-warning">Branch Name is required.</div>`);
             return;
         }
         document.getElementById('branch_name').classList.remove('is-invalid');
 
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-        result.innerHTML = '';
 
         function getRadioValue(name) {
             const selected = document.querySelector(`input[name="${name}"]:checked`);
@@ -956,16 +980,16 @@
             const data = await response.json();
 
             if (data.error && data.error.trim() !== '') {
-                result.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
+                showMessage('resultado', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
             } else {
-                result.innerHTML = `
+                showMessage('resultado', `
                     <div class="alert alert-success">
                         <strong>Playbook generated successfully!</strong><br>
                         <code>${data.path}</code>
-                    </div>`;
+                    </div>`);
             }
         } catch (e) {
-            result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
+            showMessage('resultado', `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`);
         }
 
         btn.disabled = false;
@@ -973,47 +997,43 @@
         feather.replace();
     }
 
+    // ============================================================
+    // Make Build
+    // ============================================================
     async function makeBuild() {
         const btn = document.getElementById('btn-make-build');
         const btnStop = document.getElementById('btn-stop-build');
-        const result = document.getElementById('resultado');
         const debugLog = document.getElementById('debug-log');
 
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-        result.innerHTML = '';
 
         try {
-            // First check if playbook exists
             const checkResponse = await fetch('http://localhost:5000/check-playbook');
             const checkData = await checkResponse.json();
 
             if (!checkData.exists) {
-                result.innerHTML = `
+                showMessage('resultado', `
                     <div class="alert alert-danger">
                         <strong>Playbook not found.</strong>
                         Please generate the playbook first using
                         <strong>Generate Playbook</strong> before running the build.
-                    </div>`;
+                    </div>`);
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
                 return;
             }
 
-            // Playbook exists, start streaming
-            result.innerHTML = `
+            showMessage('resultado', `
                 <div class="alert alert-info">
                     <strong>Running playbook:</strong> <code>${checkData.path}</code>
-                </div>`;
+                </div>`);
 
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
             debugLog.innerHTML = '';
-
-            // Enable Stop button
             btnStop.disabled = false;
             feather.replace();
 
-            // SSE - reads the output line by line in real time
             const eventSource = new EventSource('http://localhost:5000/run-build');
 
             eventSource.onmessage = function(event) {
@@ -1022,7 +1042,7 @@
                     btn.disabled = false;
                     btnStop.disabled = true;
                     btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
-                    result.innerHTML = `<div class="alert alert-success"><strong>Build finished.</strong></div>`;
+                    showMessage('resultado', `<div class="alert alert-success"><strong>Build finished.</strong></div>`);
                     debugLog.scrollTop = debugLog.scrollHeight;
                 } else {
                     const html = ansi_up.ansi_to_html(event.data);
@@ -1032,27 +1052,28 @@
             };
 
             eventSource.onerror = function() {
-            eventSource.close();
-            btn.disabled = false;
-            btnStop.disabled = true;
-            btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
-
-            // Only show error if result doesn't already have a stop/success message
-            if (!result.innerHTML.includes('stopped') && !result.innerHTML.includes('finished')) {
-                result.innerHTML = `<div class="alert alert-danger">Connection to server lost during build.</div>`;
-            }
-        };
+                eventSource.close();
+                btn.disabled = false;
+                btnStop.disabled = true;
+                btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+                if (!document.getElementById('resultado').innerHTML.includes('stopped') &&
+                    !document.getElementById('resultado').innerHTML.includes('finished')) {
+                    showMessage('resultado', `<div class="alert alert-danger">Connection to server lost during build.</div>`);
+                }
+            };
 
         } catch (e) {
-            result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
+            showMessage('resultado', `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`);
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
         }
     }
 
+    // ============================================================
+    // Stop Build
+    // ============================================================
     async function stopBuild() {
         const btnStop = document.getElementById('btn-stop-build');
-        const result = document.getElementById('resultado');
 
         try {
             const response = await fetch('http://localhost:5000/stop-build', {
@@ -1061,12 +1082,12 @@
             const data = await response.json();
 
             if (data.success) {
-                result.innerHTML = `<div class="alert alert-warning"><strong>Build stopped by user.</strong></div>`;
+                showMessage('resultado', `<div class="alert alert-warning"><strong>Build stopped by user.</strong></div>`);
             } else {
-                result.innerHTML = `<div class="alert alert-info">${data.message}</div>`;
+                showMessage('resultado', `<div class="alert alert-info">${data.message}</div>`);
             }
         } catch (e) {
-            result.innerHTML = `<div class="alert alert-danger">Could not connect to the server.</div>`;
+            showMessage('resultado', `<div class="alert alert-danger">Could not connect to the server.</div>`);
         }
 
         btnStop.disabled = true;

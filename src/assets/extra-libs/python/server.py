@@ -135,6 +135,17 @@ def stop_build():
             return jsonify({"success": False, "message": "No build is currently running."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+    
+@app.route('/get-config')
+def get_config():
+    try:
+        config = config_loader.load_config()
+        return jsonify({
+            "message_timeout": int(config['ui']['message_timeout'])
+        })
+    except Exception as e:
+        return jsonify({"message_timeout": 10})
 
+# All above this is endpoints, do not delete the lines below
 if __name__ == '__main__':
     app.run(port=5000)
