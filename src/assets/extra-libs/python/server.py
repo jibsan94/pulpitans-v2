@@ -2,7 +2,6 @@ import os
 import sys
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-import configparser
 
 app = Flask(__name__)
 CORS(app)
@@ -44,7 +43,20 @@ def make_build():
         config = config_loader.load_config()
         output_path = os.path.join(config['build']['output_path'], 'build.yaml')
 
-        make_yaml.generate_build_yaml(selected_role, output_path)
+        # Pass all form data to make_yaml
+        form_data = {
+            'branch_name':       data.get('branch_name', ''),
+            'gitrepo_local_dir': data.get('gitrepo_local_dir', ''),
+            'mkbuild_project':   data.get('mkbuild_project', ''),
+            'gitrepo_update':    data.get('gitrepo_update', 'disabled'),
+            'gitrepo_checkitc':  data.get('gitrepo_checkitc', 'disabled'),
+            'gitrepo_git2cc':    data.get('gitrepo_git2cc', 'disabled'),
+            'idasrpm_build':     data.get('idasrpm_build', 'disabled'),
+            'idasrepo_build':    data.get('idasrepo_build', 'disabled'),
+            'idasbuild_build':   data.get('idasbuild_build', 'disabled'),
+        }
+
+        make_yaml.generate_build_yaml(selected_role, output_path, form_data)
 
         return jsonify({"success": True, "error": "", "path": output_path})
 

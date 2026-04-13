@@ -543,7 +543,7 @@
                                                 <h6 class="card-subtitle">Set the <code>branch name</code> to make the build</h6>
                                                 <form class="mt-4">
                                                     <div class="form-group">
-                                                        <input type="text" class="form-control" placeholder="Eg: avinor_dev">
+                                                        <input type="text" id="branch_name" class="form-control" placeholder="Eg: avinor_dev">
                                                     </div>
                                                 </form>
                                             </div>
@@ -558,7 +558,7 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_gitrepo_local_dir</code> path</h6>
                                                 <form class="mt-4">
                                                     <div class="form-group">
-                                                        <input type="text" class="form-control" placeholder="Eg: /home/user/idas_md">
+                                                        <input type="text" id="gitrepo_local_dir" class="form-control" placeholder="Eg: /home/user/idas_md">
                                                     </div>
                                                 </form>
                                             </div>
@@ -573,7 +573,7 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_project</code> name</h6>
                                                 <form class="mt-4">
                                                     <div class="form-group">
-                                                        <input type="text" class="form-control" placeholder="Eg: avinor">
+                                                        <input type="text" id="mkbuild_project" class="form-control" placeholder="Eg: avinor">
                                                     </div>
                                                 </form>
                                             </div>
@@ -588,17 +588,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_gitrepo_update</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_update"
-                                                        id="inlineRadio1" value="option1">
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_update"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_update"
-                                                        id="inlineRadio2" value="option2" checked>
+                                                        id="inlineRadio2" value="disabled" checked>
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -613,17 +613,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_gitrepo_checkitc</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_checkitc"
-                                                        id="inlineRadio1" value="option1" checked>
+                                                        id="inlineRadio1" value="true" checked>
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_checkitc"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_checkitc"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="disabled">
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -638,17 +638,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_gitrepo_git2cc</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_git2cc"
-                                                        id="inlineRadio1" value="option1">
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_git2cc"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_git2cc"
-                                                        id="inlineRadio2" value="option2" checked>
+                                                        id="inlineRadio2" value="disabled" checked>
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -663,17 +663,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_idasrpm_build</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrpm_build"
-                                                        id="inlineRadio1" value="option1">
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrpm_build"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrpm_build"
-                                                        id="inlineRadio2" value="option2" checked>
+                                                        id="inlineRadio2" value="disabled" checked>
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -688,17 +688,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_idasrepo_build</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrepo_build"
-                                                        id="inlineRadio1" value="option1">
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrepo_build"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrepo_build"
-                                                        id="inlineRadio2" value="option2" checked>
+                                                        id="inlineRadio2" value="disabled" checked>
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -713,17 +713,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_idasbuild_build</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="inlineRadioOptions"
-                                                        id="inlineRadio1" value="option1">
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="inlineRadioOptions"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="inlineRadioOptions"
-                                                        id="inlineRadio2" value="option2" checked>
+                                                        id="inlineRadio2" value="disabled" checked>
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -926,22 +926,48 @@
             const result = document.getElementById('resultado');
             const select = document.getElementById('inlineFormCustomSelect');
             const selectedRole = select.value;
+            const branchName = document.getElementById('branch_name').value;
 
-            // Validate that a role has been selected
+            // Validate role
             if (!selectedRole || selectedRole.trim() === '') {
                 result.innerHTML = `<div class="alert alert-warning">Please select a role before making a build.</div>`;
-                return;  // Stops here, does NOT call the server
+                return;
+            }
+
+            // Validate branch name
+            if (!branchName || branchName.trim() === '') {
+                result.innerHTML = `<div class="alert alert-warning">Branch Name is required.</div>`;
+                return;
             }
 
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Building...';
             result.innerHTML = '';
 
+            // Helper to get selected radio value, returns 'disabled' if none selected
+            function getRadioValue(name) {
+                const selected = document.querySelector(`input[name="${name}"]:checked`);
+                return selected ? selected.value : 'disabled';
+            }
+
+            // Collect all form data
+            const form_data = {
+                branch_name:       document.getElementById('branch_name').value,
+                gitrepo_local_dir: document.getElementById('gitrepo_local_dir').value,
+                mkbuild_project:   document.getElementById('mkbuild_project').value,
+                gitrepo_update:    getRadioValue('gitrepo_update'),
+                gitrepo_checkitc:  getRadioValue('gitrepo_checkitc'),
+                gitrepo_git2cc:    getRadioValue('gitrepo_git2cc'),
+                idasrpm_build:     getRadioValue('idasrpm_build'),
+                idasrepo_build:    getRadioValue('idasrepo_build'),
+                idasbuild_build:   getRadioValue('idasbuild_build'),
+            };
+
             try {
                 const response = await fetch('http://localhost:5000/make-build', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ role: selectedRole })
+                    body: JSON.stringify({ role: selectedRole, ...form_data })
                 });
                 const data = await response.json();
 
