@@ -516,33 +516,94 @@
             <!-- Container fluid  -->
             <!-- ============================================================== -->
             <div class="container-fluid">
-                <!-- ============================================================== -->
-                <!-- Start Page Content -->
-                <!-- ============================================================== -->
                 <div class="row">
-                    <!-- column -->
                     <div class="col-lg-12">
                         <div class="card">
                             <div class="card-body">
-                                <h4 class="card-title">Line Chart</h4>
-                                <div>
-                                    <canvas id="line-chart" height="150"></canvas>
+                                <h4 class="card-title">Tag a Commit</h4>
+                                <h6 class="card-subtitle">Add a tag to a specific commit in your repository</h6>
+
+                                <div class="row mt-4">
+
+                                    <!-- Tag Name -->
+                                    <div class="col-sm-12 col-md-6 col-lg-4">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h4 class="card-title">Tag Name</h4>
+                                                <h6 class="card-subtitle">Set the <code>tag name</code> to apply</h6>
+                                                <div class="form-group mt-4">
+                                                    <input type="text" id="tag_name" class="form-control" placeholder="Eg: v1.0.0">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Branch -->
+                                    <div class="col-sm-12 col-md-6 col-lg-4">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h4 class="card-title">Branch</h4>
+                                                <h6 class="card-subtitle">Select the <code>branch</code> to list commits from</h6>
+                                                <div class="form-group mt-4">
+                                                    <select class="form-select" id="branch_select">
+                                                        <option value="" selected>Choose ...</option>
+                                                    </select>
+                                                </div>
+                                                <div class="text-center mt-3">
+                                                    <button type="button" id="btn-get-branches"
+                                                        class="btn btn-primary btn-rounded waves-effect waves-light"
+                                                        onclick="getBranches()">
+                                                        <i data-feather="git-branch"></i> Get Branches
+                                                    </button>
+                                                </div>
+                                                <div id="branches-result" class="mt-2"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Commit -->
+                                    <div class="col-sm-12 col-md-6 col-lg-4">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h4 class="card-title">Commit</h4>
+                                                <h6 class="card-subtitle">Select the <code>commit</code> to tag</h6>
+                                                <div class="form-group mt-4">
+                                                    <select class="form-select" id="commit_select">
+                                                        <option value="" selected>Choose ...</option>
+                                                    </select>
+                                                </div>
+                                                <div class="text-center mt-3">
+                                                    <button type="button" id="btn-get-commits"
+                                                        class="btn btn-primary btn-rounded waves-effect waves-light"
+                                                        onclick="getCommits()">
+                                                        <i data-feather="git-commit"></i> Get Commits
+                                                    </button>
+                                                </div>
+                                                <div id="commits-result" class="mt-2"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 </div>
+
+                                <!-- Apply Tag Button -->
+                                <div class="row mt-2">
+                                    <div class="col-lg-12 text-center">
+                                        <div class="btn-list">
+                                            <button type="button" id="btn-apply-tag"
+                                                class="btn btn-success btn-lg btn-rounded waves-effect waves-light"
+                                                onclick="applyTag()">
+                                                <i data-feather="tag"></i> Apply Tag
+                                            </button>
+                                        </div>
+                                        <div id="tag-result" class="mt-3"></div>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
                     </div>
-                    <!-- column -->
                 </div>
-                <!-- ============================================================== -->
-                <!-- End PAge Content -->
-                <!-- ============================================================== -->
-                <!-- ============================================================== -->
-                <!-- Right sidebar -->
-                <!-- ============================================================== -->
-                <!-- .right-sidebar -->
-                <!-- ============================================================== -->
-                <!-- End Right sidebar -->
-                <!-- ============================================================== -->
             </div>
             <!-- ============================================================== -->
             <!-- End Container fluid  -->
