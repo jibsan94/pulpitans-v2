@@ -275,9 +275,9 @@
                                     class="hide-menu">Git Controller
                                 </span></a>
                         </li>
-                        <li class="sidebar-item"> <a class="sidebar-link" href="build-builder.html"
+                        <li class="sidebar-item"> <a class="sidebar-link" href="make-build.html"
                                 aria-expanded="false"><i data-feather="package" class="feather-icon"></i><span
-                                    class="hide-menu">Build Builder
+                                    class="hide-menu">Make Build
                                 </span></a>
                         </li>
                         <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="app-chat.html"
@@ -760,6 +760,11 @@
                                     <!-- Rol selection end -->
                                     <div class="col-lg-12 text-center">
                                         <div class="btn-list">
+                                            <button type="button" id="btn-generate-playbook"
+                                                class="btn waves-effect waves-light btn-lg btn-rounded btn-warning"
+                                                onclick="generatePlaybook()">
+                                                <i data-feather="file-plus"></i> Generate Playbook
+                                            </button>
                                             <button type="button" id="btn-make-build"
                                                 class="btn waves-effect waves-light btn-lg btn-rounded btn-success"
                                                 onclick="makeBuild()">
@@ -921,8 +926,8 @@
             btn.innerHTML = '<i class="fas fa-search"></i> Search Roles';
         }
 
-        async function makeBuild() {
-            const btn = document.getElementById('btn-make-build');
+        async function generatePlaybook() {
+            const btn = document.getElementById('btn-generate-playbook');
             const result = document.getElementById('resultado');
             const select = document.getElementById('inlineFormCustomSelect');
             const selectedRole = select.value;
@@ -930,27 +935,27 @@
 
             // Validate role
             if (!selectedRole || selectedRole.trim() === '') {
-                result.innerHTML = `<div class="alert alert-warning">Please select a role before making a build.</div>`;
+                result.innerHTML = `<div class="alert alert-warning">Please select a role before generating the playbook.</div>`;
                 return;
             }
 
             // Validate branch name
             if (!branchName || branchName.trim() === '') {
+                document.getElementById('branch_name').classList.add('is-invalid');
                 result.innerHTML = `<div class="alert alert-warning">Branch Name is required.</div>`;
                 return;
             }
+            document.getElementById('branch_name').classList.remove('is-invalid');
 
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Building...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
             result.innerHTML = '';
 
-            // Helper to get selected radio value, returns 'disabled' if none selected
             function getRadioValue(name) {
                 const selected = document.querySelector(`input[name="${name}"]:checked`);
                 return selected ? selected.value : 'disabled';
             }
 
-            // Collect all form data
             const form_data = {
                 branch_name:       document.getElementById('branch_name').value,
                 gitrepo_local_dir: document.getElementById('gitrepo_local_dir').value,
@@ -976,7 +981,7 @@
                 } else {
                     result.innerHTML = `
                         <div class="alert alert-success">
-                            <strong>build.yaml generated successfully!</strong><br>
+                            <strong>Playbook generated successfully!</strong><br>
                             <code>${data.path}</code>
                         </div>`;
                 }
@@ -985,7 +990,14 @@
             }
 
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+            btn.innerHTML = '<i data-feather="file-plus"></i> Generate Playbook';
+            feather.replace(); // re-renders feather icons after innerHTML change
+        }
+
+        async function makeBuild() {
+            // will be implemented later
+            const result = document.getElementById('resultado');
+            result.innerHTML = `<div class="alert alert-info">Make Build coming soon.</div>`;
         }
         </script>
 </body>
