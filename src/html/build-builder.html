@@ -740,7 +740,7 @@
                                                     <div class="form-group mb-4">
                                                         <label class="mr-sm-2" for="inlineFormCustomSelect">Select</label>
                                                         <select class="form-select mr-sm-2" id="inlineFormCustomSelect">
-                                                            <option selected="">Choose ...</option>
+                                                            <option value="" selected>Choose ...</option>
                                                         </select>
                                                     </div>
                                                     <div class="col-lg-12 text-center">
@@ -762,11 +762,10 @@
                                         <div class="btn-list">
                                             <button type="button" id="btn-make-build"
                                                 class="btn waves-effect waves-light btn-lg btn-rounded btn-success"
-                                                onclick="ejecutarPathfinder()">
+                                                onclick="makeBuild()">
                                                 <i class="fas fa-check"></i> Make Build
                                             </button>
                                         </div>
-                                        <!-- Aquí aparecerá el resultado -->
                                         <div id="resultado" class="mt-4"></div>
                                     </div>
                                 </div>
@@ -885,6 +884,84 @@
         btn.innerHTML = '<i class="fas fa-search"></i> Search Roles';
     }
     </script>
+    # This script is for make a build.yaml file
+    <script>
+        async function searchRoles() {
+            const btn = document.getElementById('btn-search-roles');
+            const select = document.getElementById('inlineFormCustomSelect');
+            const result = document.getElementById('roles-result');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+            result.innerHTML = '';
+
+            try {
+                const response = await fetch('http://localhost:5000/search-roles');
+                const data = await response.json();
+
+                if (data.error && data.error.trim() !== '') {
+                    result.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
+                } else if (data.routes.length === 0) {
+                    result.innerHTML = `<div class="alert alert-warning">No routes found.</div>`;
+                } else {
+                    select.innerHTML = '<option value="" selected>Choose ...</option>';
+                    data.routes.forEach(function(route) {
+                        const option = document.createElement('option');
+                        option.value = route;
+                        option.textContent = route;
+                        select.appendChild(option);
+                    });
+                    result.innerHTML = `<div class="alert alert-success">${data.routes.length} route(s) found.</div>`;
+                }
+            } catch (e) {
+                result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-search"></i> Search Roles';
+        }
+
+        async function makeBuild() {
+            const btn = document.getElementById('btn-make-build');
+            const result = document.getElementById('resultado');
+            const select = document.getElementById('inlineFormCustomSelect');
+            const selectedRole = select.value;
+
+            // Validate that a role has been selected
+            if (!selectedRole || selectedRole.trim() === '') {
+                result.innerHTML = `<div class="alert alert-warning">Please select a role before making a build.</div>`;
+                return;  // Stops here, does NOT call the server
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Building...';
+            result.innerHTML = '';
+
+            try {
+                const response = await fetch('http://localhost:5000/make-build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: selectedRole })
+                });
+                const data = await response.json();
+
+                if (data.error && data.error.trim() !== '') {
+                    result.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
+                } else {
+                    result.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>build.yaml generated successfully!</strong><br>
+                            <code>${data.path}</code>
+                        </div>`;
+                }
+            } catch (e) {
+                result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+        }
+        </script>
 </body>
 
 </html>

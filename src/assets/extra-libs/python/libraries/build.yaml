@@ -1,0 +1,8 @@
+---
+- hosts: localhost
+  connection: local
+  vars:
+    idas_tool_mkbuild_gitrepo_version: icas-lvnl_jjrosat
+    idas_tool_mkbuild_gitrepo_checkitc: true
+  roles:
+  - /home/jjrosat/git/isns-lvnl/roles/idas_tool_mkbuild
