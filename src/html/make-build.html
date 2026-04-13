@@ -275,9 +275,9 @@
                                     class="hide-menu">Git Controller
                                 </span></a>
                         </li>
-                        <li class="sidebar-item"> <a class="sidebar-link" href="build-builder.html"
+                        <li class="sidebar-item"> <a class="sidebar-link" href="make-build.html"
                                 aria-expanded="false"><i data-feather="package" class="feather-icon"></i><span
-                                    class="hide-menu">Build Builder
+                                    class="hide-menu">Make Build
                                 </span></a>
                         </li>
                         <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="app-chat.html"
@@ -543,7 +543,7 @@
                                                 <h6 class="card-subtitle">Set the <code>branch name</code> to make the build</h6>
                                                 <form class="mt-4">
                                                     <div class="form-group">
-                                                        <input type="text" class="form-control" placeholder="Eg: avinor_dev">
+                                                        <input type="text" id="branch_name" class="form-control" placeholder="Eg: avinor_dev">
                                                     </div>
                                                 </form>
                                             </div>
@@ -558,7 +558,7 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_gitrepo_local_dir</code> path</h6>
                                                 <form class="mt-4">
                                                     <div class="form-group">
-                                                        <input type="text" class="form-control" placeholder="Eg: /home/user/idas_md">
+                                                        <input type="text" id="gitrepo_local_dir" class="form-control" placeholder="Eg: /home/user/idas_md">
                                                     </div>
                                                 </form>
                                             </div>
@@ -573,7 +573,7 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_project</code> name</h6>
                                                 <form class="mt-4">
                                                     <div class="form-group">
-                                                        <input type="text" class="form-control" placeholder="Eg: avinor">
+                                                        <input type="text" id="mkbuild_project" class="form-control" placeholder="Eg: avinor">
                                                     </div>
                                                 </form>
                                             </div>
@@ -588,17 +588,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_gitrepo_update</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_update"
-                                                        id="inlineRadio1" value="option1">
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_update"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_update"
-                                                        id="inlineRadio2" value="option2" checked>
+                                                        id="inlineRadio2" value="disabled" checked>
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -613,17 +613,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_gitrepo_checkitc</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_checkitc"
-                                                        id="inlineRadio1" value="option1" checked>
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_checkitc"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false" checked>
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_checkitc"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="disabled">
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -638,17 +638,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_gitrepo_git2cc</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_git2cc"
-                                                        id="inlineRadio1" value="option1">
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_git2cc"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_git2cc"
-                                                        id="inlineRadio2" value="option2" checked>
+                                                        id="inlineRadio2" value="disabled" checked>
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -663,17 +663,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_idasrpm_build</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrpm_build"
-                                                        id="inlineRadio1" value="option1">
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrpm_build"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrpm_build"
-                                                        id="inlineRadio2" value="option2" checked>
+                                                        id="inlineRadio2" value="disabled" checked>
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -688,17 +688,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_idasrepo_build</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrepo_build"
-                                                        id="inlineRadio1" value="option1">
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrepo_build"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="idasrepo_build"
-                                                        id="inlineRadio2" value="option2" checked>
+                                                        id="inlineRadio2" value="disabled" checked>
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -713,17 +713,17 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_idasbuild_build</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="inlineRadioOptions"
-                                                        id="inlineRadio1" value="option1">
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="inlineRadioOptions"
-                                                        id="inlineRadio2" value="option2">
+                                                        id="inlineRadio2" value="false">
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="inlineRadioOptions"
-                                                        id="inlineRadio2" value="option2" checked>
+                                                        id="inlineRadio2" value="disabled" checked>
                                                     <label class="form-check-label" for="inlineRadio2">Disabled</label>
                                                 </div>
                                             </div>
@@ -760,6 +760,11 @@
                                     <!-- Rol selection end -->
                                     <div class="col-lg-12 text-center">
                                         <div class="btn-list">
+                                            <button type="button" id="btn-generate-playbook"
+                                                class="btn waves-effect waves-light btn-lg btn-rounded btn-warning"
+                                                onclick="generatePlaybook()">
+                                                <i data-feather="file-plus"></i> Generate Playbook
+                                            </button>
                                             <button type="button" id="btn-make-build"
                                                 class="btn waves-effect waves-light btn-lg btn-rounded btn-success"
                                                 onclick="makeBuild()">
@@ -776,8 +781,27 @@
                         <div class="col-lg-12" id="debug-area">
                             <div class="card">
                                 <div class="card-body">
-                                    <h4 class="card-title">Debug area</h4>
-                                    <div class="row"></div>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <h4 class="card-title mb-0">Debug area</h4>
+                                        <div class="ms-auto">
+                                            <button type="button" id="btn-stop-build"
+                                                class="btn btn-danger btn-rounded waves-effect waves-light"
+                                                onclick="stopBuild()" disabled>
+                                                <i data-feather="stop-circle"></i> Stop Build
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            <div id="debug-log"
+                                                style="background:#1e1e1e; color:#ffffff; padding:15px;
+                                                    border-radius:5px; min-height:200px;
+                                                    max-height:500px; overflow-y:auto;
+                                                    font-size:13px; font-family:monospace; white-space:pre-wrap;">
+                                                Waiting for build output...
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -842,126 +866,233 @@
     <script src="../dist/js/pages/chartjs/chartjs.init.js"></script>
     <script src="../assets/libs/chart.js/dist/Chart.min.js"></script>
     <!-- Script for list all the idas_tool_mkbuild roles availables on /home -->
+    <script src="https://cdn.jsdelivr.net/npm/ansi_up@5.1.0/ansi_up.min.js"></script>
     <script>
+    const ansi_up = new AnsiUp();
+
+    // ============================================================
+    // Config & helper
+    // ============================================================
+    let MESSAGE_TIMEOUT = 10000; // default 10s fallback
+    fetch('http://localhost:5000/get-config')
+        .then(r => r.json())
+        .then(data => { MESSAGE_TIMEOUT = data.message_timeout * 1000; })
+        .catch(() => {});
+
+    function showMessage(elementId, html) {
+        const el = document.getElementById(elementId);
+        el.innerHTML = html;
+        el.style.opacity = '1';
+        el.style.transition = '';
+
+        setTimeout(() => {
+            el.style.transition = 'opacity 1s ease';
+            el.style.opacity = '0';
+            setTimeout(() => { el.innerHTML = ''; el.style.opacity = '1'; }, 1000);
+        }, MESSAGE_TIMEOUT);
+    }
+
+    // ============================================================
+    // Search Roles
+    // ============================================================
     async function searchRoles() {
         const btn = document.getElementById('btn-search-roles');
         const select = document.getElementById('inlineFormCustomSelect');
-        const result = document.getElementById('roles-result');
 
-        // Disable button and show spinner
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
-        result.innerHTML = '';
 
         try {
             const response = await fetch('http://localhost:5000/search-roles');
             const data = await response.json();
 
             if (data.error && data.error.trim() !== '') {
-                result.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
+                showMessage('roles-result', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
             } else if (data.routes.length === 0) {
-                result.innerHTML = `<div class="alert alert-warning">No routes found.</div>`;
+                showMessage('roles-result', `<div class="alert alert-warning">No routes found.</div>`);
             } else {
-                // Clear select and add default option
-                select.innerHTML = '<option selected="">Choose ...</option>';
-
-                // Add each found route as an option
+                select.innerHTML = '<option value="" selected>Choose ...</option>';
                 data.routes.forEach(function(route) {
                     const option = document.createElement('option');
                     option.value = route;
                     option.textContent = route;
                     select.appendChild(option);
                 });
-
-                result.innerHTML = `<div class="alert alert-success">${data.routes.length} route(s) found.</div>`;
+                showMessage('roles-result', `<div class="alert alert-success">${data.routes.length} route(s) found.</div>`);
             }
         } catch (e) {
-            result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
+            showMessage('roles-result', `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`);
         }
 
-        // Restore button
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-search"></i> Search Roles';
     }
-    </script>
-    # This script is for make a build.yaml file
-    <script>
-        async function searchRoles() {
-            const btn = document.getElementById('btn-search-roles');
-            const select = document.getElementById('inlineFormCustomSelect');
-            const result = document.getElementById('roles-result');
 
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
-            result.innerHTML = '';
+    // ============================================================
+    // Generate Playbook
+    // ============================================================
+    async function generatePlaybook() {
+        const btn = document.getElementById('btn-generate-playbook');
+        const select = document.getElementById('inlineFormCustomSelect');
+        const selectedRole = select.value;
+        const branchName = document.getElementById('branch_name').value;
 
-            try {
-                const response = await fetch('http://localhost:5000/search-roles');
-                const data = await response.json();
-
-                if (data.error && data.error.trim() !== '') {
-                    result.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
-                } else if (data.routes.length === 0) {
-                    result.innerHTML = `<div class="alert alert-warning">No routes found.</div>`;
-                } else {
-                    select.innerHTML = '<option value="" selected>Choose ...</option>';
-                    data.routes.forEach(function(route) {
-                        const option = document.createElement('option');
-                        option.value = route;
-                        option.textContent = route;
-                        select.appendChild(option);
-                    });
-                    result.innerHTML = `<div class="alert alert-success">${data.routes.length} route(s) found.</div>`;
-                }
-            } catch (e) {
-                result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
-            }
-
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-search"></i> Search Roles';
+        // Validate role
+        if (!selectedRole || selectedRole.trim() === '') {
+            showMessage('resultado', `<div class="alert alert-warning">Please select a role before generating the playbook.</div>`);
+            return;
         }
 
-        async function makeBuild() {
-            const btn = document.getElementById('btn-make-build');
-            const result = document.getElementById('resultado');
-            const select = document.getElementById('inlineFormCustomSelect');
-            const selectedRole = select.value;
+        // Validate branch name
+        if (!branchName || branchName.trim() === '') {
+            document.getElementById('branch_name').classList.add('is-invalid');
+            showMessage('resultado', `<div class="alert alert-warning">Branch Name is required.</div>`);
+            return;
+        }
+        document.getElementById('branch_name').classList.remove('is-invalid');
 
-            // Validate that a role has been selected
-            if (!selectedRole || selectedRole.trim() === '') {
-                result.innerHTML = `<div class="alert alert-warning">Please select a role before making a build.</div>`;
-                return;  // Stops here, does NOT call the server
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+        function getRadioValue(name) {
+            const selected = document.querySelector(`input[name="${name}"]:checked`);
+            return selected ? selected.value : 'disabled';
+        }
+
+        const form_data = {
+            branch_name:       document.getElementById('branch_name').value,
+            gitrepo_local_dir: document.getElementById('gitrepo_local_dir').value,
+            mkbuild_project:   document.getElementById('mkbuild_project').value,
+            gitrepo_update:    getRadioValue('gitrepo_update'),
+            gitrepo_checkitc:  getRadioValue('gitrepo_checkitc'),
+            gitrepo_git2cc:    getRadioValue('gitrepo_git2cc'),
+            idasrpm_build:     getRadioValue('idasrpm_build'),
+            idasrepo_build:    getRadioValue('idasrepo_build'),
+            idasbuild_build:   getRadioValue('idasbuild_build'),
+        };
+
+        try {
+            const response = await fetch('http://localhost:5000/generate-playbook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: selectedRole, ...form_data })
+            });
+            const data = await response.json();
+
+            if (data.error && data.error.trim() !== '') {
+                showMessage('resultado', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
+            } else {
+                showMessage('resultado', `
+                    <div class="alert alert-success">
+                        <strong>Playbook generated successfully!</strong><br>
+                        <code>${data.path}</code>
+                    </div>`);
+            }
+        } catch (e) {
+            showMessage('resultado', `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="file-plus"></i> Generate Playbook';
+        feather.replace();
+    }
+
+    // ============================================================
+    // Make Build
+    // ============================================================
+    async function makeBuild() {
+        const btn = document.getElementById('btn-make-build');
+        const btnStop = document.getElementById('btn-stop-build');
+        const debugLog = document.getElementById('debug-log');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+
+        try {
+            const checkResponse = await fetch('http://localhost:5000/check-playbook');
+            const checkData = await checkResponse.json();
+
+            if (!checkData.exists) {
+                showMessage('resultado', `
+                    <div class="alert alert-danger">
+                        <strong>Playbook not found.</strong>
+                        Please generate the playbook first using
+                        <strong>Generate Playbook</strong> before running the build.
+                    </div>`);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+                return;
             }
 
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Building...';
-            result.innerHTML = '';
+            showMessage('resultado', `
+                <div class="alert alert-info">
+                    <strong>Running playbook:</strong> <code>${checkData.path}</code>
+                </div>`);
 
-            try {
-                const response = await fetch('http://localhost:5000/make-build', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ role: selectedRole })
-                });
-                const data = await response.json();
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
+            debugLog.innerHTML = '';
+            btnStop.disabled = false;
+            feather.replace();
 
-                if (data.error && data.error.trim() !== '') {
-                    result.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
+            const eventSource = new EventSource('http://localhost:5000/run-build');
+
+            eventSource.onmessage = function(event) {
+                if (event.data === '__END__') {
+                    eventSource.close();
+                    btn.disabled = false;
+                    btnStop.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+                    showMessage('resultado', `<div class="alert alert-success"><strong>Build finished.</strong></div>`);
+                    debugLog.scrollTop = debugLog.scrollHeight;
                 } else {
-                    result.innerHTML = `
-                        <div class="alert alert-success">
-                            <strong>build.yaml generated successfully!</strong><br>
-                            <code>${data.path}</code>
-                        </div>`;
+                    const html = ansi_up.ansi_to_html(event.data);
+                    debugLog.innerHTML += html + '<br>';
+                    debugLog.scrollTop = debugLog.scrollHeight;
                 }
-            } catch (e) {
-                result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
-            }
+            };
 
+            eventSource.onerror = function() {
+                eventSource.close();
+                btn.disabled = false;
+                btnStop.disabled = true;
+                btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+                if (!document.getElementById('resultado').innerHTML.includes('stopped') &&
+                    !document.getElementById('resultado').innerHTML.includes('finished')) {
+                    showMessage('resultado', `<div class="alert alert-danger">Connection to server lost during build.</div>`);
+                }
+            };
+
+        } catch (e) {
+            showMessage('resultado', `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`);
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
         }
-        </script>
+    }
+
+    // ============================================================
+    // Stop Build
+    // ============================================================
+    async function stopBuild() {
+        const btnStop = document.getElementById('btn-stop-build');
+
+        try {
+            const response = await fetch('http://localhost:5000/stop-build', {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('resultado', `<div class="alert alert-warning"><strong>Build stopped by user.</strong></div>`);
+            } else {
+                showMessage('resultado', `<div class="alert alert-info">${data.message}</div>`);
+            }
+        } catch (e) {
+            showMessage('resultado', `<div class="alert alert-danger">Could not connect to the server.</div>`);
+        }
+
+        btnStop.disabled = true;
+    }
+    </script>
 </body>
 
 </html>
