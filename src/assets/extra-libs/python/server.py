@@ -1,8 +1,8 @@
 import os
 import sys
-import yaml
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+import configparser
 
 app = Flask(__name__)
 CORS(app)
@@ -11,12 +11,17 @@ script_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'libraries
 sys.path.insert(0, script_dir)
 
 import path_finder
-import make_yaml  # importa el nuevo módulo
+import make_yaml
+import config_loader
 
 @app.route('/search-roles')
 def search_roles():
     try:
-        routes = path_finder.search_folder("idas_tool_mkbuild", "/home")
+        config = config_loader.load_config()
+        base_route  = config['search']['base_route']
+        folder_name = config['search']['folder_name']
+
+        routes = path_finder.search_folder(folder_name, base_route)
         return jsonify({
             "routes": routes,
             "error": ""
@@ -36,9 +41,9 @@ def make_build():
         if not selected_role:
             return jsonify({"success": False, "error": "No role selected."})
 
-        output_path = os.path.join(script_dir, 'build.yaml')
+        config = config_loader.load_config()
+        output_path = os.path.join(config['build']['output_path'], 'build.yaml')
 
-        # Delegates the YAML generation to make_yaml.py
         make_yaml.generate_build_yaml(selected_role, output_path)
 
         return jsonify({"success": True, "error": "", "path": output_path})
