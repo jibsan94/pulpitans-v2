@@ -613,12 +613,12 @@
                                                 <h6 class="card-subtitle">Set the <code>idas_tool_mkbuild_gitrepo_checkitc</code> option</h6>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_checkitc"
-                                                        id="inlineRadio1" value="true" checked>
+                                                        id="inlineRadio1" value="true">
                                                     <label class="form-check-label" for="inlineRadio1">True</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
                                                     <input class="form-check-input" type="radio" name="gitrepo_checkitc"
-                                                        id="inlineRadio2" value="false">
+                                                        id="inlineRadio2" value="false" checked>
                                                     <label class="form-check-label" for="inlineRadio2">False</label>
                                                 </div>
                                                 <div class="form-check form-check-inline">
@@ -781,8 +781,27 @@
                         <div class="col-lg-12" id="debug-area">
                             <div class="card">
                                 <div class="card-body">
-                                    <h4 class="card-title">Debug area</h4>
-                                    <div class="row"></div>
+                                    <div class="d-flex align-items-center mb-3">
+                                        <h4 class="card-title mb-0">Debug area</h4>
+                                        <div class="ms-auto">
+                                            <button type="button" id="btn-stop-build"
+                                                class="btn btn-danger btn-rounded waves-effect waves-light"
+                                                onclick="stopBuild()" disabled>
+                                                <i data-feather="stop-circle"></i> Stop Build
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            <div id="debug-log"
+                                                style="background:#1e1e1e; color:#ffffff; padding:15px;
+                                                    border-radius:5px; min-height:200px;
+                                                    max-height:500px; overflow-y:auto;
+                                                    font-size:13px; font-family:monospace; white-space:pre-wrap;">
+                                                Waiting for build output...
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -847,13 +866,15 @@
     <script src="../dist/js/pages/chartjs/chartjs.init.js"></script>
     <script src="../assets/libs/chart.js/dist/Chart.min.js"></script>
     <!-- Script for list all the idas_tool_mkbuild roles availables on /home -->
+    <script src="https://cdn.jsdelivr.net/npm/ansi_up@5.1.0/ansi_up.min.js"></script>
     <script>
+    const ansi_up = new AnsiUp();
+
     async function searchRoles() {
         const btn = document.getElementById('btn-search-roles');
         const select = document.getElementById('inlineFormCustomSelect');
         const result = document.getElementById('roles-result');
 
-        // Disable button and show spinner
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
         result.innerHTML = '';
@@ -867,139 +888,190 @@
             } else if (data.routes.length === 0) {
                 result.innerHTML = `<div class="alert alert-warning">No routes found.</div>`;
             } else {
-                // Clear select and add default option
-                select.innerHTML = '<option selected="">Choose ...</option>';
-
-                // Add each found route as an option
+                select.innerHTML = '<option value="" selected>Choose ...</option>';
                 data.routes.forEach(function(route) {
                     const option = document.createElement('option');
                     option.value = route;
                     option.textContent = route;
                     select.appendChild(option);
                 });
-
                 result.innerHTML = `<div class="alert alert-success">${data.routes.length} route(s) found.</div>`;
             }
         } catch (e) {
             result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
         }
 
-        // Restore button
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-search"></i> Search Roles';
     }
-    </script>
-    # This script is for make a build.yaml file
-    <script>
-        async function searchRoles() {
-            const btn = document.getElementById('btn-search-roles');
-            const select = document.getElementById('inlineFormCustomSelect');
-            const result = document.getElementById('roles-result');
 
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
-            result.innerHTML = '';
+    async function generatePlaybook() {
+        const btn = document.getElementById('btn-generate-playbook');
+        const result = document.getElementById('resultado');
+        const select = document.getElementById('inlineFormCustomSelect');
+        const selectedRole = select.value;
+        const branchName = document.getElementById('branch_name').value;
 
-            try {
-                const response = await fetch('http://localhost:5000/search-roles');
-                const data = await response.json();
-
-                if (data.error && data.error.trim() !== '') {
-                    result.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
-                } else if (data.routes.length === 0) {
-                    result.innerHTML = `<div class="alert alert-warning">No routes found.</div>`;
-                } else {
-                    select.innerHTML = '<option value="" selected>Choose ...</option>';
-                    data.routes.forEach(function(route) {
-                        const option = document.createElement('option');
-                        option.value = route;
-                        option.textContent = route;
-                        select.appendChild(option);
-                    });
-                    result.innerHTML = `<div class="alert alert-success">${data.routes.length} route(s) found.</div>`;
-                }
-            } catch (e) {
-                result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
-            }
-
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-search"></i> Search Roles';
+        // Validate role
+        if (!selectedRole || selectedRole.trim() === '') {
+            result.innerHTML = `<div class="alert alert-warning">Please select a role before generating the playbook.</div>`;
+            return;
         }
 
-        async function generatePlaybook() {
-            const btn = document.getElementById('btn-generate-playbook');
-            const result = document.getElementById('resultado');
-            const select = document.getElementById('inlineFormCustomSelect');
-            const selectedRole = select.value;
-            const branchName = document.getElementById('branch_name').value;
+        // Validate branch name
+        if (!branchName || branchName.trim() === '') {
+            document.getElementById('branch_name').classList.add('is-invalid');
+            result.innerHTML = `<div class="alert alert-warning">Branch Name is required.</div>`;
+            return;
+        }
+        document.getElementById('branch_name').classList.remove('is-invalid');
 
-            // Validate role
-            if (!selectedRole || selectedRole.trim() === '') {
-                result.innerHTML = `<div class="alert alert-warning">Please select a role before generating the playbook.</div>`;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+        result.innerHTML = '';
+
+        function getRadioValue(name) {
+            const selected = document.querySelector(`input[name="${name}"]:checked`);
+            return selected ? selected.value : 'disabled';
+        }
+
+        const form_data = {
+            branch_name:       document.getElementById('branch_name').value,
+            gitrepo_local_dir: document.getElementById('gitrepo_local_dir').value,
+            mkbuild_project:   document.getElementById('mkbuild_project').value,
+            gitrepo_update:    getRadioValue('gitrepo_update'),
+            gitrepo_checkitc:  getRadioValue('gitrepo_checkitc'),
+            gitrepo_git2cc:    getRadioValue('gitrepo_git2cc'),
+            idasrpm_build:     getRadioValue('idasrpm_build'),
+            idasrepo_build:    getRadioValue('idasrepo_build'),
+            idasbuild_build:   getRadioValue('idasbuild_build'),
+        };
+
+        try {
+            const response = await fetch('http://localhost:5000/generate-playbook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: selectedRole, ...form_data })
+            });
+            const data = await response.json();
+
+            if (data.error && data.error.trim() !== '') {
+                result.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
+            } else {
+                result.innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>Playbook generated successfully!</strong><br>
+                        <code>${data.path}</code>
+                    </div>`;
+            }
+        } catch (e) {
+            result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="file-plus"></i> Generate Playbook';
+        feather.replace();
+    }
+
+    async function makeBuild() {
+        const btn = document.getElementById('btn-make-build');
+        const btnStop = document.getElementById('btn-stop-build');
+        const result = document.getElementById('resultado');
+        const debugLog = document.getElementById('debug-log');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+        result.innerHTML = '';
+
+        try {
+            // First check if playbook exists
+            const checkResponse = await fetch('http://localhost:5000/check-playbook');
+            const checkData = await checkResponse.json();
+
+            if (!checkData.exists) {
+                result.innerHTML = `
+                    <div class="alert alert-danger">
+                        <strong>Playbook not found.</strong>
+                        Please generate the playbook first using
+                        <strong>Generate Playbook</strong> before running the build.
+                    </div>`;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
                 return;
             }
 
-            // Validate branch name
-            if (!branchName || branchName.trim() === '') {
-                document.getElementById('branch_name').classList.add('is-invalid');
-                result.innerHTML = `<div class="alert alert-warning">Branch Name is required.</div>`;
-                return;
-            }
-            document.getElementById('branch_name').classList.remove('is-invalid');
+            // Playbook exists, start streaming
+            result.innerHTML = `
+                <div class="alert alert-info">
+                    <strong>Running playbook:</strong> <code>${checkData.path}</code>
+                </div>`;
 
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-            result.innerHTML = '';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
+            debugLog.innerHTML = '';
 
-            function getRadioValue(name) {
-                const selected = document.querySelector(`input[name="${name}"]:checked`);
-                return selected ? selected.value : 'disabled';
-            }
+            // Enable Stop button
+            btnStop.disabled = false;
+            feather.replace();
 
-            const form_data = {
-                branch_name:       document.getElementById('branch_name').value,
-                gitrepo_local_dir: document.getElementById('gitrepo_local_dir').value,
-                mkbuild_project:   document.getElementById('mkbuild_project').value,
-                gitrepo_update:    getRadioValue('gitrepo_update'),
-                gitrepo_checkitc:  getRadioValue('gitrepo_checkitc'),
-                gitrepo_git2cc:    getRadioValue('gitrepo_git2cc'),
-                idasrpm_build:     getRadioValue('idasrpm_build'),
-                idasrepo_build:    getRadioValue('idasrepo_build'),
-                idasbuild_build:   getRadioValue('idasbuild_build'),
+            // SSE - reads the output line by line in real time
+            const eventSource = new EventSource('http://localhost:5000/run-build');
+
+            eventSource.onmessage = function(event) {
+                if (event.data === '__END__') {
+                    eventSource.close();
+                    btn.disabled = false;
+                    btnStop.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+                    result.innerHTML = `<div class="alert alert-success"><strong>Build finished.</strong></div>`;
+                    debugLog.scrollTop = debugLog.scrollHeight;
+                } else {
+                    const html = ansi_up.ansi_to_html(event.data);
+                    debugLog.innerHTML += html + '<br>';
+                    debugLog.scrollTop = debugLog.scrollHeight;
+                }
             };
 
-            try {
-                const response = await fetch('http://localhost:5000/make-build', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ role: selectedRole, ...form_data })
-                });
-                const data = await response.json();
-
-                if (data.error && data.error.trim() !== '') {
-                    result.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
-                } else {
-                    result.innerHTML = `
-                        <div class="alert alert-success">
-                            <strong>Playbook generated successfully!</strong><br>
-                            <code>${data.path}</code>
-                        </div>`;
-                }
-            } catch (e) {
-                result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
-            }
-
+            eventSource.onerror = function() {
+            eventSource.close();
             btn.disabled = false;
-            btn.innerHTML = '<i data-feather="file-plus"></i> Generate Playbook';
-            feather.replace(); // re-renders feather icons after innerHTML change
+            btnStop.disabled = true;
+            btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+
+            // Only show error if result doesn't already have a stop/success message
+            if (!result.innerHTML.includes('stopped') && !result.innerHTML.includes('finished')) {
+                result.innerHTML = `<div class="alert alert-danger">Connection to server lost during build.</div>`;
+            }
+        };
+
+        } catch (e) {
+            result.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+        }
+    }
+
+    async function stopBuild() {
+        const btnStop = document.getElementById('btn-stop-build');
+        const result = document.getElementById('resultado');
+
+        try {
+            const response = await fetch('http://localhost:5000/stop-build', {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                result.innerHTML = `<div class="alert alert-warning"><strong>Build stopped by user.</strong></div>`;
+            } else {
+                result.innerHTML = `<div class="alert alert-info">${data.message}</div>`;
+            }
+        } catch (e) {
+            result.innerHTML = `<div class="alert alert-danger">Could not connect to the server.</div>`;
         }
 
-        async function makeBuild() {
-            // will be implemented later
-            const result = document.getElementById('resultado');
-            result.innerHTML = `<div class="alert alert-info">Make Build coming soon.</div>`;
-        }
-        </script>
+        btnStop.disabled = true;
+    }
+    </script>
 </body>
 
 </html>
