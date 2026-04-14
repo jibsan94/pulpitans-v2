@@ -520,8 +520,21 @@
                     <div class="col-lg-12">
                         <div class="card">
                             <div class="card-body">
-                                <h4 class="card-title">Tag a Commit</h4>
-                                <h6 class="card-subtitle">Add a tag to a specific commit in your repository</h6>
+                                <div class="d-flex align-items-center mb-4">
+                                    <div>
+                                        <h4 class="card-title mb-0">Tag a Commit</h4>
+                                        <h6 class="card-subtitle mt-1">Add a tag to a specific commit in your repository</h6>
+                                    </div>
+                                    <div class="ms-auto">
+                                        <button type="button" id="btn-update-repo"
+                                            class="btn btn-primary btn-rounded waves-effect waves-light"
+                                            onclick="updateRepo()">
+                                            <i data-feather="download-cloud"></i> Update Repo
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="update-result" class="mb-3"></div>
 
                                 <div class="row mt-4">
 
