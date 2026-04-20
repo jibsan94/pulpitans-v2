@@ -497,7 +497,7 @@
             <div class="page-breadcrumb">
                 <div class="row">
                     <div class="col-7 align-self-center">
-                        <h3 class="page-title text-truncate text-dark font-weight-medium mb-1">Good Morning Jason!</h3>
+                        <h3 class="page-title text-truncate text-dark font-weight-medium mb-1">Welcome to the HELL!</h3>
                         <div class="d-flex align-items-center">
                             <nav aria-label="breadcrumb">
                                 <ol class="breadcrumb m-0 p-0">
@@ -710,26 +710,26 @@
                             <div class="card-body">
                                 <h4 class="card-title">Builds by Project</h4>
                                 <div id="builds-chart" class="mt-2" style="height:283px; width:100%;"></div>
-                                <ul class="list-style-none mb-0 mt-3">
-                                    <li class="mb-2">
-                                        <i class="fas fa-circle text-primary font-10 me-2"></i>
+                                <ul id="builds-chart-legend" class="list-style-none mb-0 mt-3">
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <span class="d-inline-block rounded-circle bg-primary me-2 flex-shrink-0" style="width:10px;height:10px;"></span>
                                         <span class="text-muted">Jibsan (AVINOR, iCAS, iSNS)</span>
-                                        <span class="text-dark float-end font-weight-medium">--</span>
+                                        <span class="text-dark ms-auto font-weight-medium">--</span>
                                     </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-circle text-info font-10 me-2"></i>
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <span class="d-inline-block rounded-circle bg-info me-2 flex-shrink-0" style="width:10px;height:10px;"></span>
                                         <span class="text-muted">Ismael (PANSA, FF-ICE, Romatsa)</span>
-                                        <span class="text-dark float-end font-weight-medium">--</span>
+                                        <span class="text-dark ms-auto font-weight-medium">--</span>
                                     </li>
-                                    <li class="mb-2">
-                                        <i class="fas fa-circle text-success font-10 me-2"></i>
+                                    <li class="mb-2 d-flex align-items-center">
+                                        <span class="d-inline-block rounded-circle bg-success me-2 flex-shrink-0" style="width:10px;height:10px;"></span>
                                         <span class="text-muted">Sergio (Nav-Canada, NATS)</span>
-                                        <span class="text-dark float-end font-weight-medium">--</span>
+                                        <span class="text-dark ms-auto font-weight-medium">--</span>
                                     </li>
-                                    <li>
-                                        <i class="fas fa-circle text-warning font-10 me-2"></i>
-                                        <span class="text-muted">Daniel (Skynex, Irtos...)</span>
-                                        <span class="text-dark float-end font-weight-medium">--</span>
+                                    <li class="d-flex align-items-center">
+                                        <span class="d-inline-block rounded-circle bg-warning me-2 flex-shrink-0" style="width:10px;height:10px;"></span>
+                                        <span class="text-muted">Daniel (Skynex, Irtos, ...)</span>
+                                        <span class="text-dark ms-auto font-weight-medium">--</span>
                                     </li>
                                 </ul>
                             </div>
@@ -963,6 +963,43 @@
                 etbody.innerHTML = '';
                 const colors = { 'Jibsan Toirac': 'primary', 'Ismael': 'info', 'Sergio': 'success', 'Daniel': 'warning' };
                 const initials = { 'Jibsan Toirac': 'JT', 'Ismael': 'IM', 'Sergio': 'SG', 'Daniel': 'DL' };
+
+                // Chart legend
+                const legendItems = document.querySelectorAll('#builds-chart-legend li');
+                const legendOrder = ['Jibsan Toirac', 'Ismael', 'Sergio', 'Daniel'];
+                legendOrder.forEach((name, i) => {
+                    const eng = data.engineers[name];
+                    if (eng && legendItems[i]) {
+                        legendItems[i].querySelector('.ms-auto').textContent = eng.total_builds + ' builds';
+                    }
+                });
+
+                // Donut chart with C3
+                const chartColors = {
+                    'Jibsan Toirac': '#7460ee',
+                    'Ismael':        '#11c1f3',
+                    'Sergio':        '#06d79c',
+                    'Daniel':        '#ffbc34'
+                };
+                const chartColumns = legendOrder.map(name => {
+                    const eng = data.engineers[name];
+                    return [name, eng ? eng.total_builds : 0];
+                });
+                c3.generate({
+                    bindto: '#builds-chart',
+                    data: {
+                        columns: chartColumns,
+                        type: 'donut'
+                    },
+                    donut: {
+                        label: { show: false },
+                        title: s.total_builds + ' Builds'
+                    },
+                    color: {
+                        pattern: Object.values(chartColors)
+                    },
+                    legend: { show: false }
+                });
 
                 for (const [name, info] of Object.entries(data.engineers)) {
                     const color = colors[name] || 'secondary';
