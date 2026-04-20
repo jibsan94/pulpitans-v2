@@ -10,6 +10,7 @@ CORS(app)
 script_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'libraries')
 sys.path.insert(0, script_dir)
 
+import git_manager
 import path_finder
 import make_yaml
 import config_loader
@@ -141,10 +142,100 @@ def get_config():
     try:
         config = config_loader.load_config()
         return jsonify({
-            "message_timeout": int(config['ui']['message_timeout'])
+            "message_timeout": int(config['ui']['message_timeout']),
+            "repo_url": config.get('system', 'repo_url')
         })
     except Exception as e:
-        return jsonify({"message_timeout": 10})
+        return jsonify({"message_timeout": 10, "repo_url": ""})
+
+@app.route('/git/download-repo', methods=['POST'])
+def download_repo():
+    try:
+        data     = request.get_json()
+        username = data.get('username', '')
+        password = data.get('password', '')
+
+        if not username or not password:
+            return jsonify({"success": False, "error": "Username and password are required."})
+
+        config    = config_loader.load_config()
+        repo_url  = config.get('system', 'repo_url')
+        repo_path = git_manager.get_repo_path(config)
+
+        # If repo already exists, skip clone
+        if os.path.exists(repo_path):
+            return jsonify({"success": False, "error": f"Repo already exists at {repo_path}. Use Update Repo instead."})
+
+        result = git_manager.clone_repo(repo_url, repo_path, username, password)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/git/update-repo', methods=['POST'])
+def update_repo():
+    try:
+        config    = config_loader.load_config()
+        repo_path = git_manager.get_repo_path(config)
+        result    = git_manager.update_repo(repo_path)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/git/get-branches')
+def get_branches():
+    try:
+        config    = config_loader.load_config()
+        repo_path = git_manager.get_repo_path(config)
+        result    = git_manager.get_branches(repo_path)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"success": False, "branches": [], "error": str(e)})
+
+@app.route('/git/get-commits')
+def get_commits():
+    try:
+        branch    = request.args.get('branch', '')
+        config    = config_loader.load_config()
+        repo_path = git_manager.get_repo_path(config)
+        result    = git_manager.get_commits(repo_path, branch)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"success": False, "commits": [], "error": str(e)})
+
+@app.route('/git/apply-tag', methods=['POST'])
+def apply_tag():
+    try:
+        data        = request.get_json()
+        tag_name    = data.get('tag_name', '')
+        commit_hash = data.get('commit_hash', '')
+
+        if not tag_name or not commit_hash:
+            return jsonify({"success": False, "error": "Tag name and commit are required."})
+
+        config    = config_loader.load_config()
+        repo_path = git_manager.get_repo_path(config)
+        result    = git_manager.apply_tag(repo_path, tag_name, commit_hash)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    
+# When opening a browser and type http://localhost:5000/git/debug-path, it will show the repo path and if it exists or not. This is useful for debugging config issues.
+#######################################################################################################################################################################
+@app.route('/git/debug-path')
+def debug_path():
+    config = config_loader.load_config()
+    repo_path = git_manager.get_repo_path(config)
+    return jsonify({
+        "repo_path": repo_path,
+        "exists": os.path.exists(repo_path)
+    })
+# This can be deleted, it's just for debugging purposes to check if the path is correct and if the repo exists.
+#######################################################################################################################################################################
 
 # All above this is endpoints, do not delete the lines below
 if __name__ == '__main__':
