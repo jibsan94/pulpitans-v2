@@ -537,7 +537,7 @@
                                 <div class="d-flex align-items-center">
                                     <div>
                                         <div class="d-inline-flex align-items-center">
-                                            <h2 class="text-dark mb-1 font-weight-medium">--</h2>
+                                            <h2 class="text-dark mb-1 font-weight-medium card-total-builds">--</h2>
                                             <span class="badge bg-primary font-12 text-white font-weight-medium rounded-pill ms-2 d-lg-block d-md-none">Total</span>
                                         </div>
                                         <h6 class="text-muted font-weight-normal mb-0">Total Builds</h6>
@@ -555,7 +555,7 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div>
-                                        <h2 class="text-dark mb-1 font-weight-medium">-- GB</h2>
+                                        <h2 class="text-dark mb-1 font-weight-medium card-total-size">-- GB</h2>
                                         <h6 class="text-muted font-weight-normal mb-0">Total Storage Used</h6>
                                     </div>
                                     <div class="ms-auto mt-md-3 mt-lg-0">
@@ -571,7 +571,7 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div>
-                                        <h2 class="text-dark mb-1 font-weight-medium">--</h2>
+                                        <h2 class="text-dark mb-1 font-weight-medium card-active-projects">--</h2>
                                         <h6 class="text-muted font-weight-normal mb-0">Active Projects</h6>
                                     </div>
                                     <div class="ms-auto mt-md-3 mt-lg-0">
@@ -587,7 +587,7 @@
                             <div class="card-body">
                                 <div class="d-flex align-items-center">
                                     <div>
-                                        <h2 class="text-dark mb-1 font-weight-medium" style="font-size:1.2rem;">--</h2>
+                                        <h2 class="text-dark mb-1 font-weight-medium card-latest-build" style="font-size:1.2rem;">--</h2>
                                         <h6 class="text-muted font-weight-normal mb-0">Latest Build</h6>
                                     </div>
                                     <div class="ms-auto mt-md-3 mt-lg-0">
@@ -618,7 +618,7 @@
                                                 <th class="border-0 font-14 font-weight-medium text-muted text-center">Date</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody id="builds-tbody">
                                             <!-- AVINOR -->
                                             <tr class="table-light">
                                                 <td colspan="4" class="font-weight-medium text-primary py-2">
@@ -759,7 +759,7 @@
                                                 <th class="border-0 font-14 font-weight-medium text-muted text-center">Status</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody id="engineers-tbody">
                                             <!-- Jibsan -->
                                             <tr>
                                                 <td class="px-2 py-4">
@@ -914,6 +914,90 @@
     <script src="../assets/extra-libs/jvector/jquery-jvectormap-2.0.2.min.js"></script>
     <script src="../assets/extra-libs/jvector/jquery-jvectormap-world-mill-en.js"></script>
     <script src="../dist/js/pages/dashboards/dashboard1.min.js"></script>
+    <script>
+        async function loadDashboard() {
+            try {
+                const response = await fetch('http://localhost:5000/dashboard/builds');
+                const data = await response.json();
+
+                if (!data.success) {
+                    console.error('Dashboard error:', data.error);
+                    return;
+                }
+
+                const s = data.summary;
+
+                // Summary cards
+                document.querySelector('.card-total-builds').textContent   = s.total_builds;
+                document.querySelector('.card-total-size').textContent     = s.total_size;
+                document.querySelector('.card-active-projects').textContent = s.active_projects;
+                document.querySelector('.card-latest-build').textContent   = s.latest_build;
+
+                // Builds table
+                const tbody = document.getElementById('builds-tbody');
+                tbody.innerHTML = '';
+                for (const [project, info] of Object.entries(data.projects)) {
+                    // Project header row
+                    tbody.innerHTML += `
+                        <tr class="table-light">
+                            <td colspan="4" class="font-weight-medium text-primary py-2">
+                                <i data-feather="folder" class="feather-icon me-1"></i> ${project}
+                                <span class="text-muted font-14 ms-2">(${info.total_builds} builds · ${info.total_size})</span>
+                            </td>
+                        </tr>`;
+                    // Build rows
+                    for (const build of info.builds) {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td></td>
+                                <td class="font-14">${build.name}</td>
+                                <td class="text-end font-14 text-muted">${build.size}</td>
+                                <td class="text-center font-14 text-muted">${build.date}</td>
+                            </tr>`;
+                    }
+                }
+                feather.replace();
+
+                // Engineers table
+                const etbody = document.getElementById('engineers-tbody');
+                etbody.innerHTML = '';
+                const colors = { 'Jibsan Toirac': 'primary', 'Ismael': 'info', 'Sergio': 'success', 'Daniel': 'warning' };
+                const initials = { 'Jibsan Toirac': 'JT', 'Ismael': 'IM', 'Sergio': 'SG', 'Daniel': 'DL' };
+
+                for (const [name, info] of Object.entries(data.engineers)) {
+                    const color = colors[name] || 'secondary';
+                    const initial = initials[name] || name[0];
+                    const badges = info.projects.map(p =>
+                        `<span class="badge bg-${color} me-1">${p}</span>`).join('');
+
+                    etbody.innerHTML += `
+                        <tr>
+                            <td class="px-2 py-4">
+                                <div class="d-flex no-block align-items-center">
+                                    <div class="me-3">
+                                        <div class="btn btn-${color} rounded-circle btn-circle font-16 d-flex align-items-center justify-content-center" style="width:45px;height:45px;">${initial}</div>
+                                    </div>
+                                    <div>
+                                        <h5 class="text-dark mb-0 font-16 font-weight-medium">${name}</h5>
+                                        <span class="text-muted font-14">${info.username}</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-2 py-4">${badges}</td>
+                            <td class="text-center px-2 py-4 font-weight-medium text-dark">${info.total_builds}</td>
+                            <td class="text-center px-2 py-4 text-muted">${info.total_size}</td>
+                            <td class="text-center px-2 py-4 text-muted">${info.latest_build}</td>
+                            <td class="text-center px-2 py-4"><span class="badge bg-success">Active</span></td>
+                        </tr>`;
+                }
+
+            } catch (e) {
+                console.error('Could not connect to server:', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+    </script>
 </body>
 
 </html>
