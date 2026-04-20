@@ -878,8 +878,9 @@
     // ============================================================
     // Config & helper
     // ============================================================
+    const API_BASE = '/api';
     let MESSAGE_TIMEOUT = 10000; // default 10s fallback
-    fetch('http://localhost:5000/get-config')
+    fetch(`${API_BASE}/get-config`)
         .then(r => r.json())
         .then(data => { MESSAGE_TIMEOUT = data.message_timeout * 1000; })
         .catch(() => {});
@@ -908,7 +909,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
 
         try {
-            const response = await fetch('http://localhost:5000/search-roles');
+            const response = await fetch(`${API_BASE}/search-roles`);
             const data = await response.json();
 
             if (data.error && data.error.trim() !== '') {
@@ -977,7 +978,7 @@
         };
 
         try {
-            const response = await fetch('http://localhost:5000/generate-playbook', {
+            const response = await fetch(`${API_BASE}/generate-playbook`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ role: selectedRole, ...form_data })
@@ -1014,7 +1015,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
 
         try {
-            const checkResponse = await fetch('http://localhost:5000/check-playbook');
+            const checkResponse = await fetch(`${API_BASE}/check-playbook`);
             const checkData = await checkResponse.json();
 
             if (!checkData.exists) {
@@ -1039,7 +1040,7 @@
             btnStop.disabled = false;
             feather.replace();
 
-            const eventSource = new EventSource('http://localhost:5000/run-build');
+            const eventSource = new EventSource(`${API_BASE}/run-build`);
 
             eventSource.onmessage = function(event) {
                 if (event.data === '__END__') {
@@ -1081,7 +1082,7 @@
         const btnStop = document.getElementById('btn-stop-build');
 
         try {
-            const response = await fetch('http://localhost:5000/stop-build', {
+            const response = await fetch(`${API_BASE}/stop-build`, {
                 method: 'POST'
             });
             const data = await response.json();

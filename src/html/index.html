@@ -917,7 +917,8 @@
     <script>
         async function loadDashboard() {
             try {
-                const response = await fetch('http://localhost:5000/dashboard/builds');
+                const apiBase = '/api';
+                const response = await fetch(`${apiBase}/dashboard/builds`);
                 const data = await response.json();
 
                 if (!data.success) {

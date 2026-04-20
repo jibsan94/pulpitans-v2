@@ -578,8 +578,9 @@
     // ============================================================
     // Config & helper
     // ============================================================
+    const API_BASE = '/api';
     let MESSAGE_TIMEOUT = 10000;
-    fetch('http://localhost:5000/get-config')
+    fetch(`${API_BASE}/get-config`)
         .then(r => r.json())
         .then(data => { MESSAGE_TIMEOUT = data.message_timeout * 1000; })
         .catch(() => {});
@@ -607,7 +608,7 @@
         commitSelect.innerHTML = '<option value="" selected>Choose ...</option>';
 
         try {
-            const response = await fetch('http://localhost:5000/git/get-branches');
+            const response = await fetch(`${API_BASE}/git/get-branches`);
             const data = await response.json();
 
             if (!data.success || data.branches.length === 0) {
@@ -644,7 +645,7 @@
         commitSelect.innerHTML = '<option value="" selected>Loading...</option>';
 
         try {
-            const response = await fetch(`http://localhost:5000/git/get-commits?branch=${encodeURIComponent(branch)}`);
+            const response = await fetch(`${API_BASE}/git/get-commits?branch=${encodeURIComponent(branch)}`);
             const data = await response.json();
 
             if (!data.success || data.commits.length === 0) {
@@ -688,7 +689,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
 
         try {
-            const response = await fetch('http://localhost:5000/git/download-repo', {
+            const response = await fetch(`${API_BASE}/git/download-repo`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
@@ -730,7 +731,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
 
         try {
-            const response = await fetch('http://localhost:5000/git/update-repo', {
+            const response = await fetch(`${API_BASE}/git/update-repo`, {
                 method: 'POST'
             });
             const data = await response.json();
@@ -778,7 +779,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...';
 
         try {
-            const response = await fetch('http://localhost:5000/git/apply-tag', {
+            const response = await fetch(`${API_BASE}/git/apply-tag`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tag_name: tagName, commit_hash: commitHash })
@@ -806,7 +807,7 @@
     // ============================================================
     document.addEventListener('DOMContentLoaded', function() {
         // Fill modal repo URL from server
-        fetch('http://localhost:5000/get-config')
+        fetch(`${API_BASE}/get-config`)
             .then(r => r.json())
             .then(data => {
                 const el = document.getElementById('modal-repo-url');

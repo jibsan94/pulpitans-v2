@@ -3,18 +3,18 @@ import glob
 import time
 import config_loader
 
-def load_config():
-    return config_loader.load_config()
-
 def get_build_files():
     """Returns all build tar.gz files based on config.conf paths"""
-    config = load_config()
-    projects_path = config['scanner']['projects_path']
+    config = config_loader.load_config()
+    projects_path = config['scanner']['projects_path'].rstrip('/')
     build_subdir  = config['scanner']['build_subdir']
     build_pattern = config['scanner']['build_pattern']
 
     pattern = os.path.join(projects_path, '*', build_subdir, build_pattern)
-    return glob.glob(pattern)
+    print(f"DEBUG glob pattern: {pattern}")  # temporal para verificar
+    files = glob.glob(pattern)
+    print(f"DEBUG files found: {len(files)}")  # temporal para verificar
+    return files
 
 def get_project_name(filepath):
     """Extracts the project name from the build file path"""

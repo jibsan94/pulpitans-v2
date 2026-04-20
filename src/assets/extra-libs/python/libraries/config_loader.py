@@ -1,20 +1,17 @@
 import configparser
 import os
 
-def find_project_root():
-    """Walk up from this file's location until a directory containing README.md is found."""
-    current = os.path.dirname(os.path.abspath(__file__))
-    while True:
-        if os.path.exists(os.path.join(current, 'README.md')):
-            return current
-        parent = os.path.dirname(current)
-        if parent == current:  # reached filesystem root without finding README.md
-            return os.path.dirname(os.path.abspath(__file__))
-        current = parent
+# This file lives at: <project_root>/src/assets/extra-libs/python/libraries/config_loader.py
+# Project root is always 5 levels up from here, regardless of where the project is deployed.
+_LIBRARIES_DIR  = os.path.dirname(os.path.abspath(__file__))
+_PYTHON_DIR     = os.path.dirname(_LIBRARIES_DIR)
+_EXTRA_LIBS_DIR = os.path.dirname(_PYTHON_DIR)
+_ASSETS_DIR     = os.path.dirname(_EXTRA_LIBS_DIR)
+_SRC_DIR        = os.path.dirname(_ASSETS_DIR)
+PROJECT_ROOT    = os.path.dirname(_SRC_DIR)
 
 def load_config():
-    project_root = find_project_root()
-    config = configparser.ConfigParser(defaults={'project_root': project_root})
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config.conf')
+    config = configparser.ConfigParser(defaults={'project_root': PROJECT_ROOT})
+    config_path = os.path.join(_PYTHON_DIR, 'config.conf')
     config.read(config_path)
     return config
