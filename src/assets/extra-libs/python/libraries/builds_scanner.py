@@ -1,13 +1,10 @@
 import os
 import glob
 import time
-import configparser
+import config_loader
 
 def load_config():
-    config = configparser.ConfigParser()
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config.conf')
-    config.read(config_path)
-    return config
+    return config_loader.load_config()
 
 def get_build_files():
     """Returns all build tar.gz files based on config.conf paths"""
