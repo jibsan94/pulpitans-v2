@@ -514,11 +514,7 @@
                     </div>
                     <div class="col-5 align-self-center">
                         <div class="customize-input float-end">
-                            <select class="custom-select custom-select-set form-control bg-white border-0 custom-shadow custom-radius">
-                                <option selected>Aug 23</option>
-                                <option value="1">July 23</option>
-                                <option value="2">Jun 23</option>
-                            </select>
+                            <span id="live-datetime" class="form-control bg-white border-0 custom-shadow custom-radius text-muted font-14" style="min-width:200px;text-align:center;">Loading...</span>
                         </div>
                     </div>
                 </div>
@@ -1098,6 +1094,36 @@
 
         btnStop.disabled = true;
     }
+
+        // Live date/time from internet
+        (async function initClock() {
+            const el = document.getElementById('live-datetime');
+            let serverOffset = 0;
+
+            try {
+                const res = await fetch('https://worldtimeapi.org/api/ip');
+                const json = await res.json();
+                const serverNow = new Date(json.datetime).getTime();
+                serverOffset = serverNow - Date.now();
+            } catch (e) {}
+
+            function tick() {
+                const now = new Date(Date.now() + serverOffset);
+                const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                const d = days[now.getDay()];
+                const day = String(now.getDate()).padStart(2,'0');
+                const mon = months[now.getMonth()];
+                const yr = now.getFullYear();
+                const h = String(now.getHours()).padStart(2,'0');
+                const m = String(now.getMinutes()).padStart(2,'0');
+                const s = String(now.getSeconds()).padStart(2,'0');
+                el.textContent = `${d}, ${day} ${mon} ${yr}  ${h}:${m}:${s}`;
+            }
+
+            tick();
+            setInterval(tick, 1000);
+        })();
     </script>
 </body>
 
