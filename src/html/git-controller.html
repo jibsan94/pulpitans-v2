@@ -520,12 +520,19 @@
                     <div class="col-lg-12">
                         <div class="card">
                             <div class="card-body">
+
+                                <!-- Header with buttons -->
                                 <div class="d-flex align-items-center mb-4">
                                     <div>
                                         <h4 class="card-title mb-0">Tag a Commit</h4>
                                         <h6 class="card-subtitle mt-1">Add a tag to a specific commit in your repository</h6>
                                     </div>
                                     <div class="ms-auto">
+                                        <button type="button" id="btn-download-repo"
+                                            class="btn btn-info btn-rounded waves-effect waves-light me-2"
+                                            data-bs-toggle="modal" data-bs-target="#modalCredentials">
+                                            <i data-feather="download"></i> Download Repo
+                                        </button>
                                         <button type="button" id="btn-update-repo"
                                             class="btn btn-primary btn-rounded waves-effect waves-light"
                                             onclick="updateRepo()">
@@ -536,7 +543,7 @@
 
                                 <div id="update-result" class="mb-3"></div>
 
-                                <div class="row mt-4">
+                                <div class="row">
 
                                     <!-- Tag Name -->
                                     <div class="col-sm-12 col-md-6 col-lg-4">
@@ -558,16 +565,9 @@
                                                 <h4 class="card-title">Branch</h4>
                                                 <h6 class="card-subtitle">Select the <code>branch</code> to list commits from</h6>
                                                 <div class="form-group mt-4">
-                                                    <select class="form-select" id="branch_select">
+                                                    <select class="form-select" id="branch_select" onchange="getCommits()">
                                                         <option value="" selected>Choose ...</option>
                                                     </select>
-                                                </div>
-                                                <div class="text-center mt-3">
-                                                    <button type="button" id="btn-get-branches"
-                                                        class="btn btn-primary btn-rounded waves-effect waves-light"
-                                                        onclick="getBranches()">
-                                                        <i data-feather="git-branch"></i> Get Branches
-                                                    </button>
                                                 </div>
                                                 <div id="branches-result" class="mt-2"></div>
                                             </div>
@@ -584,13 +584,6 @@
                                                     <select class="form-select" id="commit_select">
                                                         <option value="" selected>Choose ...</option>
                                                     </select>
-                                                </div>
-                                                <div class="text-center mt-3">
-                                                    <button type="button" id="btn-get-commits"
-                                                        class="btn btn-primary btn-rounded waves-effect waves-light"
-                                                        onclick="getCommits()">
-                                                        <i data-feather="git-commit"></i> Get Commits
-                                                    </button>
                                                 </div>
                                                 <div id="commits-result" class="mt-2"></div>
                                             </div>
@@ -641,6 +634,44 @@
     <!-- ============================================================== -->
     <!-- End Wrapper -->
     <!-- ============================================================== -->
+    <!-- Modal Credentials -->
+    <!-- ============================================================== -->
+    <div class="modal fade" id="modalCredentials" tabindex="-1" aria-labelledby="modalCredentialsLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalCredentialsLabel">
+                        <i data-feather="lock"></i> Repository Credentials
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted font-14 mb-3">
+                        Enter your credentials to clone the repository from:<br>
+                        <code id="modal-repo-url"></code>
+                    </p>
+                    <div class="form-group mb-3">
+                        <label for="git_username">Username</label>
+                        <input type="text" id="git_username" class="form-control" placeholder="Eg: jibsan94">
+                    </div>
+                    <div class="form-group">
+                        <label for="git_password">Password / Token</label>
+                        <input type="password" id="git_password" class="form-control" placeholder="Your password or personal access token">
+                    </div>
+                    <div id="download-result" class="mt-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-rounded" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="btn-confirm-download"
+                        class="btn btn-info btn-rounded waves-effect waves-light"
+                        onclick="downloadRepo()">
+                        <i data-feather="download"></i> Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- ============================================================== -->
     <!-- All Jquery -->
     <!-- ============================================================== -->
     <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
@@ -664,6 +695,253 @@
     <!-- Chart JS -->
     <script src="../dist/js/pages/chartjs/chartjs.init.js"></script>
     <script src="../assets/libs/chart.js/dist/Chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ansi_up@5.1.0/ansi_up.min.js"></script>
+<script>
+
+    // ============================================================
+    // Config & helper
+    // ============================================================
+    let MESSAGE_TIMEOUT = 10000;
+    fetch('http://localhost:5000/get-config')
+        .then(r => r.json())
+        .then(data => { MESSAGE_TIMEOUT = data.message_timeout * 1000; })
+        .catch(() => {});
+
+    function showMessage(elementId, html) {
+        const el = document.getElementById(elementId);
+        el.innerHTML = html;
+        el.style.opacity = '1';
+        el.style.transition = '';
+        setTimeout(() => {
+            el.style.transition = 'opacity 1s ease';
+            el.style.opacity = '0';
+            setTimeout(() => { el.innerHTML = ''; el.style.opacity = '1'; }, 1000);
+        }, MESSAGE_TIMEOUT);
+    }
+
+    // ============================================================
+    // Load branches - called on page load and after clone/pull
+    // ============================================================
+    async function loadBranches() {
+        const branchSelect = document.getElementById('branch_select');
+        const commitSelect = document.getElementById('commit_select');
+
+        branchSelect.innerHTML = '<option value="" selected>Loading...</option>';
+        commitSelect.innerHTML = '<option value="" selected>Choose ...</option>';
+
+        try {
+            const response = await fetch('http://localhost:5000/git/get-branches');
+            const data = await response.json();
+
+            if (!data.success || data.branches.length === 0) {
+                branchSelect.innerHTML = '<option value="" selected>No branches found</option>';
+                return;
+            }
+
+            branchSelect.innerHTML = '<option value="" selected>Choose ...</option>';
+            data.branches.forEach(function(branch) {
+                const option = document.createElement('option');
+                option.value = branch;
+                option.textContent = branch;
+                branchSelect.appendChild(option);
+            });
+
+        } catch (e) {
+            branchSelect.innerHTML = '<option value="" selected>Could not load branches</option>';
+        }
+    }
+
+    // ============================================================
+    // Get commits - called automatically when branch changes
+    // ============================================================
+    async function getCommits() {
+        const branchSelect = document.getElementById('branch_select');
+        const commitSelect = document.getElementById('commit_select');
+        const branch = branchSelect.value;
+
+        if (!branch || branch.trim() === '') {
+            commitSelect.innerHTML = '<option value="" selected>Choose ...</option>';
+            return;
+        }
+
+        commitSelect.innerHTML = '<option value="" selected>Loading...</option>';
+
+        try {
+            const response = await fetch(`http://localhost:5000/git/get-commits?branch=${encodeURIComponent(branch)}`);
+            const data = await response.json();
+
+            if (!data.success || data.commits.length === 0) {
+                commitSelect.innerHTML = '<option value="" selected>No commits found</option>';
+                showMessage('commits-result', `<div class="alert alert-warning">No commits found for this branch.</div>`);
+                return;
+            }
+
+            commitSelect.innerHTML = '<option value="" selected>Choose ...</option>';
+            data.commits.forEach(function(commit) {
+                const option = document.createElement('option');
+                option.value = commit.hash;
+                option.textContent = `[${commit.date}] ${commit.hash.substring(0, 7)} - ${commit.message}`;
+                commitSelect.appendChild(option);
+            });
+
+        } catch (e) {
+            commitSelect.innerHTML = '<option value="" selected>Could not load commits</option>';
+            showMessage('commits-result', `<div class="alert alert-danger">Could not connect to the server.</div>`);
+        }
+    }
+
+    // ============================================================
+    // Download Repo
+    // ============================================================
+    async function downloadRepo() {
+        const btn      = document.getElementById('btn-confirm-download');
+        const username = document.getElementById('git_username').value;
+        const password = document.getElementById('git_password').value;
+
+        if (!username || username.trim() === '') {
+            showMessage('download-result', `<div class="alert alert-warning">Username is required.</div>`);
+            return;
+        }
+        if (!password || password.trim() === '') {
+            showMessage('download-result', `<div class="alert alert-warning">Password is required.</div>`);
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+
+        try {
+            const response = await fetch('http://localhost:5000/git/download-repo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                showMessage('download-result', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
+            } else {
+                // Clear credentials
+                document.getElementById('git_username').value = '';
+                document.getElementById('git_password').value = '';
+
+                showMessage('download-result', `<div class="alert alert-success"><strong>Repo downloaded successfully!</strong></div>`);
+
+                // Close modal and load branches automatically
+                setTimeout(() => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalCredentials'));
+                    modal.hide();
+                    loadBranches();
+                }, 1500);
+            }
+        } catch (e) {
+            showMessage('download-result', `<div class="alert alert-danger">Could not connect to the server.</div>`);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="download"></i> Download';
+        feather.replace();
+    }
+
+    // ============================================================
+    // Update Repo
+    // ============================================================
+    async function updateRepo() {
+        const btn = document.getElementById('btn-update-repo');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+
+        try {
+            const response = await fetch('http://localhost:5000/git/update-repo', {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                showMessage('update-result', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
+            } else {
+                showMessage('update-result', `<div class="alert alert-success"><strong>Repo updated successfully!</strong></div>`);
+                // Reload branches after update
+                loadBranches();
+            }
+        } catch (e) {
+            showMessage('update-result', `<div class="alert alert-danger">Could not connect to the server.</div>`);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="download-cloud"></i> Update Repo';
+        feather.replace();
+    }
+
+    // ============================================================
+    // Apply Tag
+    // ============================================================
+    async function applyTag() {
+        const btn        = document.getElementById('btn-apply-tag');
+        const tagName    = document.getElementById('tag_name').value;
+        const commitHash = document.getElementById('commit_select').value;
+        const branch     = document.getElementById('branch_select').value;
+
+        // Validations
+        if (!tagName || tagName.trim() === '') {
+            showMessage('tag-result', `<div class="alert alert-warning">Tag name is required.</div>`);
+            return;
+        }
+        if (!branch || branch.trim() === '') {
+            showMessage('tag-result', `<div class="alert alert-warning">Please select a branch.</div>`);
+            return;
+        }
+        if (!commitHash || commitHash.trim() === '') {
+            showMessage('tag-result', `<div class="alert alert-warning">Please select a commit.</div>`);
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...';
+
+        try {
+            const response = await fetch('http://localhost:5000/git/apply-tag', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tag_name: tagName, commit_hash: commitHash })
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                showMessage('tag-result', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
+            } else {
+                showMessage('tag-result', `<div class="alert alert-success"><strong>Tag "${tagName}" applied successfully!</strong></div>`);
+                // Clear tag name after success
+                document.getElementById('tag_name').value = '';
+            }
+        } catch (e) {
+            showMessage('tag-result', `<div class="alert alert-danger">Could not connect to the server.</div>`);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="tag"></i> Apply Tag';
+        feather.replace();
+    }
+
+    // ============================================================
+    // On page load - try to load branches if repo already exists
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fill modal repo URL from server
+        fetch('http://localhost:5000/get-config')
+            .then(r => r.json())
+            .then(data => {
+                const el = document.getElementById('modal-repo-url');
+                if (el && data.repo_url) el.textContent = data.repo_url;
+            })
+            .catch(() => {});
+
+        // Auto-load branches if repo already cloned
+        loadBranches();
+    });
+
+    </script>
 </body>
 
 </html>
