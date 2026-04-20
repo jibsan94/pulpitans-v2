@@ -224,6 +224,8 @@ def apply_tag():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
     
+# When opening a browser and type http://localhost:5000/git/debug-path, it will show the repo path and if it exists or not. This is useful for debugging config issues.
+#######################################################################################################################################################################
 @app.route('/git/debug-path')
 def debug_path():
     config = config_loader.load_config()
@@ -232,6 +234,8 @@ def debug_path():
         "repo_path": repo_path,
         "exists": os.path.exists(repo_path)
     })
+# This can be deleted, it's just for debugging purposes to check if the path is correct and if the repo exists.
+#######################################################################################################################################################################
 
 # All above this is endpoints, do not delete the lines below
 if __name__ == '__main__':
