@@ -1,6 +1,7 @@
 import os
 import glob
 import time
+import math
 import config_loader
 
 def get_build_files():
@@ -11,9 +12,7 @@ def get_build_files():
     build_pattern = config['scanner']['build_pattern']
 
     pattern = os.path.join(projects_path, '*', build_subdir, build_pattern)
-    print(f"DEBUG glob pattern: {pattern}")  # temporal para verificar
     files = glob.glob(pattern)
-    print(f"DEBUG files found: {len(files)}")  # temporal para verificar
     return files
 
 def get_project_name(filepath):
@@ -23,13 +22,21 @@ def get_project_name(filepath):
     return parts[-3]
 
 def format_size(size_bytes):
-    """Converts bytes to human readable format"""
+    """Converts bytes to human readable format (matches du -h: ceiling rounding)"""
     if size_bytes >= 1_073_741_824:
-        return f"{size_bytes / 1_073_741_824:.1f} GB"
+        val = size_bytes / 1_073_741_824
+        if val >= 10:
+            return f"{math.ceil(val)} GB"
+        else:
+            return f"{math.ceil(val * 10) / 10:.1f} GB"
     elif size_bytes >= 1_048_576:
-        return f"{size_bytes / 1_048_576:.0f} MB"
+        val = size_bytes / 1_048_576
+        if val >= 10:
+            return f"{math.ceil(val)} MB"
+        else:
+            return f"{math.ceil(val * 10) / 10:.1f} MB"
     else:
-        return f"{size_bytes / 1024:.0f} KB"
+        return f"{math.ceil(size_bytes / 1024)} KB"
 
 def get_file_date(filepath):
     """Returns the file modification date"""
@@ -67,7 +74,7 @@ def scan_builds():
     for filepath in build_files:
         project = get_project_name(filepath)
         filename = os.path.basename(filepath)
-        size_bytes = os.path.getsize(filepath)
+        size_bytes = os.stat(filepath).st_blocks * 512
         date = get_file_date(filepath)
         mtime = os.path.getmtime(filepath)
 
@@ -126,11 +133,11 @@ ENGINEER_PROJECTS = {
     },
     "Ismael": {
         "username": "ismael",
-        "projects": ["PANSA", "FF-ICE", "ROMATSA"]
+        "projects": ["PANSA", "ffice", "ROMATSA"]
     },
     "Sergio": {
         "username": "sergio",
-        "projects": ["NAV-CANADA", "NATS"]
+        "projects": ["navcanada", "NATS"]
     },
     "Daniel": {
         "username": "daniel",
