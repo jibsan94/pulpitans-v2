@@ -113,7 +113,7 @@ def scan_builds():
     for project in projects:
         projects[project]["builds"].sort(key=lambda x: x["date"], reverse=True)
         projects[project]["total_size"] = format_size(projects[project]["total_size_bytes"])
-        del projects[project]["latest_mtime"]  # clean up internal field
+        # keep latest_mtime for engineer summary comparison
 
     return {
         "total_builds": len(build_files),
@@ -126,22 +126,40 @@ def scan_builds():
 
 
 # Engineer -> projects mapping
+# Each project has 'display' (shown in UI) and 'folder' (real dir name in /iDASREPO/PROJECTS/)
 ENGINEER_PROJECTS = {
     "Jibsan Toirac": {
         "username": "jjrosat",
-        "projects": ["AVINOR", "iCAS-LVNL", "iSNS-LVNL"]
+        "projects": [
+            {"display": "AVINOR",    "folder": "avinor"},
+            {"display": "iCAS-LVNL", "folder": "icas-lvnl"},
+            {"display": "iSNS-LVNL", "folder": "isns-lvnl"},
+        ]
     },
     "Ismael": {
         "username": "ismael",
-        "projects": ["PANSA", "ffice", "ROMATSA"]
+        "projects": [
+            {"display": "PANSA",   "folder": "pansa"},
+            {"display": "FF-ICE",  "folder": "ffice"},
+            {"display": "ROMATSA", "folder": "romatsa"},
+        ]
     },
     "Sergio": {
         "username": "sergio",
-        "projects": ["navcanada", "NATS"]
+        "projects": [
+            {"display": "Nav-Canada", "folder": "navcanada"},
+            {"display": "NATS",       "folder": "nats"},
+        ]
     },
     "Daniel": {
         "username": "daniel",
-        "projects": ["SKYNEX", "IRTOS", "UTM", "YAKARTA", "SACTA"]
+        "projects": [
+            {"display": "SKYNEX",  "folder": "skynex"},
+            {"display": "IRTOS",   "folder": "irtos"},
+            {"display": "UTM",     "folder": "utm"},
+            {"display": "YAKARTA", "folder": "yakarta"},
+            {"display": "SACTA",   "folder": "sacta"},
+        ]
     }
 }
 
@@ -155,24 +173,22 @@ def get_engineers_summary(projects_data):
         total_builds = 0
         total_size_bytes = 0
         latest_build = "--"
-        latest_date = ""
+        latest_mtime = 0
 
-        for project_name in info["projects"]:
-            # Case-insensitive match
-            matched = next(
-                (v for k, v in projects_data.items() if k.upper() == project_name.upper()),
-                None
-            )
+        for proj in info["projects"]:
+            matched = projects_data.get(proj["folder"])
             if matched:
                 total_builds += matched["total_builds"]
                 total_size_bytes += matched["total_size_bytes"]
-                if matched["latest_build"] != "--" and matched["latest_build"] > latest_date:
-                    latest_date = matched["latest_build"]
+                mtime = matched.get("latest_mtime", 0)
+                if mtime > latest_mtime:
+                    latest_mtime = mtime
                     latest_build = matched["latest_build"]
 
         result[engineer] = {
             "username": info["username"],
-            "projects": info["projects"],
+            "projects": [p["display"] for p in info["projects"]],
+            "projects_detail": [{"display": p["display"], "folder": p["folder"]} for p in info["projects"]],
             "total_builds": total_builds,
             "total_size": format_size(total_size_bytes),
             "total_size_bytes": total_size_bytes,
