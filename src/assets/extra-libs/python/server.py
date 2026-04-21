@@ -236,7 +236,27 @@ def debug_path():
     })
 # This can be deleted, it's just for debugging purposes to check if the path is correct and if the repo exists.
 #######################################################################################################################################################################
+import builds_scanner
+
+@app.route('/dashboard/builds')
+def dashboard_builds():
+    try:
+        data = builds_scanner.scan_builds()
+        engineers = builds_scanner.get_engineers_summary(data["projects"])
+        return jsonify({
+            "success": True,
+            "summary": {
+                "total_builds":    data["total_builds"],
+                "total_size":      data["total_size"],
+                "active_projects": data["active_projects"],
+                "latest_build":    data["latest_build"]
+            },
+            "projects":  data["projects"],
+            "engineers": engineers
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 # All above this is endpoints, do not delete the lines below
 if __name__ == '__main__':
-    app.run(port=5000)
+    app.run(host='0.0.0.0', port=5000)
