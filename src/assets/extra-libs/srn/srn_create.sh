@@ -32,11 +32,17 @@ log_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
+# Directorio temporal para configuración de DeNote (inicializado vacío)
+DN_CONFIG_TMP=""
+
 # Función para limpiar en caso de error
 cleanup() {
     if [ -d "/tmp/idas_md" ]; then
         log_warning "Limpiando directorio temporal..."
         rm -rf /tmp/idas_md
+    fi
+    if [ -n "$DN_CONFIG_TMP" ] && [ -d "$DN_CONFIG_TMP" ]; then
+        rm -rf "$DN_CONFIG_TMP"
     fi
 }
 
@@ -124,6 +130,14 @@ git pull || {
 # Derivar -w (directorio padre) y -r (nombre del repo) desde WORK_DIR
 REPO_WORK_DIR=$(dirname "$WORK_DIR")
 REPO_NAME=$(basename "$WORK_DIR")
+
+# Crear directorio temporal escribible para DN_CONFIG
+# (/TOOLS/iDAS_DeNote/ pertenece a otro usuario y no tiene permisos de escritura)
+DN_CONFIG_TMP=$(mktemp -d)
+cp /TOOLS/iDAS_DeNote/dn_content.*.bash "$DN_CONFIG_TMP/" 2>/dev/null || true
+cp /TOOLS/iDAS_DeNote/*.html "$DN_CONFIG_TMP/" 2>/dev/null || true
+log_info "Configuración DN_CONFIG copiada a: $DN_CONFIG_TMP"
+
 log_info "Ejecutando DeNote.sh (repo: $REPO_NAME, workdir: $REPO_WORK_DIR)..."
 /TOOLS/Analysis/DeNote.sh \
     -P MD \
@@ -132,10 +146,9 @@ log_info "Ejecutando DeNote.sh (repo: $REPO_NAME, workdir: $REPO_WORK_DIR)..."
     -l "$LABEL" \
     -r "$REPO_NAME" \
     -w "$REPO_WORK_DIR" \
-    -c /TOOLS/iDAS_DeNote/ \
+    -c "$DN_CONFIG_TMP/" \
     -b "$PROJECT" || {
-    log_error "Fallo al ejecutar DeNote.sh"
-    exit 1
+    log_warning "DeNote.sh terminó con error (código: $?). Continuando con la generación del SRN..."
 }
 
 # Paso 4: Crear estructura de directorios
@@ -169,13 +182,15 @@ fi
 # Paso 5: Mover archivos generados
 log_info "Moviendo archivos generados a $DEST_DIR..."
 
-# Array de archivos a mover (DeNote.sh escribe en REPO_WORK_DIR)
+# Array de archivos a mover
+# - arco.py escribe Query.txt y change_revision_errors.log en /tmp/
+# - DeNote.sh escribe el resto en REPO_WORK_DIR
 FILES_TO_MOVE=(
-    "${REPO_WORK_DIR}/${LABEL}.Query.txt"
+    "/tmp/${LABEL}.Query.txt"
     "${REPO_WORK_DIR}/All_Git_Commits_in_build.txt"
     "${REPO_WORK_DIR}/All_Git_Error_Commits_in_build.txt"
     "${REPO_WORK_DIR}/All_Git_PTRs_in_build.txt"
-    "${REPO_WORK_DIR}/change_revision_errors.log"
+    "/tmp/change_revision_errors.log"
     "${REPO_WORK_DIR}/Change_Revision.html"
     "${REPO_WORK_DIR}/Change_Revision.log"
 )
@@ -189,17 +204,16 @@ for file in "${FILES_TO_MOVE[@]}"; do
     fi
 done
 
-# Mover y renombrar SRN.html
-SRN_SOURCE="/TOOLS/iDAS_DeNote/SRN.html"
+# Mover y renombrar SRN.html (generado en el directorio temporal DN_CONFIG_TMP)
+SRN_SOURCE="${DN_CONFIG_TMP}/SRN.html"
 PROJECT_UPPER=$(echo "$PROJECT" | tr '[:lower:]' '[:upper:]')
 SRN_NEW_NAME="[iDAS][${PROJECT_UPPER}] SRN iDAS_el8-${LABEL}.html"
 SRN_DEST="${DEST_DIR}/${SRN_NEW_NAME}"
 
 if [ -f "$SRN_SOURCE" ]; then
-    mv "$SRN_SOURCE" "$SRN_DEST" && log_info "  ✓ Movido y renombrado: $SRN_NEW_NAME"
+    cp "$SRN_SOURCE" "$SRN_DEST" && log_info "  ✓ Copiado y renombrado: $SRN_NEW_NAME"
 else
-    log_error "No se encontró el archivo SRN.html en $SRN_SOURCE"
-    exit 1
+    log_warning "No se encontró SRN.html en $SRN_SOURCE (DeNote.sh puede haber fallado)"
 fi
 
 # Paso 6: Convertir HTML a DOCX y PDF

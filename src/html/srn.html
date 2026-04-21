@@ -503,7 +503,20 @@
             await fetch(`${API_BASE}/srn/delete/${encodeURIComponent(label)}`, { method: 'DELETE' });
         }
 
-        // ---- Output terminal -------------------------------------------------
+        // ---- Poll SRN list until a label appears (used after stream drop) ---
+        function pollSrnList(expectedLabel, intervalMs, maxMs) {
+            let elapsed = 0;
+            const timer = setInterval(async () => {
+                elapsed += intervalMs;
+                await loadSrnList();
+                // Stop polling once the expected label row appears
+                if (document.querySelector(`#srn-table-body tr[data-label="${CSS.escape(expectedLabel)}"]`)) {
+                    clearInterval(timer);
+                    return;
+                }
+                if (elapsed >= maxMs) clearInterval(timer);
+            }, intervalMs);
+        }
         function appendOutput(msg) {
             const out = document.getElementById('srn-output');
             let color = '#a8f0d0';
@@ -577,7 +590,9 @@
                             const color = code === 0 ? '#06d79c' : '#f62d51';
                             out.innerHTML += `<span style="color:${color};font-weight:bold">\n— Process exited with code ${code} —\n</span>`;
                             out.scrollTop = out.scrollHeight;
-                            if (code === 0) await loadSrnList();
+                            // Refresh now, then keep polling for up to 30s in case files aren't written yet
+                            await loadSrnList();
+                            pollSrnList(tag, 5000, 30000);
                         } else {
                             appendOutput(msg);
                         }
@@ -586,9 +601,11 @@
             } catch (e) {
                 const msg = String(e);
                 if (msg.includes('network') || msg.includes('NetworkError') || msg.includes('Failed to fetch')) {
-                    out.innerHTML += `<span style="color:#ffbc34;font-weight:bold">\n⚠ Connection dropped (proxy timeout) — the process may have completed.\nCheck the SRN List below for results.\n</span>`;
+                    out.innerHTML += `<span style="color:#ffbc34;font-weight:bold">\n⚠ Connection dropped (proxy timeout) — the process may still be running.\nPolling the SRN List until it appears...\n</span>`;
                     out.scrollTop = out.scrollHeight;
+                    // Server process is still running; poll every 10s for up to 3 minutes
                     await loadSrnList();
+                    pollSrnList(tag, 10000, 180000);
                 } else {
                     out.innerHTML += `<span style="color:#f62d51">Stream error: ${escHtml(msg)}\n</span>`;
                 }
