@@ -101,6 +101,22 @@ def get_commits(repo_path, branch):
 
     return {"success": True, "commits": commits, "error": ""}
 
+def get_tags(repo_path):
+    """Returns a list of all tags in the repo, newest first"""
+    if not os.path.exists(repo_path):
+        return {"success": False, "tags": [], "error": "Repo not found. Please download it first."}
+
+    result = subprocess.run(
+        ['git', '-C', repo_path, 'tag', '--sort=-version:refname'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    if result.returncode != 0:
+        return {"success": False, "tags": [], "error": result.stderr.decode('utf-8')}
+
+    tags = [t.strip() for t in result.stdout.decode('utf-8').splitlines() if t.strip()]
+    return {"success": True, "tags": tags, "error": ""}
+
 def apply_tag(repo_path, tag_name, commit_hash):
     """Applies a tag to a specific commit and pushes it to remote"""
     if not os.path.exists(repo_path):

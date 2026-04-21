@@ -152,21 +152,58 @@
                     <div class="col-12">
                         <div class="card">
                             <div class="card-body">
-                                <h4 class="card-title mb-1">Generate SRN</h4>
-                                <h6 class="card-subtitle text-muted mb-3">Fill in the project details to generate a new Software Release Note.</h6>
-                                <div class="row g-3 align-items-end">
-                                    <div class="col-md-4">
-                                        <label for="srn-project-label" class="form-label fw-semibold">Project Label</label>
-                                        <input type="text" class="form-control" id="srn-project-label"
-                                            placeholder="e.g. AVINOR, iCAS-LVNL" autocomplete="off">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h4 class="card-title mb-1">Generate SRN</h4>
+                                        <h6 class="card-subtitle text-muted mb-0">Select a tag and a branch to generate a new Software Release Note.</h6>
                                     </div>
-                                    <div class="col-md-4">
-                                        <label for="srn-project-branch" class="form-label fw-semibold">Project Branch</label>
-                                        <input type="text" class="form-control" id="srn-project-branch"
-                                            placeholder="e.g. main, release/1.0" autocomplete="off">
+                                    <button class="btn btn-warning d-none" id="btn-deploy-srn" type="button"
+                                        style="white-space:nowrap;">
+                                        <i data-feather="upload-cloud" class="svg-icon me-1"></i>
+                                        Deploy SRN
+                                    </button>
+                                </div>
+                                <!-- Not-deployed warning -->
+                                <div id="srn-not-deployed-alert" class="alert alert-warning d-none py-2 mb-3" role="alert">
+                                    <i data-feather="alert-triangle" class="svg-icon me-1" style="width:15px;height:15px;"></i>
+                                    SRN is <strong>not deployed</strong>. Click <em>Deploy SRN</em> to set it up before generating.
+                                </div>
+                                <div class="row g-4 align-items-end mt-1">
+                                    <!-- Branch selector (first) -->
+                                    <div class="col-md-4" style="padding-bottom:1.4rem;">
+                                        <label for="srn-branch" class="form-label fw-semibold mb-1">
+                                            <i data-feather="git-branch" class="svg-icon me-1" style="width:15px;height:15px;"></i>
+                                            Branch
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light">
+                                                <i data-feather="git-branch" class="svg-icon" style="width:14px;height:14px;color:#7460ee;"></i>
+                                            </span>
+                                            <select class="form-select" id="srn-branch" style="border-left:0;">
+                                                <option value="">Loading branches...</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div class="col-md-4">
-                                        <button class="btn btn-success w-100" id="btn-generate-srn" type="button">
+                                    <!-- Tag selector (filtered by branch) -->
+                                    <div class="col-md-4" style="position:relative;padding-bottom:1.4rem;">
+                                        <label for="srn-tag" class="form-label fw-semibold mb-1">
+                                            <i data-feather="tag" class="svg-icon me-1" style="width:15px;height:15px;"></i>
+                                            Tag
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light">
+                                                <i data-feather="tag" class="svg-icon" style="width:14px;height:14px;color:#06d79c;"></i>
+                                            </span>
+                                            <select class="form-select" id="srn-tag" style="border-left:0;" disabled>
+                                                <option value="">Select a branch first</option>
+                                            </select>
+                                        </div>
+                                        <small id="srn-tag-hint" style="position:absolute;bottom:0;left:0;padding-left:calc(var(--bs-gutter-x)*.5);"></small>
+                                    </div>
+                                    <!-- Generate button -->
+                                    <div class="col-md-4" style="padding-bottom:1.4rem;">
+                                        <button class="btn btn-success w-100 py-2" id="btn-generate-srn" type="button"
+                                            style="font-size:1rem;letter-spacing:0.02em;" disabled>
                                             <i data-feather="file-plus" class="svg-icon me-1"></i>
                                             Generate SRN
                                         </button>
@@ -191,62 +228,45 @@
                                         <thead class="bg-success text-white">
                                             <tr>
                                                 <th style="width:5%">#</th>
-                                                <th style="width:30%">SRN Name</th>
-                                                <th style="width:20%">Project</th>
+                                                <th style="width:25%">Label</th>
                                                 <th style="width:20%">Branch</th>
-                                                <th style="width:12%">Date</th>
-                                                <th style="width:13%" class="text-center">Actions</th>
+                                                <th style="width:13%">Date</th>
+                                                <th style="width:25%" class="text-center">Files</th>
+                                                <th style="width:12%" class="text-center">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody id="srn-table-body">
                                             <tr>
-                                                <td>1</td>
-                                                <td style="word-break:break-all">SRN_AVINOR_1.0.0_20260401.pdf</td>
-                                                <td>AVINOR</td>
-                                                <td>release/1.0</td>
-                                                <td>2026-04-01</td>
-                                                <td class="text-center">
-                                                    <button class="btn btn-sm btn-outline-danger me-1" title="Delete">
-                                                        <i data-feather="trash-2" class="svg-icon"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-primary" title="Download">
-                                                        <i data-feather="download" class="svg-icon"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>2</td>
-                                                <td style="word-break:break-all">SRN_iCAS-LVNL_2.1.0_20260410.pdf</td>
-                                                <td>iCAS-LVNL</td>
-                                                <td>main</td>
-                                                <td>2026-04-10</td>
-                                                <td class="text-center">
-                                                    <button class="btn btn-sm btn-outline-danger me-1" title="Delete">
-                                                        <i data-feather="trash-2" class="svg-icon"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-primary" title="Download">
-                                                        <i data-feather="download" class="svg-icon"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td>3</td>
-                                                <td style="word-break:break-all">SRN_iSNS-LVNL_1.3.5_20260415.pdf</td>
-                                                <td>iSNS-LVNL</td>
-                                                <td>release/1.3</td>
-                                                <td>2026-04-15</td>
-                                                <td class="text-center">
-                                                    <button class="btn btn-sm btn-outline-danger me-1" title="Delete">
-                                                        <i data-feather="trash-2" class="svg-icon"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-primary" title="Download">
-                                                        <i data-feather="download" class="svg-icon"></i>
-                                                    </button>
+                                                <td colspan="5" class="text-center text-muted py-3">
+                                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                                    Loading...
                                                 </td>
                                             </tr>
                                         </tbody>
                                     </table>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- SRN Output Terminal -->
+                <!-- ============================================================== -->
+                <div class="row mt-2 d-none" id="srn-output-row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1">
+                                    <h5 class="mb-0 text-dark">Output</h5>
+                                    <button class="btn btn-sm btn-outline-secondary" id="btn-clear-output" type="button">
+                                        <i data-feather="x" class="svg-icon" style="width:14px;height:14px;"></i> Clear
+                                    </button>
+                                </div>
+                                <pre id="srn-output"
+                                    style="background:#1a1a2e;color:#a8f0d0;font-family:monospace;font-size:0.82rem;
+                                           padding:1rem;margin:0;max-height:350px;overflow-y:auto;
+                                           border-radius:0 0 0.375rem 0.375rem;"></pre>
                             </div>
                         </div>
                     </div>
@@ -263,6 +283,32 @@
     </div>
     <!-- End Wrapper -->
 
+    <!-- Duplicate SRN confirmation modal -->
+    <div class="modal fade" id="modal-srn-duplicate" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">
+                        <i data-feather="alert-triangle" class="svg-icon me-1" style="width:18px;height:18px;"></i>
+                        SRN Already Exists
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    An SRN with label <strong id="modal-dup-label"></strong> already exists.<br>
+                    Do you want to <strong>delete it and regenerate</strong>?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="modal-btn-overwrite">
+                        <i data-feather="trash-2" class="svg-icon me-1" style="width:14px;height:14px;"></i>
+                        Delete &amp; Regenerate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
     <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
@@ -275,31 +321,332 @@
     <script src="../dist/js/custom.min.js"></script>
 
     <script>
-        // Live datetime
+        const API_BASE = '/api';
+
+        // ---- Helpers ---------------------------------------------------------
+        function escHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        // ---- Live datetime ---------------------------------------------------
         function updateDatetime() {
             const now = new Date();
-            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
             const el = document.getElementById('live-datetime');
-            if (el) el.textContent = now.toLocaleString('en-GB', options);
+            if (el) el.textContent = now.toLocaleString('en-GB', {
+                weekday:'short', year:'numeric', month:'short', day:'numeric',
+                hour:'2-digit', minute:'2-digit', second:'2-digit'
+            });
         }
         updateDatetime();
         setInterval(updateDatetime, 1000);
 
-        // Feather icons
-        document.addEventListener('DOMContentLoaded', function () {
-            if (typeof feather !== 'undefined') feather.replace();
-        });
+        // ---- Deploy status ---------------------------------------------------
+        async function checkDeployStatus() {
+            try {
+                const res  = await fetch(`${API_BASE}/srn/status`);
+                const data = await res.json();
+                setDeployedState(data.success && data.deployed);
+            } catch (e) { setDeployedState(false); }
+        }
 
-        // Generate SRN button (placeholder - functionality TBD)
-        document.getElementById('btn-generate-srn').addEventListener('click', function () {
-            const label = document.getElementById('srn-project-label').value.trim();
-            const branch = document.getElementById('srn-project-branch').value.trim();
-            if (!label || !branch) {
-                alert('Please fill in both Project Label and Project Branch.');
+        function setDeployedState(deployed) {
+            const btnDeploy   = document.getElementById('btn-deploy-srn');
+            const btnGenerate = document.getElementById('btn-generate-srn');
+            const alertEl     = document.getElementById('srn-not-deployed-alert');
+            if (deployed) {
+                btnDeploy.classList.add('d-none');
+                btnGenerate.disabled = false;
+                alertEl.classList.add('d-none');
+            } else {
+                btnDeploy.classList.remove('d-none');
+                btnGenerate.disabled = true;
+                alertEl.classList.remove('d-none');
+            }
+        }
+
+        // ---- Branch dropdown -------------------------------------------------
+        async function loadBranches(currentBranch) {
+            const sel = document.getElementById('srn-branch');
+            try {
+                const res  = await fetch(`${API_BASE}/git/get-branches`);
+                const data = await res.json();
+                sel.innerHTML = '<option value="">— Select branch —</option>';
+                if (!data.success || !data.branches.length) return;
+                const seen = new Set();
+                const branches = [];
+                data.branches.forEach(b => {
+                    const short = b.replace(/^remotes\/origin\//, '').trim();
+                    if (short && !seen.has(short)) { seen.add(short); branches.push(short); }
+                });
+                branches.sort();
+                branches.forEach(branch => {
+                    const opt = document.createElement('option');
+                    opt.value = branch; opt.textContent = branch;
+                    if (branch === currentBranch) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            } catch (e) {
+                sel.innerHTML = '<option value="">Error loading branches</option>';
+            }
+        }
+
+        // ---- Tag dropdown (filtered by branch) -------------------------------
+        async function loadTagsForBranch(branch, currentTag) {
+            const sel  = document.getElementById('srn-tag');
+            const hint = document.getElementById('srn-tag-hint');
+            sel.innerHTML = '<option value="">Loading tags...</option>';
+            sel.disabled = true;
+            hint.textContent = '';
+            if (!branch) {
+                sel.innerHTML = '<option value="">Select a branch first</option>';
                 return;
             }
-            // TODO: call API to generate SRN
-            console.log('Generate SRN:', label, branch);
+            try {
+                const res  = await fetch(`${API_BASE}/srn/tags-for-branch?branch=${encodeURIComponent(branch)}`);
+                const data = await res.json();
+                sel.innerHTML = '<option value="">— Select tag —</option>';
+                if (!data.success || !data.tags.length) {
+                    sel.innerHTML = '<option value="">No tags on this branch</option>';
+                    return;
+                }
+                let matched = false;
+                data.tags.forEach(tag => {
+                    const opt = document.createElement('option');
+                    opt.value = tag; opt.textContent = tag;
+                    if (tag === currentTag) { opt.selected = true; matched = true; }
+                    sel.appendChild(opt);
+                });
+                sel.disabled = false;
+                if (currentTag && !matched) {
+                    hint.textContent = `⚠ Tag "${currentTag}" not found on this branch`;
+                    hint.className = 'text-warning';
+                }
+            } catch (e) {
+                sel.innerHTML = '<option value="">Error loading tags</option>';
+            }
+        }
+
+        // ---- Save config on change -------------------------------------------
+        async function saveConfig() {
+            const tag    = document.getElementById('srn-tag').value;
+            const branch = document.getElementById('srn-branch').value;
+            if (!tag || !branch) return;
+            try {
+                await fetch(`${API_BASE}/srn/update-config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tag, branch })
+                });
+            } catch (e) { console.error('Failed to save config:', e); }
+        }
+
+        // ---- SRN List --------------------------------------------------------
+        async function loadSrnList() {
+            const tbody = document.getElementById('srn-table-body');
+            try {
+                const res  = await fetch(`${API_BASE}/srn/list`);
+                const data = await res.json();
+                if (!data.success || !data.items.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No SRNs generated yet.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = '';
+                data.items.forEach((item, idx) => {
+                    const badgeList = item.files.map(f => {
+                        const ext = f.split('.').pop().toLowerCase();
+                        const color = ext==='html'?'bg-info':ext==='pdf'?'bg-danger':ext==='docx'?'bg-primary':'bg-secondary';
+                        return `<span class="badge ${color} me-1" style="font-size:0.7em">${escHtml(f)}</span>`;
+                    }).join('');
+                    const tr = document.createElement('tr');
+                    tr.dataset.label = item.label;
+                    tr.innerHTML = `
+                        <td>${idx + 1}</td>
+                        <td style="word-break:break-all;font-weight:600">${escHtml(item.label)}</td>
+                        <td><small>${escHtml(item.branch || '-')}</small></td>
+                        <td><small>${escHtml(item.date)}</small></td>
+                        <td>${badgeList || '<span class="text-muted">-</span>'}</td>
+                        <td class="text-center text-nowrap">
+                            <a class="btn btn-sm btn-outline-primary me-1"
+                               href="${API_BASE}/srn/download/${encodeURIComponent(item.label)}"
+                               title="Download ${escHtml(item.label)}.tar.gz">
+                                <i data-feather="download" class="svg-icon" style="width:13px;height:13px;"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-danger btn-srn-delete"
+                                    data-label="${escHtml(item.label)}" title="Delete">
+                                <i data-feather="trash-2" class="svg-icon" style="width:13px;height:13px;"></i>
+                            </button>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+                if (typeof feather !== 'undefined') feather.replace();
+                // Bind delete buttons
+                tbody.querySelectorAll('.btn-srn-delete').forEach(btn => {
+                    btn.addEventListener('click', function() { confirmDeleteSrn(this.dataset.label); });
+                });
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error loading list</td></tr>`;
+            }
+        }
+
+        // ---- Delete SRN ------------------------------------------------------
+        function confirmDeleteSrn(label) {
+            document.getElementById('modal-dup-label').textContent = label;
+            document.getElementById('modal-btn-overwrite').onclick = async function() {
+                bootstrap.Modal.getInstance(document.getElementById('modal-srn-duplicate')).hide();
+                await deleteSrn(label);
+                await loadSrnList();
+            };
+            new bootstrap.Modal(document.getElementById('modal-srn-duplicate')).show();
+        }
+
+        async function deleteSrn(label) {
+            await fetch(`${API_BASE}/srn/delete/${encodeURIComponent(label)}`, { method: 'DELETE' });
+        }
+
+        // ---- Output terminal -------------------------------------------------
+        function appendOutput(msg) {
+            const out = document.getElementById('srn-output');
+            let color = '#a8f0d0';
+            if (msg.includes('[ERROR]'))        color = '#f62d51';
+            else if (msg.includes('[WARNING]')) color = '#ffbc34';
+            else if (msg.includes('[INFO]'))    color = '#8be9fd';
+            out.innerHTML += `<span style="color:${color}">${escHtml(msg)}</span>\n`;
+            out.scrollTop = out.scrollHeight;
+        }
+
+        document.getElementById('btn-clear-output').addEventListener('click', function () {
+            document.getElementById('srn-output').innerHTML = '';
+            document.getElementById('srn-output-row').classList.add('d-none');
+        });
+
+        // ---- Deploy SRN button -----------------------------------------------
+        document.getElementById('btn-deploy-srn').addEventListener('click', async function () {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Deploying...';
+            try {
+                const res  = await fetch(`${API_BASE}/srn/deploy`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    setDeployedState(true);
+                    if (typeof feather !== 'undefined') feather.replace();
+                } else {
+                    alert('Deploy failed: ' + data.error);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i data-feather="upload-cloud" class="svg-icon me-1"></i> Deploy SRN';
+                    if (typeof feather !== 'undefined') feather.replace();
+                }
+            } catch (e) {
+                alert('Deploy failed: ' + e);
+                btn.disabled = false;
+                btn.innerHTML = '<i data-feather="upload-cloud" class="svg-icon me-1"></i> Deploy SRN';
+                if (typeof feather !== 'undefined') feather.replace();
+            }
+        });
+
+        // ---- Generate SRN button --------------------------------------------
+        async function runGenerate() {
+            const tag    = document.getElementById('srn-tag').value;
+            const branch = document.getElementById('srn-branch').value;
+
+            const btn = document.getElementById('btn-generate-srn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Generating...';
+
+            const out = document.getElementById('srn-output');
+            out.innerHTML = '';
+            document.getElementById('srn-output-row').classList.remove('d-none');
+            appendOutput(`[INFO] Starting SRN generation — tag: ${tag} | branch: ${branch}`);
+
+            try {
+                const res = await fetch(`${API_BASE}/srn/generate`, { method: 'POST' });
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const parts = buffer.split('\n\n');
+                    buffer = parts.pop();
+                    for (const part of parts) {
+                        if (!part.startsWith('data: ')) continue;
+                        const msg = part.slice(6);
+                        if (msg.startsWith('__EXIT__')) {
+                            const code = parseInt(msg.slice(8));
+                            const color = code === 0 ? '#06d79c' : '#f62d51';
+                            out.innerHTML += `<span style="color:${color};font-weight:bold">\n— Process exited with code ${code} —\n</span>`;
+                            out.scrollTop = out.scrollHeight;
+                            if (code === 0) await loadSrnList();
+                        } else {
+                            appendOutput(msg);
+                        }
+                    }
+                }
+            } catch (e) {
+                const msg = String(e);
+                if (msg.includes('network') || msg.includes('NetworkError') || msg.includes('Failed to fetch')) {
+                    out.innerHTML += `<span style="color:#ffbc34;font-weight:bold">\n⚠ Connection dropped (proxy timeout) — the process may have completed.\nCheck the SRN List below for results.\n</span>`;
+                    out.scrollTop = out.scrollHeight;
+                    await loadSrnList();
+                } else {
+                    out.innerHTML += `<span style="color:#f62d51">Stream error: ${escHtml(msg)}\n</span>`;
+                }
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i data-feather="file-plus" class="svg-icon me-1"></i> Generate SRN';
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+
+        document.getElementById('btn-generate-srn').addEventListener('click', async function () {
+            const tag    = document.getElementById('srn-tag').value;
+            const branch = document.getElementById('srn-branch').value;
+            if (!tag || !branch) { alert('Please select a Branch and a Tag.'); return; }
+
+            // Check for duplicate
+            const listRes  = await fetch(`${API_BASE}/srn/list`);
+            const listData = await listRes.json();
+            const exists   = listData.success && listData.items.some(i => i.label === tag);
+            if (exists) {
+                // Show modal — overwrite handler will delete then run
+                document.getElementById('modal-dup-label').textContent = tag;
+                document.getElementById('modal-btn-overwrite').onclick = async function() {
+                    bootstrap.Modal.getInstance(document.getElementById('modal-srn-duplicate')).hide();
+                    await deleteSrn(tag);
+                    await runGenerate();
+                };
+                new bootstrap.Modal(document.getElementById('modal-srn-duplicate')).show();
+            } else {
+                await runGenerate();
+            }
+        });
+
+        // ---- Init ------------------------------------------------------------
+        document.addEventListener('DOMContentLoaded', async function () {
+            if (typeof feather !== 'undefined') feather.replace();
+
+            await checkDeployStatus();
+
+            let currentTag = '', currentBranch = '';
+            try {
+                const res = await fetch(`${API_BASE}/srn/config`);
+                const cfg = await res.json();
+                if (cfg.success) { currentTag = cfg.tag; currentBranch = cfg.branch; }
+            } catch (e) { console.error('Failed to load SRN config:', e); }
+
+            await Promise.all([loadBranches(currentBranch), loadSrnList()]);
+
+            // Load tags for the pre-selected branch
+            if (currentBranch) await loadTagsForBranch(currentBranch, currentTag);
+
+            // On branch change: reload tags, reset tag select
+            document.getElementById('srn-branch').addEventListener('change', async function () {
+                const branch = this.value;
+                await loadTagsForBranch(branch, '');
+                saveConfig();
+            });
+            document.getElementById('srn-tag').addEventListener('change', saveConfig);
         });
     </script>
 </body>

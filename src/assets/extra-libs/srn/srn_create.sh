@@ -4,6 +4,13 @@ set -euo pipefail
 
 # Configuración
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Añadir pandoc al PATH si está disponible en la ubicación de despliegue
+PANDOC_BIN="${SCRIPT_DIR}/pandoc/pandoc-3.9/bin"
+if [ -d "$PANDOC_BIN" ]; then
+    export PATH="${PANDOC_BIN}:$PATH"
+fi
+
 CONFIG_FILE="${SCRIPT_DIR}/config.cfg"
 
 # Colores para output
@@ -44,29 +51,28 @@ fi
 # Cargar configuración
 source "$CONFIG_FILE"
 
-# Paso 0: Verificar y corregir permisos de /TOOLS
-log_info "Verificando permisos de /TOOLS..."
-CURRENT_USER=$(whoami)
-TOOLS_OWNER=$(stat -c '%U' /TOOLS 2>/dev/null || stat -f '%Su' /TOOLS 2>/dev/null)
+# Directorio de build y rutas de proyecto (pueden ser sobreescritas por el servidor Flask)
+SRN_BUILD_DIR="${SRN_BUILD_DIR:-${SCRIPT_DIR}/build}"
+PROJECTS_PATH="${PROJECTS_PATH:-/iDASREPO/PROJECTS}"
+IDASPKG_RELPATH="${IDASPKG_RELPATH:-/repos/pxeBase/iDASpkg}"
 
-if [ -z "$TOOLS_OWNER" ]; then
-    log_error "No se pudo verificar el propietario de /TOOLS. ¿Existe el directorio?"
-    exit 1
-fi
-
-if [ "$TOOLS_OWNER" != "$CURRENT_USER" ]; then
-    log_warning "El directorio /TOOLS pertenece a '$TOOLS_OWNER', no a '$CURRENT_USER'"
-    log_info "Cambiando propietario de /TOOLS a '$CURRENT_USER' (requiere sudo)..."
-    
-    sudo chown -R "$CURRENT_USER":"$CURRENT_USER" /TOOLS || {
-        log_error "Fallo al cambiar el propietario de /TOOLS. Verifica tus permisos de sudo."
-        exit 1
-    }
-    
-    log_info "  ✓ Propietario de /TOOLS cambiado correctamente"
-else
-    log_info "  ✓ /TOOLS ya pertenece a '$CURRENT_USER'"
-fi
+# Detecta el directorio del proyecto a partir del nombre de la rama
+detect_project_folder() {
+    local branch="$1"
+    if [ -d "${PROJECTS_PATH}" ]; then
+        for folder in "${PROJECTS_PATH}"/*/; do
+            [ -d "$folder" ] || continue
+            local fname
+            fname=$(basename "$folder")
+            if [[ "$branch" == "$fname" || "$branch" == "${fname}_"* ]]; then
+                echo "$fname"
+                return 0
+            fi
+        done
+    fi
+    # Fallback: parte antes del primer _
+    echo "${branch%%_*}"
+}
 
 # Validar variables requeridas
 if [ -z "${PROJECT:-}" ]; then
@@ -83,21 +89,27 @@ log_info "Configuración cargada:"
 log_info "  - PROJECT: $PROJECT"
 log_info "  - LABEL: $LABEL"
 
-# Paso 1: Git clone
-log_info "Clonando repositorio..."
-if [ -d "/tmp/idas_md" ]; then
-    log_warning "El directorio /tmp/idas_md ya existe. Eliminándolo..."
-    rm -rf /tmp/idas_md
+# Paso 1: Usar repo existente o clonar si no existe
+REPO_DIR="${REPO_DIR:-}"
+if [ -n "$REPO_DIR" ] && [ -d "$REPO_DIR" ]; then
+    log_info "Usando repositorio existente en: $REPO_DIR"
+    WORK_DIR="$REPO_DIR"
+else
+    log_info "Clonando repositorio..."
+    if [ -d "/tmp/idas_md" ]; then
+        log_warning "El directorio /tmp/idas_md ya existe. Eliminándolo..."
+        rm -rf /tmp/idas_md
+    fi
+    git clone https://bitbucket.indra.es/scm/gt_idas/idas_md.git /tmp/idas_md || {
+        log_error "Fallo al clonar el repositorio"
+        exit 1
+    }
+    WORK_DIR="/tmp/idas_md"
 fi
-
-git clone https://bitbucket.indra.es/scm/gt_idas/idas_md.git /tmp/idas_md || {
-    log_error "Fallo al clonar el repositorio"
-    exit 1
-}
 
 # Paso 2: Checkout y pull
 log_info "Cambiando a branch '$PROJECT' y actualizando..."
-cd /tmp/idas_md
+cd "$WORK_DIR"
 git checkout "$PROJECT" || {
     log_error "Fallo al hacer checkout a la rama '$PROJECT'"
     exit 1
@@ -109,14 +121,17 @@ git pull || {
 }
 
 # Paso 3: Ejecutar DeNote.sh
-log_info "Ejecutando DeNote.sh..."
+# Derivar -w (directorio padre) y -r (nombre del repo) desde WORK_DIR
+REPO_WORK_DIR=$(dirname "$WORK_DIR")
+REPO_NAME=$(basename "$WORK_DIR")
+log_info "Ejecutando DeNote.sh (repo: $REPO_NAME, workdir: $REPO_WORK_DIR)..."
 /TOOLS/Analysis/DeNote.sh \
     -P MD \
     -g \
     -d \
     -l "$LABEL" \
-    -r idas_md \
-    -w /tmp \
+    -r "$REPO_NAME" \
+    -w "$REPO_WORK_DIR" \
     -c /TOOLS/iDAS_DeNote/ \
     -b "$PROJECT" || {
     log_error "Fallo al ejecutar DeNote.sh"
@@ -125,24 +140,44 @@ log_info "Ejecutando DeNote.sh..."
 
 # Paso 4: Crear estructura de directorios
 log_info "Creando estructura de directorios para SRNs..."
-DEST_DIR="${HOME}/SRNs/${PROJECT}/${LABEL}"
+DEST_DIR="${SRN_BUILD_DIR}/${LABEL}"
 mkdir -p "$DEST_DIR" || {
     log_error "Fallo al crear directorio $DEST_DIR"
     exit 1
 }
 
+# Paso 4.1: Escribir metadatos de la SRN
+cat > "${DEST_DIR}/.srn_meta" << METAEOF
+project=${PROJECT}
+label=${LABEL}
+generated=$(date '+%Y-%m-%d %H:%M:%S')
+METAEOF
+
+# Paso 4.2: Generar packages.txt
+log_info "Generando packages.txt..."
+PROJECT_FOLDER=$(detect_project_folder "$PROJECT")
+PKG_DIR="${PROJECTS_PATH}/${PROJECT_FOLDER}${IDASPKG_RELPATH}"
+if [ -d "$PKG_DIR" ]; then
+    find "$PKG_DIR" -maxdepth 1 -type f -exec md5sum {} \; \
+        | sed "s|${PKG_DIR}/||" > "${DEST_DIR}/packages.txt" \
+        && log_info "  ✓ packages.txt generado (proyecto: $PROJECT_FOLDER)"
+else
+    log_warning "  ✗ Directorio de paquetes no encontrado: $PKG_DIR"
+    echo "# No se encontró el directorio: $PKG_DIR" > "${DEST_DIR}/packages.txt"
+fi
+
 # Paso 5: Mover archivos generados
 log_info "Moviendo archivos generados a $DEST_DIR..."
 
-# Array de archivos a mover desde /tmp
+# Array de archivos a mover (DeNote.sh escribe en REPO_WORK_DIR)
 FILES_TO_MOVE=(
-    "/tmp/${LABEL}.Query.txt"
-    "/tmp/All_Git_Commits_in_build.txt"
-    "/tmp/All_Git_Error_Commits_in_build.txt"
-    "/tmp/All_Git_PTRs_in_build.txt"
-    "/tmp/change_revision_errors.log"
-    "/tmp/Change_Revision.html"
-    "/tmp/Change_Revision.log"
+    "${REPO_WORK_DIR}/${LABEL}.Query.txt"
+    "${REPO_WORK_DIR}/All_Git_Commits_in_build.txt"
+    "${REPO_WORK_DIR}/All_Git_Error_Commits_in_build.txt"
+    "${REPO_WORK_DIR}/All_Git_PTRs_in_build.txt"
+    "${REPO_WORK_DIR}/change_revision_errors.log"
+    "${REPO_WORK_DIR}/Change_Revision.html"
+    "${REPO_WORK_DIR}/Change_Revision.log"
 )
 
 # Mover archivos desde /tmp
