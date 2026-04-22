@@ -1,6 +1,8 @@
 import os
 import sys
 import re
+import json
+import signal
 import shutil
 import tarfile
 import datetime
@@ -104,7 +106,7 @@ def run_build():
             env['ANSIBLE_FORCE_COLOR'] = '1'
 
             current_process = subprocess.Popen(
-                ['ansible-playbook', playbook_path],
+                ['script', '-qfc', f'ansible-playbook {playbook_path}', '/dev/null'],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
@@ -140,7 +142,291 @@ def stop_build():
             return jsonify({"success": False, "message": "No build is currently running."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
-    
+
+# ============================================================
+# Background Build Management (mkbuild)
+# ============================================================
+
+def _get_mkbuild_paths():
+    """Returns (make_build_path, make_build_logs) from config."""
+    config = config_loader.load_config()
+    base_dir = config.get('system', 'base_dir')
+    make_build_path = os.path.join(base_dir, 'make_build_pid')
+    make_build_logs = os.path.join(make_build_path, 'logs')
+    os.makedirs(make_build_path, exist_ok=True)
+    os.makedirs(make_build_logs, exist_ok=True)
+    return make_build_path, make_build_logs
+
+@app.route('/mkbuild/start', methods=['POST'])
+def mkbuild_start():
+    """Start a build as a background process."""
+    try:
+        data = request.get_json()
+        selected_role = data.get('role', '')
+        branch_name = data.get('branch_name', '')
+
+        if not selected_role:
+            return jsonify({"success": False, "error": "No role selected."})
+        if not branch_name:
+            return jsonify({"success": False, "error": "Branch name is required."})
+
+        # Generate unique build ID
+        now = datetime.datetime.now()
+        date_str = now.strftime('%Y%m%d_%H%M%S')
+        safe_branch = re.sub(r'[^a-zA-Z0-9_-]', '_', branch_name)
+        build_id = f"mkbuild_{safe_branch}_{date_str}"
+
+        # Get paths
+        make_build_path, make_build_logs = _get_mkbuild_paths()
+
+        # Generate playbook to unique path
+        config = config_loader.load_config()
+        playbook_path = os.path.join(config['build']['output_path'], f'{build_id}.yaml')
+
+        form_data = {
+            'branch_name':       branch_name,
+            'gitrepo_local_dir': data.get('gitrepo_local_dir', ''),
+            'mkbuild_project':   data.get('mkbuild_project', ''),
+            'gitrepo_update':    data.get('gitrepo_update', 'disabled'),
+            'gitrepo_checkitc':  data.get('gitrepo_checkitc', 'disabled'),
+            'gitrepo_git2cc':    data.get('gitrepo_git2cc', 'disabled'),
+            'idasrpm_build':     data.get('idasrpm_build', 'disabled'),
+            'idasrepo_build':    data.get('idasrepo_build', 'disabled'),
+            'idasbuild_build':   data.get('idasbuild_build', 'disabled'),
+        }
+
+        make_yaml.generate_build_yaml(selected_role, playbook_path, form_data)
+
+        # Build ansible command with optional git credentials
+        git_username = data.get('git_username', '')
+        git_password = data.get('git_password', '')
+
+        extra_vars_file = None
+        cmd_parts = ['ansible-playbook', playbook_path]
+
+        if git_username and git_password:
+            from urllib.parse import quote as url_quote
+            base_url = config.get('system', 'repo_url').rstrip('/')
+            auth_url = base_url.replace('https://', f'https://{url_quote(git_username, safe="")}:{url_quote(git_password, safe="")}@')
+            # Write extra vars to a temp file to avoid exposing creds in ps
+            extra_vars_file = os.path.join(make_build_path, f'{build_id}_vars.json')
+            with open(extra_vars_file, 'w') as vf:
+                json.dump({"idas_tool_mkbuild_gitrepo_remote": auth_url}, vf)
+            os.chmod(extra_vars_file, 0o600)
+            cmd_parts += ['-e', f'@{extra_vars_file}']
+
+        # Start background process
+        log_path = os.path.join(make_build_logs, f'{build_id}.log')
+        log_file = open(log_path, 'w')
+
+        env = os.environ.copy()
+        env['ANSIBLE_FORCE_COLOR'] = '1'
+
+        ansible_cmd = ' '.join(cmd_parts)
+        proc = subprocess.Popen(
+            ['script', '-qfc', ansible_cmd, '/dev/null'],
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            env=env,
+            start_new_session=True
+        )
+
+        # Create tracking JSON
+        tracking = {
+            "id": build_id,
+            "branch": branch_name,
+            "role": selected_role,
+            "pid": proc.pid,
+            "log_path": log_path,
+            "playbook_path": playbook_path,
+            "started_at": now.strftime('%Y-%m-%d %H:%M:%S'),
+            "status": "running"
+        }
+
+        json_path = os.path.join(make_build_path, f'{build_id}.json')
+        with open(json_path, 'w') as f:
+            json.dump(tracking, f, indent=2)
+
+        return jsonify({"success": True, "build_id": build_id, "pid": proc.pid})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/mkbuild/list')
+def mkbuild_list():
+    """List all background builds, checking PID status."""
+    try:
+        make_build_path, _ = _get_mkbuild_paths()
+        builds = []
+
+        for fname in sorted(os.listdir(make_build_path), reverse=True):
+            if not fname.endswith('.json') or fname.endswith('_vars.json'):
+                continue
+            json_path = os.path.join(make_build_path, fname)
+            try:
+                with open(json_path, 'r') as f:
+                    build = json.load(f)
+
+                # Check if process is still running
+                pid = build.get('pid')
+                if pid and build.get('status') == 'running':
+                    try:
+                        os.kill(pid, 0)  # signal 0 = check if alive
+                    except OSError:
+                        build['status'] = 'finished'
+                        with open(json_path, 'w') as fw:
+                            json.dump(build, fw, indent=2)
+
+                builds.append(build)
+            except (json.JSONDecodeError, IOError):
+                continue
+
+        return jsonify({"success": True, "builds": builds})
+
+    except Exception as e:
+        return jsonify({"success": False, "builds": [], "error": str(e)})
+
+@app.route('/mkbuild/stop', methods=['POST'])
+def mkbuild_stop():
+    """Stop a background build by build_id."""
+    try:
+        data = request.get_json()
+        build_id = data.get('build_id', '')
+
+        if not build_id:
+            return jsonify({"success": False, "error": "build_id is required."})
+
+        if not re.match(r'^mkbuild_[a-zA-Z0-9_-]+$', build_id):
+            return jsonify({"success": False, "error": "Invalid build ID."})
+
+        make_build_path, _ = _get_mkbuild_paths()
+        json_path = os.path.join(make_build_path, f'{build_id}.json')
+
+        if not os.path.exists(json_path):
+            return jsonify({"success": False, "error": "Build not found."})
+
+        with open(json_path, 'r') as f:
+            build = json.load(f)
+
+        pid = build.get('pid')
+        if not pid:
+            return jsonify({"success": False, "error": "No PID found."})
+
+        try:
+            os.kill(pid, signal.SIGTERM)
+            build['status'] = 'stopped'
+            with open(json_path, 'w') as fw:
+                json.dump(build, fw, indent=2)
+            return jsonify({"success": True, "message": f"Build {build_id} stopped."})
+        except OSError:
+            build['status'] = 'finished'
+            with open(json_path, 'w') as fw:
+                json.dump(build, fw, indent=2)
+            return jsonify({"success": False, "error": "Process is not running."})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/mkbuild/log/<build_id>')
+def mkbuild_log(build_id):
+    """Get the log content for a build."""
+    try:
+        if not re.match(r'^mkbuild_[a-zA-Z0-9_-]+$', build_id):
+            return jsonify({"success": False, "error": "Invalid build ID."})
+
+        make_build_path, _ = _get_mkbuild_paths()
+        json_path = os.path.join(make_build_path, f'{build_id}.json')
+
+        if not os.path.exists(json_path):
+            return jsonify({"success": False, "error": "Build not found."})
+
+        with open(json_path, 'r') as f:
+            build = json.load(f)
+
+        log_path = build.get('log_path', '')
+        if not log_path or not os.path.exists(log_path):
+            return jsonify({"success": True, "log": "Log file not found yet.", "status": build.get('status', 'unknown')})
+
+        tail = request.args.get('tail', type=int, default=0)
+
+        with open(log_path, 'r', errors='replace') as f:
+            if tail > 0:
+                lines = f.readlines()
+                content = ''.join(lines[-tail:])
+            else:
+                content = f.read()
+
+        # Check PID status
+        pid = build.get('pid')
+        status = build.get('status', 'unknown')
+        if pid and status == 'running':
+            try:
+                os.kill(pid, 0)
+            except OSError:
+                status = 'finished'
+                build['status'] = status
+                with open(json_path, 'w') as fw:
+                    json.dump(build, fw, indent=2)
+
+        return jsonify({"success": True, "log": content, "status": status})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/mkbuild/delete', methods=['POST'])
+def mkbuild_delete():
+    """Delete a build tracking file and its log."""
+    try:
+        data = request.get_json()
+        build_id = data.get('build_id', '')
+
+        if not build_id:
+            return jsonify({"success": False, "error": "build_id is required."})
+
+        if not re.match(r'^mkbuild_[a-zA-Z0-9_-]+$', build_id):
+            return jsonify({"success": False, "error": "Invalid build ID."})
+
+        make_build_path, _ = _get_mkbuild_paths()
+        json_path = os.path.join(make_build_path, f'{build_id}.json')
+
+        if not os.path.exists(json_path):
+            return jsonify({"success": False, "error": "Build not found."})
+
+        with open(json_path, 'r') as f:
+            build = json.load(f)
+
+        # Don't delete running builds
+        pid = build.get('pid')
+        if pid:
+            try:
+                os.kill(pid, 0)
+                return jsonify({"success": False, "error": "Cannot delete a running build. Stop it first."})
+            except OSError:
+                pass
+
+        # Delete log file
+        log_path = build.get('log_path', '')
+        if log_path and os.path.exists(log_path):
+            os.remove(log_path)
+
+        # Delete playbook
+        playbook_path = build.get('playbook_path', '')
+        if playbook_path and os.path.exists(playbook_path):
+            os.remove(playbook_path)
+
+        # Delete extra vars file (contains credentials)
+        vars_file = os.path.join(make_build_path, f'{build_id}_vars.json')
+        if os.path.exists(vars_file):
+            os.remove(vars_file)
+
+        # Delete JSON
+        os.remove(json_path)
+
+        return jsonify({"success": True, "message": f"Build {build_id} deleted."})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route('/get-config')
 def get_config():
     try:

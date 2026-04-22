@@ -72,7 +72,9 @@ def get_branches(repo_path):
     for line in result.stdout.decode('utf-8').splitlines():
         branch = line.strip().replace('* ', '')
         if '->' not in branch:  # skip HEAD -> origin/main lines
-            branches.append(branch)
+            branch = branch.replace('remotes/origin/', '')
+            if branch not in branches:
+                branches.append(branch)
 
     return {"success": True, "branches": branches, "error": ""}
 
