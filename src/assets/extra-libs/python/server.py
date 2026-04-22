@@ -261,6 +261,58 @@ def dashboard_builds():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+@app.route('/dashboard/system')
+def dashboard_system():
+    """Returns real-time memory and /iDASREPO disk usage."""
+    try:
+        # --- Memory ---
+        with open('/proc/meminfo', 'r') as f:
+            meminfo = {}
+            for line in f:
+                parts = line.split()
+                meminfo[parts[0].rstrip(':')] = int(parts[1])  # kB
+        mem_total = meminfo['MemTotal']
+        mem_available = meminfo.get('MemAvailable', meminfo.get('MemFree', 0))
+        mem_used = mem_total - mem_available
+        mem_percent = round(mem_used / mem_total * 100, 1) if mem_total else 0
+
+        def fmt_gb(kb):
+            return f"{kb / 1048576:.1f} GB"
+
+        # --- Disk /iDASREPO ---
+        disk = {"total": "--", "used": "--", "free": "--", "percent": 0}
+        try:
+            st = os.statvfs('/iDASREPO')
+            d_total = st.f_frsize * st.f_blocks
+            d_free = st.f_frsize * st.f_bavail
+            d_used = d_total - d_free
+            d_pct = round(d_used / d_total * 100, 1) if d_total else 0
+            def fmt_bytes(b):
+                if b >= 1099511627776:
+                    return f"{b / 1099511627776:.1f}T"
+                return f"{b / 1073741824:.0f}G"
+            disk = {
+                "total": fmt_bytes(d_total),
+                "used": fmt_bytes(d_used),
+                "free": fmt_bytes(d_free),
+                "percent": d_pct
+            }
+        except OSError:
+            pass
+
+        return jsonify({
+            "success": True,
+            "memory": {
+                "total": fmt_gb(mem_total),
+                "used": fmt_gb(mem_used),
+                "free": fmt_gb(mem_available),
+                "percent": mem_percent
+            },
+            "disk": disk
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 # All above this is endpoints, do not delete the lines below
 
 # ============================================================

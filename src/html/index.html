@@ -554,6 +554,64 @@
                 </div>
 
                 <!-- ============================================================== -->
+                <!-- System Widgets (Mem Usage + Space Usage) -->
+                <!-- ============================================================== -->
+                <div class="row">
+                    <!-- Mem Usage -->
+                    <div class="col-sm-6 col-lg-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div>
+                                        <h6 class="text-muted font-weight-normal mb-0">Mem Usage</h6>
+                                    </div>
+                                    <div class="ms-auto">
+                                        <span class="opacity-7 text-muted"><i data-feather="cpu"></i></span>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center mb-1">
+                                    <h2 class="text-dark mb-0 font-weight-medium card-mem-percent">--%</h2>
+                                    <span class="text-muted ms-2 font-14 card-mem-detail">-- / --</span>
+                                </div>
+                                <div class="progress mt-2" style="height:8px;">
+                                    <div class="progress-bar bg-primary card-mem-bar" role="progressbar" style="width:0%"></div>
+                                </div>
+                                <div class="d-flex justify-content-between mt-2">
+                                    <span class="text-muted font-12">Used: <span class="card-mem-used">--</span></span>
+                                    <span class="text-muted font-12">Free: <span class="card-mem-free">--</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Space Usage (/iDASREPO) -->
+                    <div class="col-sm-6 col-lg-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div>
+                                        <h6 class="text-muted font-weight-normal mb-0">Space Usage <span class="font-12 text-muted">(/iDASREPO)</span></h6>
+                                    </div>
+                                    <div class="ms-auto">
+                                        <span class="opacity-7 text-muted"><i data-feather="database"></i></span>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center mb-1">
+                                    <h2 class="text-dark mb-0 font-weight-medium card-disk-percent">--%</h2>
+                                    <span class="text-muted ms-2 font-14 card-disk-detail">-- / --</span>
+                                </div>
+                                <div class="progress mt-2" style="height:8px;">
+                                    <div class="progress-bar bg-warning card-disk-bar" role="progressbar" style="width:0%"></div>
+                                </div>
+                                <div class="d-flex justify-content-between mt-2">
+                                    <span class="text-muted font-12">Used: <span class="card-disk-used">--</span></span>
+                                    <span class="text-muted font-12">Free: <span class="card-disk-free">--</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
                 <!-- Builds Table + Chart -->
                 <!-- ============================================================== -->
                 <div class="row">
@@ -979,6 +1037,47 @@
         }
 
         document.addEventListener('DOMContentLoaded', loadDashboard);
+
+        // ============================================================
+        // System stats (Memory + Disk) - updates every 5 seconds
+        // ============================================================
+        async function loadSystemStats() {
+            try {
+                const res = await fetch('/api/dashboard/system');
+                const data = await res.json();
+                if (!data.success) return;
+
+                const m = data.memory;
+                document.querySelector('.card-mem-percent').textContent = m.percent + '%';
+                document.querySelector('.card-mem-detail').textContent  = m.used + ' / ' + m.total;
+                document.querySelector('.card-mem-used').textContent    = m.used;
+                document.querySelector('.card-mem-free').textContent    = m.free;
+                const memBar = document.querySelector('.card-mem-bar');
+                memBar.style.width = m.percent + '%';
+                memBar.className = 'progress-bar card-mem-bar ' +
+                    (m.percent >= 90 ? 'bg-danger' : m.percent >= 70 ? 'bg-warning' : 'bg-primary');
+
+                const d = data.disk;
+                document.querySelector('.card-disk-percent').textContent = d.percent + '%';
+                document.querySelector('.card-disk-detail').textContent  = d.used + ' / ' + d.total;
+                document.querySelector('.card-disk-used').textContent    = d.used;
+                document.querySelector('.card-disk-free').textContent    = d.free;
+                const diskBar = document.querySelector('.card-disk-bar');
+                diskBar.style.width = d.percent + '%';
+                diskBar.className = 'progress-bar card-disk-bar ' +
+                    (d.percent >= 90 ? 'bg-danger' : d.percent >= 70 ? 'bg-warning' : 'bg-success');
+            } catch (e) {
+                console.error('System stats error:', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadSystemStats);
+
+        // ============================================================
+        // Auto-refresh: builds every 30s, system stats every 5s
+        // ============================================================
+        setInterval(loadDashboard, 30000);
+        setInterval(loadSystemStats, 5000);
 
         // Live date/time from internet
         (async function initClock() {
