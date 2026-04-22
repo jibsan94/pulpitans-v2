@@ -1,5 +1,9 @@
 import os
 import sys
+import re
+import shutil
+import tarfile
+import datetime
 import subprocess
 from flask import Flask, jsonify, request, Response, stream_with_context
 from flask_cors import CORS
@@ -258,5 +262,309 @@ def dashboard_builds():
         return jsonify({"success": False, "error": str(e)})
 
 # All above this is endpoints, do not delete the lines below
+
+# ============================================================
+# SRN endpoints
+# ============================================================
+_SRN_SOURCE_DIR = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'srn')
+)
+_SRN_CONFIG_PATH = os.path.join(_SRN_SOURCE_DIR, 'config.cfg')
+
+def _get_srn_paths(config):
+    """Resolves srn_base_dir / srn_pandoc_dir / srn_build_dir from config.conf.
+    Cross-section interpolation is not natively supported by configparser,
+    so we build the paths manually from [system] base_dir."""
+    base_dir   = config.get('system', 'base_dir')
+    srn_base   = os.path.join(base_dir, 'srn')
+    srn_pandoc = os.path.join(srn_base, 'pandoc')
+    srn_build  = os.path.join(srn_base, 'build')
+    return srn_base, srn_pandoc, srn_build
+
+def _safe_tar_extract(tar, dest):
+    """Extract tarball with path-traversal protection (zip-slip guard)."""
+    real_dest = os.path.realpath(dest)
+    for member in tar.getmembers():
+        member_path = os.path.realpath(os.path.join(dest, member.name))
+        if not member_path.startswith(real_dest + os.sep) and member_path != real_dest:
+            raise ValueError(f'Unsafe path in tarball: {member.name}')
+    tar.extractall(path=dest)
+
+def _parse_srn_config(path):
+    """Parses shell-style KEY="VALUE" config file used by SRN scripts"""
+    result = {}
+    pattern = re.compile(r'^(\w+)\s*=\s*"?([^"]*)"?\s*$')
+    try:
+        with open(path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('#') or not line:
+                    continue
+                m = pattern.match(line)
+                if m:
+                    result[m.group(1)] = m.group(2)
+    except FileNotFoundError:
+        pass
+    return result
+
+def _write_srn_config(path, data):
+    """Updates KEY="VALUE" pairs in the config file while preserving comments"""
+    try:
+        with open(path, 'r') as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        lines = []
+    new_lines = []
+    for line in lines:
+        m = re.match(r'^(\w+)\s*=', line.strip())
+        if m and m.group(1) in data:
+            new_lines.append(f'{m.group(1)}="{data[m.group(1)]}"\n')
+        else:
+            new_lines.append(line)
+    with open(path, 'w') as f:
+        f.writelines(new_lines)
+
+@app.route('/srn/config')
+def srn_get_config():
+    try:
+        cfg = _parse_srn_config(_SRN_CONFIG_PATH)
+        return jsonify({
+            "success": True,
+            "tag":    cfg.get('LABEL', ''),
+            "branch": cfg.get('PROJECT', ''),
+            "error":  ""
+        })
+    except Exception as e:
+        return jsonify({"success": False, "tag": "", "branch": "", "error": str(e)})
+
+@app.route('/srn/tags')
+def srn_get_tags():
+    try:
+        config    = config_loader.load_config()
+        repo_path = git_manager.get_repo_path(config)
+        result    = git_manager.get_tags(repo_path)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "tags": [], "error": str(e)})
+
+@app.route('/srn/update-config', methods=['POST'])
+def srn_update_config():
+    try:
+        data   = request.get_json()
+        tag    = data.get('tag', '').strip()
+        branch = data.get('branch', '').strip()
+        if not tag or not branch:
+            return jsonify({"success": False, "error": "Tag and branch are required."})
+        _write_srn_config(_SRN_CONFIG_PATH, {'LABEL': tag, 'PROJECT': branch})
+        return jsonify({"success": True, "error": ""})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/srn/status')
+def srn_status():
+    try:
+        config = config_loader.load_config()
+        srn_base, srn_pandoc, _ = _get_srn_paths(config)
+        script_ok = os.path.isfile(os.path.join(srn_base, 'srn_create.sh'))
+        pandoc_ok = os.path.isdir(srn_pandoc) and bool(os.listdir(srn_pandoc))
+        deployed  = script_ok and pandoc_ok
+        return jsonify({"success": True, "deployed": deployed, "error": ""})
+    except Exception as e:
+        return jsonify({"success": False, "deployed": False, "error": str(e)})
+
+@app.route('/srn/deploy', methods=['POST'])
+def srn_deploy():
+    try:
+        config = config_loader.load_config()
+        srn_base, srn_pandoc, srn_build = _get_srn_paths(config)
+
+        # Step 1: copy source files to srn_base (skip pandoc dir - handled below)
+        os.makedirs(srn_base,  exist_ok=True)
+        os.makedirs(srn_build, exist_ok=True)
+        for item in os.listdir(_SRN_SOURCE_DIR):
+            src  = os.path.join(_SRN_SOURCE_DIR, item)
+            dest = os.path.join(srn_base, item)
+            if os.path.isfile(src):
+                shutil.copy2(src, dest)
+            elif os.path.isdir(src) and item != 'pandoc':
+                if os.path.exists(dest):
+                    shutil.rmtree(dest)
+                shutil.copytree(src, dest)
+
+        # Step 2: extract pandoc tarball into srn_pandoc_dir
+        tarball = os.path.join(_SRN_SOURCE_DIR, 'pandoc', 'pandoc-3.9-linux-amd64.tar.gz')
+        if not os.path.isfile(tarball):
+            return jsonify({"success": False, "error": f"Pandoc tarball not found: {tarball}"})
+        os.makedirs(srn_pandoc, exist_ok=True)
+        with tarfile.open(tarball, 'r:gz') as tar:
+            _safe_tar_extract(tar, srn_pandoc)
+
+        return jsonify({"success": True, "path": srn_base, "error": ""})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/srn/generate', methods=['POST'])
+def srn_generate():
+    try:
+        config = config_loader.load_config()
+        srn_base, _, srn_build = _get_srn_paths(config)
+        script_path = os.path.join(srn_base, 'srn_create.sh')
+
+        if not os.path.isfile(script_path):
+            return jsonify({"success": False, "error": "SRN not deployed. Run Deploy SRN first."})
+
+        projects_path   = config.get('scanner', 'projects_path').rstrip('/')
+        idaspkg_relpath = config.get('scanner', 'idaspkg_path', fallback='/repos/pxeBase/iDASpkg').rstrip('/')
+        repo_path       = git_manager.get_repo_path(config)
+
+        os.makedirs(srn_build, exist_ok=True)
+
+        env = os.environ.copy()
+        env['SRN_BUILD_DIR']   = srn_build
+        env['PROJECTS_PATH']   = projects_path
+        env['IDASPKG_RELPATH'] = idaspkg_relpath
+        env['REPO_DIR']        = repo_path
+
+        _ansi_escape = re.compile(r'\x1b\[[0-9;]*[mK]')
+
+        def generate():
+            import threading
+            proc = subprocess.Popen(
+                ['bash', script_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                env=env,
+                cwd=srn_base,
+                universal_newlines=True
+            )
+            # Keepalive: send a comment every 15s so Apache proxy doesn't drop connection
+            keepalive_stop = threading.Event()
+            def keepalive():
+                while not keepalive_stop.is_set():
+                    keepalive_stop.wait(15)
+            # Not used for actual yield — just read stdout and yield lines
+            for line in iter(proc.stdout.readline, ''):
+                clean = _ansi_escape.sub('', line.rstrip())
+                if clean:
+                    yield f"data: {clean}\n\n"
+                else:
+                    yield ": keepalive\n\n"
+            proc.stdout.close()
+            proc.wait()
+            yield f"data: __EXIT__{proc.returncode}\n\n"
+
+        return Response(
+            stream_with_context(generate()),
+            mimetype='text/event-stream',
+            headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+        )
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/srn/list')
+def srn_list():
+    try:
+        config = config_loader.load_config()
+        _, _, srn_build = _get_srn_paths(config)
+        items = []
+        if os.path.isdir(srn_build):
+            for label_dir in sorted(os.listdir(srn_build), reverse=True):
+                full = os.path.join(srn_build, label_dir)
+                if not os.path.isdir(full):
+                    continue
+                # Read metadata file if present
+                project = branch = ''
+                date_str = datetime.datetime.fromtimestamp(os.path.getmtime(full)).strftime('%Y-%m-%d %H:%M')
+                meta_file = os.path.join(full, '.srn_meta')
+                if os.path.isfile(meta_file):
+                    with open(meta_file) as mf:
+                        for mline in mf:
+                            k, _, v = mline.strip().partition('=')
+                            if k == 'project':
+                                branch = v   # project field holds the branch name
+                            elif k == 'label':
+                                pass         # label_dir is already the label
+                            elif k == 'generated':
+                                date_str = v  # use written timestamp if present
+                mtime = os.path.getmtime(full)
+                files = [f for f in os.listdir(full) if not f.startswith('.')]
+                items.append({
+                    "label":   label_dir,
+                    "branch":  branch,
+                    "date":    date_str,
+                    "files":   files
+                })
+        return jsonify({"success": True, "items": items, "error": ""})
+    except Exception as e:
+        return jsonify({"success": False, "items": [], "error": str(e)})
+
+@app.route('/srn/tags-for-branch')
+def srn_tags_for_branch():
+    try:
+        branch    = request.args.get('branch', '').strip()
+        config    = config_loader.load_config()
+        repo_path = git_manager.get_repo_path(config)
+        if not branch:
+            return jsonify({"success": False, "tags": [], "error": "branch parameter required"})
+        result = subprocess.run(
+            ['git', '-C', repo_path, 'tag', '--merged', branch, '--sort=-version:refname'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        if result.returncode != 0:
+            return jsonify({"success": False, "tags": [], "error": result.stderr.decode()})
+        tags = [t.strip() for t in result.stdout.decode().splitlines() if t.strip()]
+        return jsonify({"success": True, "tags": tags, "error": ""})
+    except Exception as e:
+        return jsonify({"success": False, "tags": [], "error": str(e)})
+
+@app.route('/srn/delete/<label>', methods=['DELETE'])
+def srn_delete(label):
+    try:
+        # Sanitise label — only allow alphanumeric, dots, dashes, underscores
+        if not re.match(r'^[\w.\-]+$', label):
+            return jsonify({"success": False, "error": "Invalid label name"})
+        config = config_loader.load_config()
+        _, _, srn_build = _get_srn_paths(config)
+        target = os.path.realpath(os.path.join(srn_build, label))
+        # Path-traversal guard
+        if not target.startswith(os.path.realpath(srn_build) + os.sep):
+            return jsonify({"success": False, "error": "Invalid path"})
+        if not os.path.isdir(target):
+            return jsonify({"success": False, "error": "SRN not found"})
+        shutil.rmtree(target)
+        return jsonify({"success": True, "error": ""})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/srn/download/<label>')
+def srn_download(label):
+    try:
+        if not re.match(r'^[\w.\-]+$', label):
+            return jsonify({"success": False, "error": "Invalid label name"}), 400
+        config = config_loader.load_config()
+        _, _, srn_build = _get_srn_paths(config)
+        target = os.path.realpath(os.path.join(srn_build, label))
+        if not target.startswith(os.path.realpath(srn_build) + os.sep):
+            return jsonify({"success": False, "error": "Invalid path"}), 400
+        if not os.path.isdir(target):
+            return jsonify({"success": False, "error": "SRN not found"}), 404
+        import io
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode='w:gz') as tar:
+            tar.add(target, arcname=label)
+        buf.seek(0)
+        from flask import send_file
+        return send_file(
+            buf,
+            mimetype='application/gzip',
+            as_attachment=True,
+            download_name=f'{label}.tar.gz'
+        )
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# End SRN endpoints
+# ============================================================
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

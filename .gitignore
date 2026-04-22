@@ -1,0 +1,5 @@
+src/assets/extra-libs/srn/pandoc/
+__pycache__/
+*.pyc
+*.pyo
+
