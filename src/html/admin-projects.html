@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/svg+xml" href="../assets/images/pulpitans-logo.svg">
-    <title>PULPITANS — Activity Log</title>
+    <title>PULPITANS — Projects</title>
     <link href="../dist/css/style.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
 </head>
@@ -38,8 +38,8 @@
                     <ul class="navbar-nav float-left me-auto ms-3 ps-1">
                         <li class="nav-item d-flex align-items-center ms-3">
                             <div>
-                                <h6 class="mb-0 font-weight-medium text-dark">Activity Log</h6>
-                                <small class="text-muted">Admin / Activity Log</small>
+                                <h6 class="mb-0 font-weight-medium text-dark">Projects</h6>
+                                <small class="text-muted">Admin / Projects</small>
                             </div>
                         </li>
                     </ul>
@@ -94,11 +94,11 @@
                                 <span class="hide-menu">SRN</span>
                             </a>
                         </li>
-                        <!-- Admin section (injected by JS) -->
+                        <!-- Admin section -->
                         <li class="list-divider admin-only" style="display:none;"></li>
                         <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
-                        <li class="sidebar-item admin-only active" style="display:none;">
-                            <a class="sidebar-link sidebar-link active" href="admin-log.html" aria-expanded="false">
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-log.html" aria-expanded="false">
                                 <i data-feather="activity" class="feather-icon"></i>
                                 <span class="hide-menu">Activity Log</span>
                             </a>
@@ -109,8 +109,8 @@
                                 <span class="hide-menu">User Management</span>
                             </a>
                         </li>
-                        <li class="sidebar-item admin-only" style="display:none;">
-                            <a class="sidebar-link sidebar-link" href="admin-projects.html" aria-expanded="false">
+                        <li class="sidebar-item admin-only active" style="display:none;">
+                            <a class="sidebar-link sidebar-link active" href="admin-projects.html" aria-expanded="false">
                                 <i data-feather="briefcase" class="feather-icon"></i>
                                 <span class="hide-menu">Projects</span>
                             </a>
@@ -123,54 +123,37 @@
         <!-- Page wrapper -->
         <div class="page-wrapper">
             <div class="container-fluid">
-                <!-- Filters -->
+
+                <!-- Projects Table -->
                 <div class="row">
                     <div class="col-12">
                         <div class="card">
                             <div class="card-body">
-                                <div class="d-flex align-items-center flex-wrap gap-3">
-                                    <h4 class="card-title mb-0 me-3">Activity Log</h4>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <label class="form-label mb-0 text-muted">Filter by user:</label>
-                                        <select class="form-select form-select-sm" id="filter-user" style="width:200px;">
-                                            <option value="">All users</option>
-                                        </select>
+                                <div class="d-flex align-items-center mb-3">
+                                    <h4 class="card-title mb-0">Projects</h4>
+                                    <div class="ms-auto">
+                                        <button class="btn btn-sm btn-success me-2" onclick="showCreateProject()">
+                                            <i data-feather="plus" class="feather-sm"></i> New Project
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="loadProjects()">
+                                            <i data-feather="refresh-cw" class="feather-sm"></i> Refresh
+                                        </button>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <label class="form-label mb-0 text-muted">Show last:</label>
-                                        <select class="form-select form-select-sm" id="filter-limit" style="width:120px;">
-                                            <option value="100">100</option>
-                                            <option value="250">250</option>
-                                            <option value="500" selected>500</option>
-                                            <option value="1000">1000</option>
-                                        </select>
-                                    </div>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="loadActivityLog()">
-                                        <i data-feather="refresh-cw" class="feather-sm"></i> Refresh
-                                    </button>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Log Table -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body">
                                 <div class="table-responsive">
-                                    <table class="table table-hover table-striped">
+                                    <table class="table table-hover">
                                         <thead class="bg-dark text-white">
                                             <tr>
-                                                <th style="width:18%">Timestamp</th>
-                                                <th style="width:12%">User</th>
-                                                <th style="width:15%">Action</th>
-                                                <th>Details</th>
+                                                <th style="width:25%">Project Name</th>
+                                                <th style="width:20%">Folder</th>
+                                                <th style="width:20%">Assigned To</th>
+                                                <th style="width:15%">Status</th>
+                                                <th style="width:20%">Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="log-tbody">
+                                        <tbody id="projects-tbody">
                                             <tr>
-                                                <td colspan="4" class="text-center text-muted py-3">
+                                                <td colspan="5" class="text-center text-muted py-3">
                                                     <span class="spinner-border spinner-border-sm me-1"></span> Loading...
                                                 </td>
                                             </tr>
@@ -189,6 +172,50 @@
         </div>
     </div>
 
+    <!-- Create / Edit Project Modal -->
+    <div class="modal fade" id="projectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="projectModalTitle"><i data-feather="plus" class="feather-sm me-1"></i> New Project</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="project-old-name" value="">
+                    <div class="mb-3">
+                        <label class="form-label">Project Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="project-name" placeholder="e.g. AVINOR">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Folder <small class="text-muted">(path in /iDASREPO/PROJECTS/)</small></label>
+                        <input type="text" class="form-control" id="project-folder" placeholder="Auto-generated if empty">
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label">Assign to user <small class="text-muted">(optional)</small></label>
+                        <select class="form-select" id="project-assign-user">
+                            <option value="">-- Unassigned --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="project-assign-status">
+                            <option value="wip">WIP (Blue)</option>
+                            <option value="idle">Idle (Yellow)</option>
+                            <option value="done">Done (Green)</option>
+                            <option value="not_ok">Not OK (Red)</option>
+                        </select>
+                    </div>
+                    <div id="project-result"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="btn-save-project" onclick="saveProject()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
     <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
     <script src="../assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
@@ -201,75 +228,200 @@
 
     <script>
     const API_BASE = '/api';
+    const STATUS_COLORS = { done: 'success', not_ok: 'danger', idle: 'warning', wip: 'primary' };
+    const STATUS_LABELS = { done: 'Done', not_ok: 'Not OK', idle: 'Idle', wip: 'WIP' };
 
-    const ACTION_LABELS = {
-        'login': '<span class="badge bg-info">Login</span>',
-        'mkbuild_start': '<span class="badge bg-success">Build Started</span>',
-        'move_project': '<span class="badge bg-primary">Move Project</span>',
-        'set_project_status': '<span class="badge bg-warning text-dark">Status Change</span>',
-        'add_project': '<span class="badge bg-success">Add Project</span>',
-        'remove_project': '<span class="badge bg-danger">Remove Project</span>',
-        'grant_admin': '<span class="badge bg-dark">Grant Admin</span>',
-        'revoke_admin': '<span class="badge bg-secondary">Revoke Admin</span>',
-        'add_user_to_list': '<span class="badge bg-info">Add User</span>',
-        'remove_user_from_list': '<span class="badge bg-danger">Remove User</span>',
-    };
+    let _managedUsers = [];
 
-    async function loadActivityLog() {
-        const username = PulpitansAuth.getUsername();
-        const filterUser = document.getElementById('filter-user').value;
-        const limit = document.getElementById('filter-limit').value;
-
-        let url = `${API_BASE}/admin/activity-log?username=${encodeURIComponent(username)}&limit=${limit}`;
-        if (filterUser) url += `&filter_user=${encodeURIComponent(filterUser)}`;
-
+    async function loadProjects() {
         try {
-            const res = await fetch(url);
+            // Load managed users for the assign dropdown
+            const usersRes = await fetch(`${API_BASE}/admin/users`);
+            const usersData = await usersRes.json();
+            if (usersData.success) _managedUsers = usersData.users;
+
+            const res = await fetch(`${API_BASE}/admin/projects/master`);
             const data = await res.json();
-            const tbody = document.getElementById('log-tbody');
+            if (!data.success) return;
 
-            if (!data.success) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">${data.error}</td></tr>`;
+            const tbody = document.getElementById('projects-tbody');
+            tbody.innerHTML = '';
+
+            if (data.projects.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No projects. Click <strong>New Project</strong> to create one.</td></tr>';
                 return;
             }
 
-            if (data.entries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No activity recorded yet.</td></tr>';
-                return;
-            }
+            data.projects.forEach((p, i) => {
+                const statusBadge = p.status
+                    ? `<span class="badge bg-${STATUS_COLORS[p.status] || 'secondary'} ${p.status === 'idle' ? 'text-dark' : ''}">${STATUS_LABELS[p.status] || p.status}</span>`
+                    : '<span class="text-muted">—</span>';
 
-            // Show newest first
-            const entries = data.entries.reverse();
-            tbody.innerHTML = entries.map(e => `
-                <tr>
-                    <td><small class="text-muted">${e.timestamp}</small></td>
-                    <td><strong>${e.username}</strong></td>
-                    <td>${ACTION_LABELS[e.action] || `<span class="badge bg-secondary">${e.action}</span>`}</td>
-                    <td><small>${e.details || '-'}</small></td>
-                </tr>
-            `).join('');
+                const assignedTo = p.assigned_to
+                    ? `<span class="fw-medium">${p.assigned_to}</span>`
+                    : '<span class="text-muted fst-italic">Unassigned</span>';
 
-            // Populate filter dropdown with unique users
-            const users = [...new Set(data.entries.map(e => e.username))].sort();
-            const select = document.getElementById('filter-user');
-            const currentFilter = select.value;
-            select.innerHTML = '<option value="">All users</option>';
-            users.forEach(u => {
-                const opt = document.createElement('option');
-                opt.value = u;
-                opt.textContent = u;
-                if (u === currentFilter) opt.selected = true;
-                select.appendChild(opt);
+                tbody.innerHTML += `
+                    <tr class="${i % 2 === 0 ? 'bg-light' : ''}">
+                        <td class="fw-medium">${p.name}</td>
+                        <td><code class="text-muted">${p.folder}</code></td>
+                        <td>${assignedTo}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="showEditProject('${p.name.replace(/'/g, "\\'")}', '${p.folder.replace(/'/g, "\\'")}', '${p.assigned_to}', '${p.status}')">
+                                <i data-feather="edit-2" class="feather-sm"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteProject('${p.name.replace(/'/g, "\\'")}')">
+                                <i data-feather="trash-2" class="feather-sm"></i>
+                            </button>
+                        </td>
+                    </tr>`;
             });
 
+            feather.replace();
         } catch (e) {
-            document.getElementById('log-tbody').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error connecting to server.</td></tr>';
+            document.getElementById('projects-tbody').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error connecting to server.</td></tr>';
         }
     }
 
+    function _populateUserSelect(selectedUser) {
+        const select = document.getElementById('project-assign-user');
+        select.innerHTML = '<option value="">-- Unassigned --</option>';
+        _managedUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.username;
+            opt.textContent = `${u.display_name} (${u.username})`;
+            if (u.username === selectedUser) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+
+    function showCreateProject() {
+        document.getElementById('projectModalTitle').innerHTML = '<i data-feather="plus" class="feather-sm me-1"></i> New Project';
+        document.getElementById('project-old-name').value = '';
+        document.getElementById('project-name').value = '';
+        document.getElementById('project-name').readOnly = false;
+        document.getElementById('project-folder').value = '';
+        document.getElementById('project-assign-status').value = 'wip';
+        document.getElementById('project-result').innerHTML = '';
+        document.getElementById('btn-save-project').textContent = 'Create';
+
+        _populateUserSelect('');
+
+        const modal = new bootstrap.Modal(document.getElementById('projectModal'));
+        modal.show();
+        feather.replace();
+    }
+
+    function showEditProject(name, folder, assignedTo, status) {
+        document.getElementById('projectModalTitle').innerHTML = '<i data-feather="edit-2" class="feather-sm me-1"></i> Edit Project';
+        document.getElementById('project-old-name').value = name;
+        document.getElementById('project-name').value = name;
+        document.getElementById('project-name').readOnly = false;
+        document.getElementById('project-folder').value = folder;
+        document.getElementById('project-assign-status').value = status || 'wip';
+        document.getElementById('project-result').innerHTML = '';
+        document.getElementById('btn-save-project').textContent = 'Save';
+
+        _populateUserSelect(assignedTo);
+        document.getElementById('project-assign-user').dataset.original = assignedTo || '';
+
+        const modal = new bootstrap.Modal(document.getElementById('projectModal'));
+        modal.show();
+        feather.replace();
+    }
+
+    async function saveProject() {
+        const adminUser = PulpitansAuth.getUsername();
+        const oldName = document.getElementById('project-old-name').value;
+        const name = document.getElementById('project-name').value.trim();
+        const folder = document.getElementById('project-folder').value.trim();
+        const assignTo = document.getElementById('project-assign-user').value;
+        const status = document.getElementById('project-assign-status').value;
+
+        if (!name) {
+            document.getElementById('project-result').innerHTML = '<div class="alert alert-warning">Project name is required.</div>';
+            return;
+        }
+
+        try {
+            if (oldName) {
+                // Update existing project
+                const res = await fetch(`${API_BASE}/admin/projects/master/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_username: adminUser, old_name: oldName, name, folder })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    document.getElementById('project-result').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    return;
+                }
+
+                // Handle assignment change
+                const currentAssigned = document.getElementById('project-assign-user').dataset.original || '';
+                if (assignTo !== currentAssigned) {
+                    // Remove from current user if assigned
+                    if (currentAssigned) {
+                        await fetch(`${API_BASE}/admin/projects/remove`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ admin_username: adminUser, username: currentAssigned, project_name: name })
+                        });
+                    }
+                    // Assign to new user if selected
+                    if (assignTo) {
+                        await fetch(`${API_BASE}/admin/projects/add`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ admin_username: adminUser, username: assignTo, project_name: name, status })
+                        });
+                    }
+                } else if (assignTo && status) {
+                    // Just update status
+                    await fetch(`${API_BASE}/admin/projects/status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ admin_username: adminUser, username: assignTo, project_name: name, status })
+                    });
+                }
+            } else {
+                // Create new project
+                const res = await fetch(`${API_BASE}/admin/projects/master/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_username: adminUser, name, folder, assign_to: assignTo, status })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    document.getElementById('project-result').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    return;
+                }
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('projectModal')).hide();
+            loadProjects();
+        } catch (e) {
+            document.getElementById('project-result').innerHTML = '<div class="alert alert-danger">Error connecting to server.</div>';
+        }
+    }
+
+    async function deleteProject(name) {
+        if (!confirm(`Delete project "${name}"? It will be removed from all user assignments.`)) return;
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            const res = await fetch(`${API_BASE}/admin/projects/master/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, name })
+            });
+            const data = await res.json();
+            if (data.success) loadProjects();
+        } catch (e) {}
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
-        loadActivityLog();
-        setInterval(loadActivityLog, 10000);
+        loadProjects();
     });
 
     // Live clock
@@ -343,7 +495,6 @@
                     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
                     feather.replace();
                 } else {
-                    // Not admin — redirect to dashboard
                     window.location.href = 'index.html';
                 }
             } catch (e) {

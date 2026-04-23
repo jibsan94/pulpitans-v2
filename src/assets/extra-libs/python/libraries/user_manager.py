@@ -120,6 +120,144 @@ _STATUS_LABELS = {
     'wip': 'WIP',
 }
 
+# Master list of all known projects (display name → folder in /iDASREPO/PROJECTS/)
+_DEFAULT_MASTER_PROJECTS = [
+    {"name": "AVINOR",      "folder": "avinor"},
+    {"name": "iCAS-LVNL",   "folder": "icas-lvnl"},
+    {"name": "iSNS-LVNL",   "folder": "isns-lvnl"},
+    {"name": "PANSA",        "folder": "pansa"},
+    {"name": "FF-ICE",       "folder": "ffice"},
+    {"name": "ROMATSA",      "folder": "romatsa"},
+    {"name": "Nav-Canada",   "folder": "navcanada"},
+    {"name": "NATS",         "folder": "nats"},
+    {"name": "SKYNEX",       "folder": "skynex"},
+    {"name": "IRTOS",        "folder": "irtos"},
+    {"name": "UTM",          "folder": "utm"},
+    {"name": "YAKARTA",      "folder": "yakarta"},
+    {"name": "SACTA",        "folder": "sacta"},
+]
+
+
+def _get_master_projects_file():
+    return os.path.join(_get_base_dir(), 'master_projects.json')
+
+
+def _load_master_projects():
+    path = _get_master_projects_file()
+    if os.path.isfile(path):
+        with open(path, 'r') as f:
+            return json.load(f)
+    # Seed with defaults
+    _save_master_projects(_DEFAULT_MASTER_PROJECTS)
+    return list(_DEFAULT_MASTER_PROJECTS)
+
+
+def _save_master_projects(projects):
+    path = _get_master_projects_file()
+    with open(path, 'w') as f:
+        json.dump(projects, f, indent=2)
+
+
+def get_master_projects():
+    """Returns the full master list of projects."""
+    return _load_master_projects()
+
+
+def add_master_project(name, folder):
+    """Adds a new project to the master list."""
+    projects = _load_master_projects()
+    for p in projects:
+        if p['name'].lower() == name.lower():
+            return False, "Project already exists."
+    projects.append({"name": name, "folder": folder})
+    _save_master_projects(projects)
+    return True, "OK"
+
+
+def update_master_project(old_name, new_name, new_folder):
+    """Updates a project in the master list."""
+    projects = _load_master_projects()
+    for p in projects:
+        if p['name'].lower() == old_name.lower():
+            # If renaming, check for duplicates
+            if new_name.lower() != old_name.lower():
+                for other in projects:
+                    if other['name'].lower() == new_name.lower():
+                        return False, "A project with that name already exists."
+            # Also update in assignments
+            if new_name != p['name']:
+                _rename_project_in_assignments(p['name'], new_name)
+            p['name'] = new_name
+            p['folder'] = new_folder
+            _save_master_projects(projects)
+            return True, "OK"
+    return False, "Project not found."
+
+
+def delete_master_project(name):
+    """Deletes a project from the master list and removes it from all user assignments."""
+    projects = _load_master_projects()
+    found = False
+    new_projects = []
+    for p in projects:
+        if p['name'].lower() == name.lower():
+            found = True
+        else:
+            new_projects.append(p)
+    if not found:
+        return False, "Project not found."
+    _save_master_projects(new_projects)
+    # Remove from all user assignments
+    _remove_project_from_all_assignments(name)
+    return True, "OK"
+
+
+def _rename_project_in_assignments(old_name, new_name):
+    """Renames a project in all user assignments."""
+    data = _load_projects()
+    for _uname, info in data.get('assignments', {}).items():
+        for p in info.get('projects', []):
+            if p['name'] == old_name:
+                p['name'] = new_name
+    _save_projects(data)
+
+
+def _remove_project_from_all_assignments(name):
+    """Removes a project from all user assignments."""
+    data = _load_projects()
+    for _uname, info in data.get('assignments', {}).items():
+        info['projects'] = [p for p in info.get('projects', []) if p['name'].lower() != name.lower()]
+    _save_projects(data)
+
+
+def get_project_folder(project_name):
+    """Returns the folder name for a project display name."""
+    for p in _load_master_projects():
+        if p['name'].lower() == project_name.lower():
+            return p['folder']
+    return project_name.lower()
+
+
+def get_available_projects():
+    """Returns projects from the master list that are NOT assigned to any user."""
+    master = _load_master_projects()
+    data = _load_projects()
+    assigned = set()
+    for _uname, info in data.get('assignments', {}).items():
+        for p in info.get('projects', []):
+            assigned.add(p['name'].lower())
+    return [p for p in master if p['name'].lower() not in assigned]
+
+
+def get_project_assignment(project_name):
+    """Returns the username a project is assigned to, or None."""
+    data = _load_projects()
+    for uname, info in data.get('assignments', {}).items():
+        for p in info.get('projects', []):
+            if p['name'].lower() == project_name.lower():
+                return uname, p.get('status', 'wip')
+    return None, None
+
 
 def _get_projects_file():
     return os.path.join(_get_base_dir(), 'projects.json')
@@ -130,7 +268,7 @@ def _load_projects():
     if os.path.isfile(path):
         with open(path, 'r') as f:
             return json.load(f)
-    # Seed with initial data from ENGINEER_PROJECTS
+    # Seed with initial managed users
     data = {
         "assignments": {
             "jjrosat": {
@@ -141,30 +279,21 @@ def _load_projects():
                     {"name": "iSNS-LVNL", "status": "wip"}
                 ]
             },
-            "ismael": {
-                "display_name": "Ismael",
-                "projects": [
-                    {"name": "PANSA", "status": "wip"},
-                    {"name": "FF-ICE", "status": "wip"},
-                    {"name": "ROMATSA", "status": "wip"}
-                ]
+            "dsanchezca": {
+                "display_name": "dsanchezca",
+                "projects": []
             },
-            "sergio": {
-                "display_name": "Sergio",
-                "projects": [
-                    {"name": "Nav-Canada", "status": "wip"},
-                    {"name": "NATS", "status": "wip"}
-                ]
+            "smoron": {
+                "display_name": "smoron",
+                "projects": []
             },
-            "daniel": {
-                "display_name": "Daniel",
-                "projects": [
-                    {"name": "SKYNEX", "status": "wip"},
-                    {"name": "IRTOS", "status": "wip"},
-                    {"name": "UTM", "status": "wip"},
-                    {"name": "YAKARTA", "status": "wip"},
-                    {"name": "SACTA", "status": "wip"}
-                ]
+            "ipellicer": {
+                "display_name": "ipellicer",
+                "projects": []
+            },
+            "fggarcia": {
+                "display_name": "fggarcia",
+                "projects": []
             }
         }
     }

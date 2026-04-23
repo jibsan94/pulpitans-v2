@@ -31,9 +31,10 @@ current_process = None
 
 @app.route('/auth/users')
 def auth_list_users():
-    """Return the list of system users available for login."""
+    """Return the list of managed users (those in projects.json) available for login."""
     try:
-        users = user_manager.get_system_users()
+        assignments = user_manager.get_all_projects()
+        users = sorted(assignments.keys())
         return jsonify({"success": True, "users": users})
     except Exception as e:
         return jsonify({"success": True, "users": []})
@@ -59,6 +60,10 @@ def auth_login():
         if not user_manager.validate_username(username):
             return jsonify({"success": False, "error": f"User '{username}' does not exist on this system."})
 
+        # Check user is in the managed list (projects.json)
+        assignments = user_manager.get_all_projects()
+        if username not in assignments:
+            return jsonify({"success": False, "error": "User is not enabled. Contact an administrator."})
         # Authenticate against PAM (system password)
         import pam
         p = pam.pam()
@@ -645,7 +650,37 @@ import builds_scanner
 def dashboard_builds():
     try:
         data = builds_scanner.scan_builds()
-        engineers = builds_scanner.get_engineers_summary(data["projects"])
+
+        # Build engineers from projects.json (managed users) instead of hardcoded ENGINEER_PROJECTS
+        assignments = user_manager.get_all_projects()
+        engineers = {}
+        for username, info in assignments.items():
+            total_builds = 0
+            total_size_bytes = 0
+            latest_build = "--"
+            latest_mtime = 0
+
+            for proj in info.get('projects', []):
+                folder = user_manager.get_project_folder(proj['name'])
+                matched = data["projects"].get(folder)
+                if matched:
+                    total_builds += matched["total_builds"]
+                    total_size_bytes += matched["total_size_bytes"]
+                    mtime = matched.get("latest_mtime", 0)
+                    if mtime > latest_mtime:
+                        latest_mtime = mtime
+                        latest_build = matched["latest_build"]
+
+            display_name = info.get('display_name', username)
+            engineers[display_name] = {
+                "username": username,
+                "projects": [p['name'] for p in info.get('projects', [])],
+                "total_builds": total_builds,
+                "total_size": builds_scanner.format_size(total_size_bytes),
+                "total_size_bytes": total_size_bytes,
+                "latest_build": latest_build
+            }
+
         return jsonify({
             "success": True,
             "summary": {
@@ -1333,22 +1368,120 @@ def admin_remove_project():
     return jsonify({"success": ok, "error": "" if ok else msg})
 
 
+@app.route('/admin/projects/available', methods=['GET'])
+def admin_available_projects():
+    """Returns the list of master projects not yet assigned to any user."""
+    available = user_manager.get_available_projects()
+    return jsonify({"success": True, "projects": available})
+
+
+@app.route('/admin/projects/master', methods=['GET'])
+def admin_master_projects():
+    """Returns all master projects with their assignment info."""
+    master = user_manager.get_master_projects()
+    result = []
+    for p in master:
+        assigned_to, status = user_manager.get_project_assignment(p['name'])
+        result.append({
+            "name": p['name'],
+            "folder": p['folder'],
+            "assigned_to": assigned_to or '',
+            "status": status or ''
+        })
+    return jsonify({"success": True, "projects": result})
+
+
+@app.route('/admin/projects/master/add', methods=['POST'])
+def admin_add_master_project():
+    """Add a new project to the master list. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    name = data.get('name', '').strip()
+    folder = data.get('folder', '').strip()
+    assign_to = data.get('assign_to', '').strip()
+    status = data.get('status', 'wip').strip()
+
+    if not name:
+        return jsonify({"success": False, "error": "Project name is required."})
+    if not folder:
+        folder = name.lower().replace(' ', '-')
+
+    ok, msg = user_manager.add_master_project(name, folder)
+    if ok:
+        user_manager.log_activity(admin_user, 'create_project', f'Created project {name} (folder: {folder})')
+        # Optionally assign to a user
+        if assign_to:
+            user_manager.add_project(assign_to, name, status)
+            user_manager.log_activity(admin_user, 'assign_project', f'Assigned {name} to {assign_to}')
+    return jsonify({"success": ok, "error": "" if ok else msg})
+
+
+@app.route('/admin/projects/master/update', methods=['POST'])
+def admin_update_master_project():
+    """Update a project in the master list. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    old_name = data.get('old_name', '').strip()
+    new_name = data.get('name', '').strip()
+    new_folder = data.get('folder', '').strip()
+
+    if not old_name or not new_name:
+        return jsonify({"success": False, "error": "Project name is required."})
+    if not new_folder:
+        new_folder = new_name.lower().replace(' ', '-')
+
+    ok, msg = user_manager.update_master_project(old_name, new_name, new_folder)
+    if ok:
+        user_manager.log_activity(admin_user, 'update_project', f'Updated project {old_name} → {new_name} (folder: {new_folder})')
+    return jsonify({"success": ok, "error": "" if ok else msg})
+
+
+@app.route('/admin/projects/master/delete', methods=['POST'])
+def admin_delete_master_project():
+    """Delete a project from the master list and all assignments. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    name = data.get('name', '').strip()
+    if not name:
+        return jsonify({"success": False, "error": "Project name is required."})
+
+    ok, msg = user_manager.delete_master_project(name)
+    if ok:
+        user_manager.log_activity(admin_user, 'delete_project', f'Deleted project {name}')
+    return jsonify({"success": ok, "error": "" if ok else msg})
+
+
 @app.route('/admin/users', methods=['GET'])
 def admin_list_managed_users():
-    """List all users in the project assignments (managed users)."""
+    """List only managed users (those in projects.json)."""
     assignments = user_manager.get_all_projects()
-    system_users = user_manager.get_system_users()
     result = []
-    for u in system_users:
-        info = assignments.get(u, {})
+    for username, info in assignments.items():
         result.append({
-            "username": u,
-            "display_name": info.get('display_name', '') or user_manager.get_display_name(u),
-            "is_admin": user_manager.is_admin(u),
+            "username": username,
+            "display_name": info.get('display_name', '') or user_manager.get_display_name(username),
+            "is_admin": user_manager.is_admin(username),
             "projects": info.get('projects', []),
-            "in_list": u in assignments
         })
     return jsonify({"success": True, "users": result})
+
+
+@app.route('/admin/users/available', methods=['GET'])
+def admin_available_users():
+    """List system users NOT in the managed list (available to add)."""
+    assignments = user_manager.get_all_projects()
+    system_users = user_manager.get_system_users()
+    available = [u for u in system_users if u not in assignments]
+    return jsonify({"success": True, "users": available})
 
 
 @app.route('/admin/users/toggle-admin', methods=['POST'])

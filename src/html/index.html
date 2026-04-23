@@ -280,6 +280,12 @@
                                 <span class="hide-menu">User Management</span>
                             </a>
                         </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>
                         <!-- <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="app-chat.html"
                                 aria-expanded="false"><i data-feather="message-square" class="feather-icon"></i><span
                                     class="hide-menu">Chat</span></a></li>
@@ -725,25 +731,8 @@
                                 <h4 class="card-title">Builds by Project</h4>
                                 <div id="builds-chart" class="mt-2" style="height:283px; width:100%;"></div>
                                 <ul id="builds-chart-legend" class="list-style-none mb-0 mt-3">
-                                    <li class="mb-2 d-flex align-items-center">
-                                        <span class="d-inline-block rounded-circle me-2 flex-shrink-0" style="width:10px;height:10px;background-color:#7460ee;"></span>
-                                        <span class="text-muted">Jibsan (AVINOR, iCAS, iSNS)</span>
-                                        <span class="text-dark ms-auto font-weight-medium">--</span>
-                                    </li>
-                                    <li class="mb-2 d-flex align-items-center">
-                                        <span class="d-inline-block rounded-circle me-2 flex-shrink-0" style="width:10px;height:10px;background-color:#11c1f3;"></span>
-                                        <span class="text-muted">Ismael (PANSA, FF-ICE, Romatsa)</span>
-                                        <span class="text-dark ms-auto font-weight-medium">--</span>
-                                    </li>
-                                    <li class="mb-2 d-flex align-items-center">
-                                        <span class="d-inline-block rounded-circle me-2 flex-shrink-0" style="width:10px;height:10px;background-color:#06d79c;"></span>
-                                        <span class="text-muted">Sergio (Nav-Canada, NATS)</span>
-                                        <span class="text-dark ms-auto font-weight-medium">--</span>
-                                    </li>
-                                    <li class="d-flex align-items-center">
-                                        <span class="d-inline-block rounded-circle me-2 flex-shrink-0" style="width:10px;height:10px;background-color:#ffbc34;"></span>
-                                        <span class="text-muted">Daniel (Skynex, Irtos, ...)</span>
-                                        <span class="text-dark ms-auto font-weight-medium">--</span>
+                                    <li class="text-center text-muted py-2">
+                                        <span class="spinner-border spinner-border-sm me-1"></span> Loading...
                                     </li>
                                 </ul>
                             </div>
@@ -886,45 +875,59 @@
                 // Engineers table
                 const etbody = document.getElementById('engineers-tbody');
                 etbody.innerHTML = '';
-                const colors = { 'Jibsan Toirac': 'primary', 'Ismael': 'info', 'Sergio': 'success', 'Daniel': 'warning' };
-                const initials = { 'Jibsan Toirac': 'JT', 'Ismael': 'IM', 'Sergio': 'SG', 'Daniel': 'DL' };
 
-                // Chart legend
-                const legendItems = document.querySelectorAll('#builds-chart-legend li');
-                const legendOrder = ['Jibsan Toirac', 'Ismael', 'Sergio', 'Daniel'];
-                legendOrder.forEach((name, i) => {
+                // Dynamic colors palette for engineers
+                const PALETTE = ['primary', 'info', 'success', 'warning', 'danger', 'secondary', 'dark'];
+                const CHART_PALETTE = ['#7460ee', '#11c1f3', '#06d79c', '#ffbc34', '#fc4b6c', '#a1aab2', '#343a40'];
+                const engineerNames = Object.keys(data.engineers);
+
+                // Auto-generate initials from display name
+                function getInitials(name) {
+                    const parts = name.trim().split(/\s+/);
+                    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                    return name.substring(0, 2).toUpperCase();
+                }
+
+                // Build dynamic chart legend
+                const legendContainer = document.getElementById('builds-chart-legend');
+                legendContainer.innerHTML = '';
+                const chartColumns = [];
+                const chartColorMap = {};
+                engineerNames.forEach((name, i) => {
                     const eng = data.engineers[name];
-                    if (eng && legendItems[i]) {
-                        legendItems[i].querySelector('.ms-auto').textContent = eng.total_builds + ' builds';
-                    }
+                    const color = CHART_PALETTE[i % CHART_PALETTE.length];
+                    const bsColor = PALETTE[i % PALETTE.length];
+                    chartColorMap[name] = color;
+                    chartColumns.push([name, eng ? eng.total_builds : 0]);
+                    const projList = eng.projects.length > 3
+                        ? eng.projects.slice(0, 3).join(', ') + ', ...'
+                        : eng.projects.join(', ');
+                    legendContainer.innerHTML += `
+                        <li class="mb-2 d-flex align-items-center">
+                            <span class="d-inline-block rounded-circle me-2 flex-shrink-0" style="width:10px;height:10px;background-color:${color};"></span>
+                            <span class="text-muted">${name} (${projList || 'No projects'})</span>
+                            <span class="text-dark ms-auto font-weight-medium">${eng.total_builds} builds</span>
+                        </li>`;
                 });
 
                 // Donut chart with C3
-                const chartColors = {
-                    'Jibsan Toirac': '#7460ee',
-                    'Ismael':        '#11c1f3',
-                    'Sergio':        '#06d79c',
-                    'Daniel':        '#ffbc34'
-                };
-                const chartColumns = legendOrder.map(name => {
-                    const eng = data.engineers[name];
-                    return [name, eng ? eng.total_builds : 0];
-                });
-                c3.generate({
-                    bindto: '#builds-chart',
-                    data: {
-                        columns: chartColumns,
-                        type: 'donut'
-                    },
-                    donut: {
-                        label: { show: false },
-                        title: s.total_builds + ' Builds'
-                    },
-                    color: {
-                        pattern: Object.values(chartColors)
-                    },
-                    legend: { show: false }
-                });
+                if (chartColumns.length > 0) {
+                    c3.generate({
+                        bindto: '#builds-chart',
+                        data: {
+                            columns: chartColumns,
+                            type: 'donut'
+                        },
+                        donut: {
+                            label: { show: false },
+                            title: s.total_builds + ' Builds'
+                        },
+                        color: {
+                            pattern: engineerNames.map(n => chartColorMap[n])
+                        },
+                        legend: { show: false }
+                    });
+                }
 
                 // Load project assignments with status colors from admin API
                 let projectAssignments = {};
@@ -936,9 +939,9 @@
                     if (projData.success) projectAssignments = projData.assignments;
                 } catch (e) {}
 
-                for (const [name, info] of Object.entries(data.engineers)) {
-                    const color = colors[name] || 'secondary';
-                    const initial = initials[name] || name[0];
+                for (const [idx, [name, info]] of Object.entries(data.engineers).entries()) {
+                    const color = PALETTE[idx % PALETTE.length];
+                    const initial = getInitials(name);
 
                     // Use project assignments for status-colored badges
                     const userProjects = projectAssignments[info.username];
