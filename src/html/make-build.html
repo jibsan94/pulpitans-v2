@@ -203,30 +203,17 @@
                                 <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle"
                                     width="40">
                                 <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span
-                                        class="text-dark">Jibsan Supreme Killer</span> <i data-feather="chevron-down"
+                                        class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down"
                                         class="svg-icon"></i></span>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="user"
+                                <a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#profileModal"><i data-feather="user"
                                         class="svg-icon me-2 ms-1"></i>
                                     My Profile</a>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="credit-card"
-                                        class="svg-icon me-2 ms-1"></i>
-                                    My Balance</a>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="mail"
-                                        class="svg-icon me-2 ms-1"></i>
-                                    Inbox</a>
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="settings"
-                                        class="svg-icon me-2 ms-1"></i>
-                                    Account Setting</a>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="power"
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power"
                                         class="svg-icon me-2 ms-1"></i>
                                     Logout</a>
-                                <div class="dropdown-divider"></div>
-                                <div class="pl-4 p-3"><a href="javascript:void(0)" class="btn btn-sm btn-info">View
-                                        Profile</a></div>
                             </div>
                         </li>
                         <!-- ============================================================== -->
@@ -435,7 +422,8 @@
                         <li class="list-divider"></li>
                         <li class="nav-small-cap"><span class="hide-menu">Extra</span></li>
                         
-                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="authentication-login1.html"
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="javascript:void(0)"
+                                onclick="PulpitansAuth.logout()"
                                 aria-expanded="false"><i data-feather="log-out" class="feather-icon"></i><span
                                     class="hide-menu">Logout</span></a></li>
                                     <li class="sidebar-item"> <a class="sidebar-link has-arrow" href="javascript:void(0)"
@@ -768,6 +756,7 @@
                                                     <th>Status</th>
                                                     <th>Branch</th>
                                                     <th>Role</th>
+                                                    <th>Owner</th>
                                                     <th>Started</th>
                                                     <th>PID</th>
                                                     <th class="text-center">Actions</th>
@@ -775,7 +764,7 @@
                                             </thead>
                                             <tbody id="builds-table-body">
                                                 <tr>
-                                                    <td colspan="6" class="text-center text-muted">Loading builds...</td>
+                                                    <td colspan="7" class="text-center text-muted">Loading builds...</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -1079,7 +1068,7 @@
     // ============================================================
     // Make Build (background process)
     // ============================================================
-    function makeBuild() {
+    async function makeBuild() {
         const select = document.getElementById('inlineFormCustomSelect');
         const selectedRole = select.value;
         const branchName = document.getElementById('branch_name').value;
@@ -1095,9 +1084,27 @@
         }
         document.getElementById('branch_name').classList.remove('is-invalid');
 
-        // Show credentials modal
+        // Show credentials modal and pre-fill from saved profile
         const modal = new bootstrap.Modal(document.getElementById('credentialsModal'));
         modal.show();
+
+        // Pre-fill credentials from user profile
+        const currentUser = PulpitansAuth.getUsername();
+        if (currentUser) {
+            try {
+                const profRes = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(currentUser)}`);
+                const profData = await profRes.json();
+                if (profData.success && profData.profile) {
+                    if (profData.profile.bitbucket_username) {
+                        document.getElementById('git-username').value = profData.profile.bitbucket_username;
+                    }
+                    if (profData.profile.bitbucket_password) {
+                        document.getElementById('git-password').value = profData.profile.bitbucket_password;
+                    }
+                }
+            } catch (e) { /* ignore - user will fill manually */ }
+        }
+
         setTimeout(() => { document.getElementById('git-username').focus(); }, 500);
     }
 
@@ -1132,6 +1139,7 @@
             branch_name:       branchName,
             git_username:      gitUser,
             git_password:      gitPass,
+            owner:             PulpitansAuth.getUsername() || '',
             gitrepo_local_dir: document.getElementById('gitrepo_local_dir').value,
             mkbuild_project:   document.getElementById('mkbuild_project').value,
             gitrepo_update:    getRadioValue('gitrepo_update'),
@@ -1182,7 +1190,7 @@
             const tbody = document.getElementById('builds-table-body');
 
             if (!data.success || data.builds.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No builds found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No builds found.</td></tr>';
                 return;
             }
 
@@ -1194,6 +1202,7 @@
                     : '<span class="badge bg-secondary">Finished</span>';
 
                 const roleName = b.role.split('/').pop();
+                const ownerName = b.owner || '-';
 
                 const actions = b.status === 'running'
                     ? `<button class="btn btn-sm btn-info me-1" onclick="viewLog('${b.id}')"><i class="fas fa-file-alt"></i> Log</button>
@@ -1205,6 +1214,7 @@
                     <td>${statusBadge}</td>
                     <td><strong>${b.branch}</strong></td>
                     <td><small>${roleName}</small></td>
+                    <td><small>${ownerName}</small></td>
                     <td><small>${b.started_at}</small></td>
                     <td><code>${b.pid}</code></td>
                     <td class="text-center">${actions}</td>
@@ -1213,7 +1223,7 @@
 
         } catch (e) {
             document.getElementById('builds-table-body').innerHTML =
-                '<tr><td colspan="6" class="text-center text-danger">Error loading builds.</td></tr>';
+                '<tr><td colspan="7" class="text-center text-danger">Error loading builds.</td></tr>';
         }
     }
 
@@ -1376,6 +1386,90 @@
         tick();
         setInterval(tick, 1000);
     })();
+    </script>
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="profileModalLabel">My Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <input type="text" class="form-control" id="profile-username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Display Name <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="profile-display-name" placeholder="Leave empty to use username">
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i data-feather="git-branch" class="feather-sm me-1"></i> BitBucket Credentials</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Username</label>
+                        <input type="text" class="form-control" id="profile-bb-username" placeholder="Your BitBucket username">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Password / Token</label>
+                        <input type="password" class="form-control" id="profile-bb-password" placeholder="Your password or token">
+                    </div>
+                    <div id="profile-save-msg" class="d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-profile">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../dist/js/auth.js"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+
+        document.getElementById('profileModal').addEventListener('show.bs.modal', async function () {
+            const username = PulpitansAuth.getUsername();
+            document.getElementById('profile-username').value = username;
+            document.getElementById('profile-save-msg').classList.add('d-none');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                document.getElementById('profile-display-name').value = (data.success && data.profile.display_name) || '';
+                document.getElementById('profile-bb-username').value = (data.success && data.profile.bitbucket_username) || '';
+                document.getElementById('profile-bb-password').value = (data.success && data.profile.bitbucket_password) || '';
+            } catch (e) {
+                document.getElementById('profile-display-name').value = '';
+                document.getElementById('profile-bb-username').value = '';
+                document.getElementById('profile-bb-password').value = '';
+            }
+        });
+
+        document.getElementById('btn-save-profile').addEventListener('click', async function () {
+            const username = PulpitansAuth.getUsername();
+            const displayName = document.getElementById('profile-display-name').value.trim();
+            const msgEl = document.getElementById('profile-save-msg');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, display_name: displayName, bitbucket_username: document.getElementById('profile-bb-username').value.trim(), bitbucket_password: document.getElementById('profile-bb-password').value })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('header-user-display-name').textContent = data.display_name;
+                    msgEl.className = 'alert alert-success';
+                    msgEl.textContent = 'Profile saved.';
+                } else {
+                    msgEl.className = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error saving profile.';
+                }
+            } catch (e) {
+                msgEl.className = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
+        });
     </script>
 </body>
 

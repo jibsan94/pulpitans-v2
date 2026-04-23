@@ -20,9 +20,93 @@ import git_manager
 import path_finder
 import make_yaml
 import config_loader
+import user_manager
 
 # Global variable to store the running process
 current_process = None
+
+# ============================================================
+# Auth / User endpoints
+# ============================================================
+
+@app.route('/auth/users')
+def auth_list_users():
+    """Return the list of system users available for login."""
+    try:
+        users = user_manager.get_system_users()
+        return jsonify({"success": True, "users": users})
+    except Exception as e:
+        return jsonify({"success": True, "users": []})
+
+
+@app.route('/auth/login', methods=['POST'])
+def auth_login():
+    """Validate a username and return its profile."""
+    try:
+        data = request.get_json()
+        username = data.get('username', '').strip()
+
+        if not username:
+            return jsonify({"success": False, "error": "Username is required."})
+
+        if not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+            return jsonify({"success": False, "error": "Invalid username."})
+
+        if not user_manager.validate_username(username):
+            return jsonify({"success": False, "error": f"User '{username}' does not exist on this system."})
+
+        cfg = user_manager.get_user_config(username)
+        return jsonify({
+            "success": True,
+            "username": username,
+            "display_name": cfg.get('display_name', '') or username
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/auth/profile', methods=['GET'])
+def auth_get_profile():
+    """Get user profile. Username comes from query param (set by cookie on client)."""
+    try:
+        username = request.args.get('username', '').strip()
+        if not username or not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+            return jsonify({"success": False, "error": "Invalid username."})
+
+        cfg = user_manager.get_user_config(username)
+        return jsonify({"success": True, "profile": cfg})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/auth/profile', methods=['POST'])
+def auth_update_profile():
+    """Update user profile (display_name, etc.)."""
+    try:
+        data = request.get_json()
+        username = data.get('username', '').strip()
+        display_name = data.get('display_name', '').strip()
+
+        if not username or not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+            return jsonify({"success": False, "error": "Invalid username."})
+
+        cfg = user_manager.get_user_config(username)
+        cfg['display_name'] = display_name
+
+        # BitBucket credentials (optional)
+        if 'bitbucket_username' in data:
+            cfg['bitbucket_username'] = data['bitbucket_username'].strip()
+        if 'bitbucket_password' in data:
+            cfg['bitbucket_password'] = data['bitbucket_password']
+
+        user_manager.save_user_config(username, cfg)
+
+        return jsonify({
+            "success": True,
+            "display_name": display_name or username
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 @app.route('/search-roles')
 def search_roles():
@@ -232,6 +316,7 @@ def mkbuild_start():
         )
 
         # Create tracking JSON
+        owner = data.get('owner', '')
         tracking = {
             "id": build_id,
             "branch": branch_name,
@@ -240,7 +325,8 @@ def mkbuild_start():
             "log_path": log_path,
             "playbook_path": playbook_path,
             "started_at": now.strftime('%Y-%m-%d %H:%M:%S'),
-            "status": "running"
+            "status": "running",
+            "owner": owner
         }
 
         json_path = os.path.join(make_build_path, f'{build_id}.json')
@@ -755,6 +841,7 @@ def srn_deploy():
 def srn_generate():
     """Start SRN generation as a background process with log tracking."""
     try:
+        req_data = request.get_json(silent=True) or {}
         config = config_loader.load_config()
         srn_base, _, srn_build = _get_srn_paths(config)
         script_path = os.path.join(srn_base, 'srn_create.sh')
@@ -802,6 +889,7 @@ def srn_generate():
         )
 
         # Create tracking JSON
+        owner = req_data.get('owner', '')
         tracking = {
             "id":         run_id,
             "tag":        tag,
@@ -809,7 +897,8 @@ def srn_generate():
             "pid":        proc.pid,
             "log_path":   log_path,
             "started_at": now.strftime('%Y-%m-%d %H:%M:%S'),
-            "status":     "running"
+            "status":     "running",
+            "owner":      owner
         }
 
         json_path = os.path.join(srn_pid_dir, f'{run_id}.json')
@@ -1033,14 +1122,18 @@ def srn_tags_for_branch():
         repo_path = git_manager.get_repo_path(config)
         if not branch:
             return jsonify({"success": False, "tags": [], "error": "branch parameter required"})
-        result = subprocess.run(
-            ['git', '-C', repo_path, 'tag', '--merged', branch, '--sort=-version:refname'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        if result.returncode != 0:
-            return jsonify({"success": False, "tags": [], "error": result.stderr.decode()})
-        tags = [t.strip() for t in result.stdout.decode().splitlines() if t.strip()]
-        return jsonify({"success": True, "tags": tags, "error": ""})
+
+        # Try the branch name as-is first, then with origin/ prefix for remote-only branches
+        for ref in [branch, f'origin/{branch}']:
+            result = subprocess.run(
+                ['git', '-C', repo_path, 'tag', '--merged', ref, '--sort=-version:refname'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            if result.returncode == 0:
+                tags = [t.strip() for t in result.stdout.decode().splitlines() if t.strip()]
+                return jsonify({"success": True, "tags": tags, "error": ""})
+
+        return jsonify({"success": False, "tags": [], "error": result.stderr.decode()})
     except Exception as e:
         return jsonify({"success": False, "tags": [], "error": str(e)})
 

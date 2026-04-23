@@ -83,11 +83,16 @@ def get_commits(repo_path, branch):
     if not os.path.exists(repo_path):
         return {"success": False, "commits": [], "error": "Repo not found. Please download it first."}
 
-    result = subprocess.run(
-        ['git', '-C', repo_path, 'log', branch, '--pretty=format:%H|%s|%ad', '--date=short', '-50'],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
+    # Try branch as-is, then with origin/ prefix for remote-only branches
+    for ref in [branch, f'origin/{branch}']:
+        result = subprocess.run(
+            ['git', '-C', repo_path, 'log', ref, '--pretty=format:%H|%s|%ad', '--date=short', '-50'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        if result.returncode == 0:
+            break
+
     if result.returncode != 0:
         return {"success": False, "commits": [], "error": result.stderr.decode('utf-8')}
 
