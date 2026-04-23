@@ -237,7 +237,7 @@
                                         </thead>
                                         <tbody id="srn-table-body">
                                             <tr>
-                                                <td colspan="5" class="text-center text-muted py-3">
+                                                <td colspan="6" class="text-center text-muted py-3">
                                                     <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                                                     Loading...
                                                 </td>
@@ -251,22 +251,70 @@
                 </div>
 
                 <!-- ============================================================== -->
-                <!-- SRN Output Terminal -->
+                <!-- Running SRN Processes Table -->
                 <!-- ============================================================== -->
-                <div class="row mt-2 d-none" id="srn-output-row">
+                <div class="row mt-2">
                     <div class="col-12">
                         <div class="card">
-                            <div class="card-body p-0">
-                                <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1">
-                                    <h5 class="mb-0 text-dark">Output</h5>
-                                    <button class="btn btn-sm btn-outline-secondary" id="btn-clear-output" type="button">
-                                        <i data-feather="x" class="svg-icon" style="width:14px;height:14px;"></i> Clear
-                                    </button>
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <h4 class="card-title mb-0">Running SRN Processes</h4>
+                                    <div class="ms-auto">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadSrnRuns()">
+                                            <i data-feather="refresh-cw" class="svg-icon" style="width:14px;height:14px;"></i> Refresh
+                                        </button>
+                                    </div>
                                 </div>
-                                <pre id="srn-output"
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Status</th>
+                                                <th>Tag</th>
+                                                <th>Branch</th>
+                                                <th>Started</th>
+                                                <th>PID</th>
+                                                <th class="text-center">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="srn-runs-table-body">
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted">Loading...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- SRN Log Viewer -->
+                <!-- ============================================================== -->
+                <div class="row mt-2" id="srn-log-viewer-row" style="display:none;">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <h5 class="mb-0 text-dark">
+                                        Log Viewer — <span id="srn-log-viewer-title" class="text-info">-</span>
+                                        <span id="srn-log-viewer-status" class="badge bg-secondary ms-2">-</span>
+                                    </h5>
+                                    <div class="ms-auto">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="closeSrnLogViewer()">
+                                            <i data-feather="x" class="svg-icon" style="width:14px;height:14px;"></i> Close
+                                        </button>
+                                        <button type="button" id="btn-stop-viewed-srn" class="btn btn-sm btn-danger"
+                                                onclick="stopViewedSrnRun()" style="display:none;">
+                                            <i data-feather="stop-circle" class="svg-icon" style="width:14px;height:14px;"></i> Stop
+                                        </button>
+                                    </div>
+                                </div>
+                                <pre id="srn-log-content"
                                     style="background:#1a1a2e;color:#a8f0d0;font-family:monospace;font-size:0.82rem;
-                                           padding:1rem;margin:0;max-height:350px;overflow-y:auto;
-                                           border-radius:0 0 0.375rem 0.375rem;"></pre>
+                                           padding:1rem;margin:0;min-height:200px;max-height:500px;overflow-y:auto;
+                                           border-radius:0.375rem;"></pre>
                             </div>
                         </div>
                     </div>
@@ -503,35 +551,6 @@
             await fetch(`${API_BASE}/srn/delete/${encodeURIComponent(label)}`, { method: 'DELETE' });
         }
 
-        // ---- Poll SRN list until a label appears (used after stream drop) ---
-        function pollSrnList(expectedLabel, intervalMs, maxMs) {
-            let elapsed = 0;
-            const timer = setInterval(async () => {
-                elapsed += intervalMs;
-                await loadSrnList();
-                // Stop polling once the expected label row appears
-                if (document.querySelector(`#srn-table-body tr[data-label="${CSS.escape(expectedLabel)}"]`)) {
-                    clearInterval(timer);
-                    return;
-                }
-                if (elapsed >= maxMs) clearInterval(timer);
-            }, intervalMs);
-        }
-        function appendOutput(msg) {
-            const out = document.getElementById('srn-output');
-            let color = '#a8f0d0';
-            if (msg.includes('[ERROR]'))        color = '#f62d51';
-            else if (msg.includes('[WARNING]')) color = '#ffbc34';
-            else if (msg.includes('[INFO]'))    color = '#8be9fd';
-            out.innerHTML += `<span style="color:${color}">${escHtml(msg)}</span>\n`;
-            out.scrollTop = out.scrollHeight;
-        }
-
-        document.getElementById('btn-clear-output').addEventListener('click', function () {
-            document.getElementById('srn-output').innerHTML = '';
-            document.getElementById('srn-output-row').classList.add('d-none');
-        });
-
         // ---- Deploy SRN button -----------------------------------------------
         document.getElementById('btn-deploy-srn').addEventListener('click', async function () {
             const btn = this;
@@ -557,67 +576,7 @@
             }
         });
 
-        // ---- Generate SRN button --------------------------------------------
-        async function runGenerate() {
-            const tag    = document.getElementById('srn-tag').value;
-            const branch = document.getElementById('srn-branch').value;
-
-            const btn = document.getElementById('btn-generate-srn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Generating...';
-
-            const out = document.getElementById('srn-output');
-            out.innerHTML = '';
-            document.getElementById('srn-output-row').classList.remove('d-none');
-            appendOutput(`[INFO] Starting SRN generation — tag: ${tag} | branch: ${branch}`);
-
-            try {
-                const res = await fetch(`${API_BASE}/srn/generate`, { method: 'POST' });
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    buffer += decoder.decode(value, { stream: true });
-                    const parts = buffer.split('\n\n');
-                    buffer = parts.pop();
-                    for (const part of parts) {
-                        // Skip SSE comments (keepalive pings from server)
-                        if (part.startsWith(':') || !part.trim()) continue;
-                        if (!part.startsWith('data: ')) continue;
-                        const msg = part.slice(6);
-                        if (msg.startsWith('__EXIT__')) {
-                            const code = parseInt(msg.slice(8));
-                            const color = code === 0 ? '#06d79c' : '#f62d51';
-                            out.innerHTML += `<span style="color:${color};font-weight:bold">\n— Process exited with code ${code} —\n</span>`;
-                            out.scrollTop = out.scrollHeight;
-                            // Refresh now, then keep polling for up to 30s in case files aren't written yet
-                            await loadSrnList();
-                            pollSrnList(tag, 5000, 30000);
-                        } else {
-                            appendOutput(msg);
-                        }
-                    }
-                }
-            } catch (e) {
-                const msg = String(e);
-                if (msg.includes('network') || msg.includes('NetworkError') || msg.includes('Failed to fetch')) {
-                    out.innerHTML += `<span style="color:#ffbc34;font-weight:bold">\n⚠ Connection dropped (proxy timeout) — the process may still be running.\nPolling the SRN List until it appears...\n</span>`;
-                    out.scrollTop = out.scrollHeight;
-                    // Server process is still running; poll every 10s for up to 3 minutes
-                    await loadSrnList();
-                    pollSrnList(tag, 10000, 180000);
-                } else {
-                    out.innerHTML += `<span style="color:#f62d51">Stream error: ${escHtml(msg)}\n</span>`;
-                }
-            }
-
-            btn.disabled = false;
-            btn.innerHTML = '<i data-feather="file-plus" class="svg-icon me-1"></i> Generate SRN';
-            if (typeof feather !== 'undefined') feather.replace();
-        }
-
+        // ---- Generate SRN (background) --------------------------------------
         document.getElementById('btn-generate-srn').addEventListener('click', async function () {
             const tag    = document.getElementById('srn-tag').value;
             const branch = document.getElementById('srn-branch').value;
@@ -633,13 +592,203 @@
                 document.getElementById('modal-btn-overwrite').onclick = async function() {
                     bootstrap.Modal.getInstance(document.getElementById('modal-srn-duplicate')).hide();
                     await deleteSrn(tag);
-                    await runGenerate();
+                    await startSrnGenerate();
                 };
                 new bootstrap.Modal(document.getElementById('modal-srn-duplicate')).show();
             } else {
-                await runGenerate();
+                await startSrnGenerate();
             }
         });
+
+        async function startSrnGenerate() {
+            const btn = document.getElementById('btn-generate-srn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Starting...';
+
+            try {
+                const res  = await fetch(`${API_BASE}/srn/generate`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    // Refresh runs list and open log viewer
+                    await loadSrnRuns();
+                    viewSrnLog(data.run_id);
+                } else {
+                    alert('Failed to start SRN: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Failed to start SRN: ' + e);
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i data-feather="file-plus" class="svg-icon me-1"></i> Generate SRN';
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+
+        // ============================================================
+        // SRN Runs Table
+        // ============================================================
+        async function loadSrnRuns() {
+            const tbody = document.getElementById('srn-runs-table-body');
+            try {
+                const res  = await fetch(`${API_BASE}/srn/runs/list`);
+                const data = await res.json();
+
+                if (!data.success || !data.runs.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No SRN processes found.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.runs.map(r => {
+                    const statusBadge = r.status === 'running'
+                        ? '<span class="badge bg-success">Running</span>'
+                        : r.status === 'stopped'
+                        ? '<span class="badge bg-warning text-dark">Stopped</span>'
+                        : '<span class="badge bg-secondary">Finished</span>';
+
+                    const actions = r.status === 'running'
+                        ? `<button class="btn btn-sm btn-info me-1" onclick="viewSrnLog('${escHtml(r.id)}')">
+                               <i data-feather="file-text" class="svg-icon" style="width:13px;height:13px;"></i> Log
+                           </button>
+                           <button class="btn btn-sm btn-danger" onclick="stopSrnRun('${escHtml(r.id)}')">
+                               <i data-feather="stop-circle" class="svg-icon" style="width:13px;height:13px;"></i> Stop
+                           </button>`
+                        : `<button class="btn btn-sm btn-info me-1" onclick="viewSrnLog('${escHtml(r.id)}')">
+                               <i data-feather="file-text" class="svg-icon" style="width:13px;height:13px;"></i> Log
+                           </button>
+                           <button class="btn btn-sm btn-outline-danger" onclick="deleteSrnRun('${escHtml(r.id)}')">
+                               <i data-feather="trash-2" class="svg-icon" style="width:13px;height:13px;"></i>
+                           </button>`;
+
+                    return `<tr>
+                        <td>${statusBadge}</td>
+                        <td><strong>${escHtml(r.tag)}</strong></td>
+                        <td><small>${escHtml(r.branch)}</small></td>
+                        <td><small>${escHtml(r.started_at)}</small></td>
+                        <td><code>${r.pid}</code></td>
+                        <td class="text-center text-nowrap">${actions}</td>
+                    </tr>`;
+                }).join('');
+
+                if (typeof feather !== 'undefined') feather.replace();
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading runs.</td></tr>';
+            }
+        }
+
+        // ============================================================
+        // Stop SRN Run
+        // ============================================================
+        async function stopSrnRun(runId) {
+            try {
+                const res  = await fetch(`${API_BASE}/srn/runs/stop`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ run_id: runId })
+                });
+                const data = await res.json();
+                if (!data.success) alert(data.error || 'Could not stop the process.');
+                loadSrnRuns();
+            } catch (e) {
+                alert('Could not connect to the server.');
+            }
+        }
+
+        // ============================================================
+        // Delete SRN Run
+        // ============================================================
+        async function deleteSrnRun(runId) {
+            if (!confirm('Delete this run and its log?')) return;
+            try {
+                const res  = await fetch(`${API_BASE}/srn/runs/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ run_id: runId })
+                });
+                const data = await res.json();
+                if (!data.success) alert(data.error || 'Could not delete the run.');
+                if (_srnCurrentViewRunId === runId) closeSrnLogViewer();
+                loadSrnRuns();
+            } catch (e) {
+                alert('Could not connect to the server.');
+            }
+        }
+
+        // ============================================================
+        // SRN Log Viewer
+        // ============================================================
+        let _srnCurrentViewRunId = null;
+        let _srnLogRefreshInterval = null;
+        const _ansiRegex = /\x1b\[[0-9;]*[mK]/g;
+
+        function viewSrnLog(runId) {
+            _srnCurrentViewRunId = runId;
+            const row = document.getElementById('srn-log-viewer-row');
+            row.style.display = '';
+            document.getElementById('srn-log-viewer-title').textContent = runId;
+            document.getElementById('srn-log-content').innerHTML = '<span class="text-muted">Loading log...</span>';
+
+            if (_srnLogRefreshInterval) clearInterval(_srnLogRefreshInterval);
+            fetchSrnLog(runId);
+            _srnLogRefreshInterval = setInterval(() => fetchSrnLog(runId), 3000);
+
+            row.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function fetchSrnLog(runId) {
+            try {
+                const res  = await fetch(`${API_BASE}/srn/runs/log/${runId}`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    document.getElementById('srn-log-content').textContent = data.error || 'Error loading log.';
+                    return;
+                }
+
+                const logEl     = document.getElementById('srn-log-content');
+                const wasBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 30;
+
+                // Strip ANSI codes and display
+                const clean = (data.log || 'Waiting for output...').replace(_ansiRegex, '');
+                logEl.textContent = clean;
+
+                if (wasBottom) logEl.scrollTop = logEl.scrollHeight;
+
+                // Update status badge
+                const statusEl = document.getElementById('srn-log-viewer-status');
+                const btnStop  = document.getElementById('btn-stop-viewed-srn');
+                if (data.status === 'running') {
+                    statusEl.className = 'badge bg-success ms-2';
+                    statusEl.textContent = 'Running';
+                    btnStop.style.display = '';
+                } else if (data.status === 'stopped') {
+                    statusEl.className = 'badge bg-warning text-dark ms-2';
+                    statusEl.textContent = 'Stopped';
+                    btnStop.style.display = 'none';
+                    if (_srnLogRefreshInterval) { clearInterval(_srnLogRefreshInterval); _srnLogRefreshInterval = null; }
+                    loadSrnRuns();
+                    loadSrnList();
+                } else {
+                    statusEl.className = 'badge bg-secondary ms-2';
+                    statusEl.textContent = 'Finished';
+                    btnStop.style.display = 'none';
+                    if (_srnLogRefreshInterval) { clearInterval(_srnLogRefreshInterval); _srnLogRefreshInterval = null; }
+                    loadSrnRuns();
+                    loadSrnList();
+                }
+            } catch (e) {
+                document.getElementById('srn-log-content').textContent = 'Error connecting to server.';
+            }
+        }
+
+        function closeSrnLogViewer() {
+            document.getElementById('srn-log-viewer-row').style.display = 'none';
+            if (_srnLogRefreshInterval) { clearInterval(_srnLogRefreshInterval); _srnLogRefreshInterval = null; }
+            _srnCurrentViewRunId = null;
+        }
+
+        function stopViewedSrnRun() {
+            if (_srnCurrentViewRunId) stopSrnRun(_srnCurrentViewRunId);
+        }
 
         // ---- Init ------------------------------------------------------------
         document.addEventListener('DOMContentLoaded', async function () {
@@ -654,7 +803,7 @@
                 if (cfg.success) { currentTag = cfg.tag; currentBranch = cfg.branch; }
             } catch (e) { console.error('Failed to load SRN config:', e); }
 
-            await Promise.all([loadBranches(currentBranch), loadSrnList()]);
+            await Promise.all([loadBranches(currentBranch), loadSrnList(), loadSrnRuns()]);
 
             // Load tags for the pre-selected branch
             if (currentBranch) await loadTagsForBranch(currentBranch, currentTag);
@@ -666,6 +815,9 @@
                 saveConfig();
             });
             document.getElementById('srn-tag').addEventListener('change', saveConfig);
+
+            // Auto-refresh runs list every 5s
+            setInterval(loadSrnRuns, 5000);
         });
     </script>
 </body>

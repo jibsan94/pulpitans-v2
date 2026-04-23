@@ -619,6 +619,16 @@ def _get_srn_paths(config):
     srn_build  = os.path.join(srn_base, 'build')
     return srn_base, srn_pandoc, srn_build
 
+def _get_srn_pid_paths():
+    """Returns (srn_pid_dir, srn_pid_logs) from config."""
+    config = config_loader.load_config()
+    base_dir = config.get('system', 'base_dir')
+    srn_pid_dir  = os.path.join(base_dir, 'srn_pid')
+    srn_pid_logs = os.path.join(srn_pid_dir, 'logs')
+    os.makedirs(srn_pid_dir, exist_ok=True)
+    os.makedirs(srn_pid_logs, exist_ok=True)
+    return srn_pid_dir, srn_pid_logs
+
 def _safe_tar_extract(tar, dest):
     """Extract tarball with path-traversal protection (zip-slip guard)."""
     real_dest = os.path.realpath(dest)
@@ -743,6 +753,7 @@ def srn_deploy():
 
 @app.route('/srn/generate', methods=['POST'])
 def srn_generate():
+    """Start SRN generation as a background process with log tracking."""
     try:
         config = config_loader.load_config()
         srn_base, _, srn_build = _get_srn_paths(config)
@@ -763,63 +774,217 @@ def srn_generate():
         env['IDASPKG_RELPATH'] = idaspkg_relpath
         env['REPO_DIR']        = repo_path
 
-        _ansi_escape = re.compile(r'\x1b\[[0-9;]*[mK]')
+        # Read tag/branch from SRN config for tracking info
+        cfg = _parse_srn_config(_SRN_CONFIG_PATH)
+        tag    = cfg.get('LABEL', 'unknown')
+        branch = cfg.get('PROJECT', 'unknown')
 
-        def generate():
-            import threading
-            import queue
+        # Generate unique run ID
+        now      = datetime.datetime.now()
+        date_str = now.strftime('%Y%m%d_%H%M%S')
+        safe_tag = re.sub(r'[^a-zA-Z0-9_.-]', '_', tag)
+        run_id   = f"srn_{safe_tag}_{date_str}"
 
-            proc = subprocess.Popen(
-                ['bash', script_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                env=env,
-                cwd=srn_base,
-                universal_newlines=True
-            )
+        # Get PID paths
+        srn_pid_dir, srn_pid_logs = _get_srn_pid_paths()
 
-            q = queue.Queue()
-            _SENTINEL = None  # marks end of stdout
+        # Start background process
+        log_path = os.path.join(srn_pid_logs, f'{run_id}.log')
+        log_file = open(log_path, 'w')
 
-            def reader_thread():
-                """Read subprocess stdout in a background thread, push lines into the queue."""
-                try:
-                    for line in iter(proc.stdout.readline, ''):
-                        q.put(line)
-                finally:
-                    proc.stdout.close()
-                    q.put(_SENTINEL)
-
-            t = threading.Thread(target=reader_thread, daemon=True)
-            t.start()
-
-            # Poll the queue with a short timeout; when it expires without
-            # data, send an SSE comment so the proxy keeps the connection alive.
-            while True:
-                try:
-                    line = q.get(timeout=10)
-                except queue.Empty:
-                    # No output for 10 s — send keepalive comment to prevent proxy timeout
-                    yield ": keepalive\n\n"
-                    continue
-
-                if line is _SENTINEL:
-                    break
-
-                clean = _ansi_escape.sub('', line.rstrip())
-                if clean:
-                    yield f"data: {clean}\n\n"
-                else:
-                    yield ": keepalive\n\n"
-
-            proc.wait()
-            yield f"data: __EXIT__{proc.returncode}\n\n"
-
-        return Response(
-            stream_with_context(generate()),
-            mimetype='text/event-stream',
-            headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+        proc = subprocess.Popen(
+            ['bash', script_path],
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            env=env,
+            cwd=srn_base,
+            start_new_session=True
         )
+
+        # Create tracking JSON
+        tracking = {
+            "id":         run_id,
+            "tag":        tag,
+            "branch":     branch,
+            "pid":        proc.pid,
+            "log_path":   log_path,
+            "started_at": now.strftime('%Y-%m-%d %H:%M:%S'),
+            "status":     "running"
+        }
+
+        json_path = os.path.join(srn_pid_dir, f'{run_id}.json')
+        with open(json_path, 'w') as f:
+            json.dump(tracking, f, indent=2)
+
+        return jsonify({"success": True, "run_id": run_id, "pid": proc.pid})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+# ---- SRN Background Run Management ------------------------------------------
+
+@app.route('/srn/runs/list')
+def srn_runs_list():
+    """List all SRN runs, checking PID status."""
+    try:
+        srn_pid_dir, _ = _get_srn_pid_paths()
+        runs = []
+
+        for fname in sorted(os.listdir(srn_pid_dir), reverse=True):
+            if not fname.endswith('.json'):
+                continue
+            json_path = os.path.join(srn_pid_dir, fname)
+            try:
+                with open(json_path, 'r') as f:
+                    run = json.load(f)
+
+                # Check if process is still running
+                pid = run.get('pid')
+                if pid and run.get('status') == 'running':
+                    try:
+                        os.kill(pid, 0)
+                    except OSError:
+                        run['status'] = 'finished'
+                        with open(json_path, 'w') as fw:
+                            json.dump(run, fw, indent=2)
+
+                runs.append(run)
+            except (json.JSONDecodeError, IOError):
+                continue
+
+        return jsonify({"success": True, "runs": runs})
+
+    except Exception as e:
+        return jsonify({"success": False, "runs": [], "error": str(e)})
+
+@app.route('/srn/runs/stop', methods=['POST'])
+def srn_runs_stop():
+    """Stop a running SRN process by run_id."""
+    try:
+        data   = request.get_json()
+        run_id = data.get('run_id', '')
+
+        if not run_id:
+            return jsonify({"success": False, "error": "run_id is required."})
+
+        if not re.match(r'^srn_[\w.\-]+$', run_id):
+            return jsonify({"success": False, "error": "Invalid run ID."})
+
+        srn_pid_dir, _ = _get_srn_pid_paths()
+        json_path = os.path.join(srn_pid_dir, f'{run_id}.json')
+
+        if not os.path.exists(json_path):
+            return jsonify({"success": False, "error": "Run not found."})
+
+        with open(json_path, 'r') as f:
+            run = json.load(f)
+
+        pid = run.get('pid')
+        if not pid:
+            return jsonify({"success": False, "error": "No PID found."})
+
+        try:
+            os.killpg(os.getpgid(pid), signal.SIGTERM)
+            run['status'] = 'stopped'
+            with open(json_path, 'w') as fw:
+                json.dump(run, fw, indent=2)
+            return jsonify({"success": True, "message": f"SRN run {run_id} stopped."})
+        except OSError:
+            run['status'] = 'finished'
+            with open(json_path, 'w') as fw:
+                json.dump(run, fw, indent=2)
+            return jsonify({"success": False, "error": "Process is not running."})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/srn/runs/log/<run_id>')
+def srn_runs_log(run_id):
+    """Get the log content for an SRN run."""
+    try:
+        if not re.match(r'^srn_[\w.\-]+$', run_id):
+            return jsonify({"success": False, "error": "Invalid run ID."})
+
+        srn_pid_dir, _ = _get_srn_pid_paths()
+        json_path = os.path.join(srn_pid_dir, f'{run_id}.json')
+
+        if not os.path.exists(json_path):
+            return jsonify({"success": False, "error": "Run not found."})
+
+        with open(json_path, 'r') as f:
+            run = json.load(f)
+
+        log_path = run.get('log_path', '')
+        if not log_path or not os.path.exists(log_path):
+            return jsonify({"success": True, "log": "Log file not found yet.", "status": run.get('status', 'unknown')})
+
+        tail = request.args.get('tail', type=int, default=0)
+
+        with open(log_path, 'r', errors='replace') as f:
+            if tail > 0:
+                lines = f.readlines()
+                content = ''.join(lines[-tail:])
+            else:
+                content = f.read()
+
+        # Check PID status
+        pid    = run.get('pid')
+        status = run.get('status', 'unknown')
+        if pid and status == 'running':
+            try:
+                os.kill(pid, 0)
+            except OSError:
+                status = 'finished'
+                run['status'] = status
+                with open(json_path, 'w') as fw:
+                    json.dump(run, fw, indent=2)
+
+        return jsonify({"success": True, "log": content, "status": status})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/srn/runs/delete', methods=['POST'])
+def srn_runs_delete():
+    """Delete an SRN run tracking file and its log."""
+    try:
+        data   = request.get_json()
+        run_id = data.get('run_id', '')
+
+        if not run_id:
+            return jsonify({"success": False, "error": "run_id is required."})
+
+        if not re.match(r'^srn_[\w.\-]+$', run_id):
+            return jsonify({"success": False, "error": "Invalid run ID."})
+
+        srn_pid_dir, _ = _get_srn_pid_paths()
+        json_path = os.path.join(srn_pid_dir, f'{run_id}.json')
+
+        if not os.path.exists(json_path):
+            return jsonify({"success": False, "error": "Run not found."})
+
+        with open(json_path, 'r') as f:
+            run = json.load(f)
+
+        # Don't delete running processes
+        pid = run.get('pid')
+        if pid:
+            try:
+                os.kill(pid, 0)
+                return jsonify({"success": False, "error": "Cannot delete a running process. Stop it first."})
+            except OSError:
+                pass
+
+        # Delete log file
+        log_path = run.get('log_path', '')
+        if log_path and os.path.exists(log_path):
+            os.remove(log_path)
+
+        # Delete JSON
+        os.remove(json_path)
+
+        return jsonify({"success": True, "message": f"SRN run {run_id} deleted."})
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
