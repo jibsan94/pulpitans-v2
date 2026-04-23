@@ -41,19 +41,29 @@ def auth_list_users():
 
 @app.route('/auth/login', methods=['POST'])
 def auth_login():
-    """Validate a username and return its profile."""
+    """Validate username + password via PAM and return profile."""
     try:
         data = request.get_json()
         username = data.get('username', '').strip()
+        password = data.get('password', '')
 
         if not username:
             return jsonify({"success": False, "error": "Username is required."})
+
+        if not password:
+            return jsonify({"success": False, "error": "Password is required."})
 
         if not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
             return jsonify({"success": False, "error": "Invalid username."})
 
         if not user_manager.validate_username(username):
             return jsonify({"success": False, "error": f"User '{username}' does not exist on this system."})
+
+        # Authenticate against PAM (system password)
+        import pam
+        p = pam.pam()
+        if not p.authenticate(username, password):
+            return jsonify({"success": False, "error": "Incorrect password."})
 
         cfg = user_manager.get_user_config(username)
         return jsonify({
@@ -114,6 +124,13 @@ def search_roles():
         config = config_loader.load_config()
         base_route  = config['search']['base_route']
         folder_name = config['search']['folder_name']
+
+        # Scope search to the logged-in user's home directory
+        username = request.args.get('username', '').strip()
+        if username and re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+            user_home = os.path.join(base_route, username)
+            if os.path.isdir(user_home):
+                base_route = user_home
 
         routes = path_finder.search_folder(folder_name, base_route)
         return jsonify({

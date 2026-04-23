@@ -973,7 +973,8 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
 
         try {
-            const response = await fetch(`${API_BASE}/search-roles`);
+            const currentUser = PulpitansAuth.getUsername();
+            const response = await fetch(`${API_BASE}/search-roles${currentUser ? '?username=' + encodeURIComponent(currentUser) : ''}`);
             const data = await response.json();
 
             if (data.error && data.error.trim() !== '') {
