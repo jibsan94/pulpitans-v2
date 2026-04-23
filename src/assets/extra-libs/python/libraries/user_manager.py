@@ -259,6 +259,25 @@ def get_project_assignment(project_name):
     return None, None
 
 
+def get_project_notes(project_name):
+    """Returns the notes for a project from master_projects.json."""
+    for p in _load_master_projects():
+        if p['name'].lower() == project_name.lower():
+            return p.get('notes', '')
+    return ''
+
+
+def set_project_notes(project_name, notes):
+    """Sets the notes for a project in master_projects.json."""
+    projects = _load_master_projects()
+    for p in projects:
+        if p['name'].lower() == project_name.lower():
+            p['notes'] = notes
+            _save_master_projects(projects)
+            return True
+    return False
+
+
 def _get_projects_file():
     return os.path.join(_get_base_dir(), 'projects.json')
 

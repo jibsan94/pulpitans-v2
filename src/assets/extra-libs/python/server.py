@@ -21,6 +21,7 @@ import path_finder
 import make_yaml
 import config_loader
 import user_manager
+import report_generator
 
 # Global variable to store the running process
 current_process = None
@@ -1529,6 +1530,71 @@ def admin_remove_user_from_list():
     return jsonify({"success": True})
 
 # End Admin endpoints
+# ============================================================
+
+# ============================================================
+# Report endpoints
+# ============================================================
+
+@app.route('/report/project-info', methods=['GET'])
+def report_project_info():
+    """Returns project info data for the project information page."""
+    try:
+        master_projects = user_manager.get_master_projects()
+        projects = []
+        for mp in master_projects:
+            assigned_to, status = user_manager.get_project_assignment(mp['name'])
+            display_name = ''
+            if assigned_to:
+                display_name = user_manager.get_display_name(assigned_to)
+            projects.append({
+                'name': mp['name'],
+                'folder': mp['folder'],
+                'assigned_to': assigned_to or '',
+                'display_name': display_name,
+                'status': status or '',
+                'status_label': user_manager.get_status_labels().get(status, 'Unassigned'),
+                'notes': mp.get('notes', ''),
+            })
+
+        # Status counts
+        counts = {}
+        for p in projects:
+            label = p['status_label']
+            counts[label] = counts.get(label, 0) + 1
+
+        return jsonify({"success": True, "projects": projects, "counts": counts})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/report/save-notes', methods=['POST'])
+def report_save_notes():
+    """Save notes for multiple projects at once."""
+    try:
+        data = request.get_json()
+        notes_map = data.get('notes', {})  # { "PROJECT_NAME": "notes text", ... }
+        for project_name, notes_text in notes_map.items():
+            user_manager.set_project_notes(project_name, notes_text)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/report/download', methods=['GET'])
+def report_download():
+    """Generates and downloads the project report as DOCX."""
+    try:
+        doc_bytes, filename = report_generator.generate_project_report()
+        return Response(
+            doc_bytes,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+        )
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# End Report endpoints
 # ============================================================
 
 if __name__ == '__main__':
