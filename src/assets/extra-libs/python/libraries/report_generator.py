@@ -44,21 +44,22 @@ def _get_project_data():
 
 
 def _clear_content_paragraphs(doc):
-    """Removes content paragraphs (between TOC and last page).
-    Template structure:
+    """Removes content paragraphs (between cover and last page).
+    Updated template structure (no TOC page):
       Paragraphs 0-35:  Cover page (section 0) — keep
-      Paragraph  36:    TOC page (section 1)   — keep
-      Paragraphs 37-133: Content               — CLEAR
-      Paragraph  134:   Section break (section 2 boundary) — KEEP
-      Paragraphs 135-137: Last page (section 3) — keep
+      Paragraphs 36-132: Content               — CLEAR
+      Paragraph  133:   Section break (section 1 boundary) — KEEP
+      Paragraph  134:   Empty                              — keep
+      Paragraph  135:   Section break (section 2 boundary) — KEEP
+      Paragraph  136:   Last page with image               — keep
     """
     body = doc.element.body
     paras = doc.paragraphs
 
-    # Collect elements to remove (content paragraphs 37 to 133 inclusive)
-    # Para 134 has the section break for section 2 — must keep it
+    # Remove content paragraphs 36 to 132 inclusive
+    # Para 133 has the section break — must keep it
     elements_to_remove = []
-    for i in range(37, min(134, len(paras))):
+    for i in range(36, min(133, len(paras))):
         elements_to_remove.append(paras[i]._element)
 
     for el in elements_to_remove:
@@ -67,12 +68,12 @@ def _clear_content_paragraphs(doc):
 
 def _find_insert_point(doc):
     """Returns the XML element BEFORE which new content should be inserted.
-    After clearing paras 37-133, the section-break paragraph (old 134) is now at index 37.
-    We insert before it so content stays in section 2.
+    After clearing paras 36-132, the section-break paragraph (old 133) is now at index 36.
+    We insert before it so content stays in section 1.
     """
     paras = doc.paragraphs
-    if len(paras) > 37:
-        return paras[37]._element
+    if len(paras) > 36:
+        return paras[36]._element
     return None
 
 
@@ -119,28 +120,12 @@ def generate_project_report():
     date_str = now.strftime('%d/%m/%Y %H:%M')
     projects = _get_project_data()
 
-    ns_w = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
-
-    # ── 1. Update cover page ──
-    # Clear "A`" from paragraph 0
+    # ── 1. Cover page ──
+    # Clear "A`" garbage text from paragraph 0
     if doc.paragraphs[0].runs:
         for run in doc.paragraphs[0].runs:
             if run.text.strip():
                 run.text = ''
-
-    # Replace "Resume_template" text in VML textbox (paragraph 5)
-    # The VML shape contains w:t elements with the text
-    p5 = doc.paragraphs[5]
-    report_title = f'Project Status Report\n{date_str}'
-    all_wt = p5._element.findall(f'.//{ns_w}t')
-    first_replaced = False
-    for wt in all_wt:
-        if wt.text and 'Resume_template' in wt.text:
-            if not first_replaced:
-                wt.text = report_title
-                first_replaced = True
-            else:
-                wt.text = report_title
 
     # ── 2. Clear existing content paragraphs ──
     _clear_content_paragraphs(doc)

@@ -1570,12 +1570,20 @@ def report_project_info():
 
 @app.route('/report/save-notes', methods=['POST'])
 def report_save_notes():
-    """Save notes for multiple projects at once."""
+    """Save notes and optionally statuses for multiple projects at once."""
     try:
         data = request.get_json()
-        notes_map = data.get('notes', {})  # { "PROJECT_NAME": "notes text", ... }
+        notes_map = data.get('notes', {})   # { "PROJECT_NAME": "notes text", ... }
+        status_map = data.get('statuses', {})  # { "PROJECT_NAME": "wip", ... }
         for project_name, notes_text in notes_map.items():
             user_manager.set_project_notes(project_name, notes_text)
+        valid_statuses = {'done', 'not_ok', 'idle', 'wip'}
+        for project_name, status in status_map.items():
+            if status not in valid_statuses:
+                continue
+            username, _ = user_manager.get_project_assignment(project_name)
+            if username:
+                user_manager.set_project_status(username, project_name, status)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})

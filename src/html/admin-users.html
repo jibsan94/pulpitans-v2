@@ -304,6 +304,12 @@
 
     const STATUS_COLORS = { done: 'success', not_ok: 'danger', idle: 'warning', wip: 'primary' };
     const STATUS_LABELS = { done: 'Done', not_ok: 'Not OK', idle: 'Idle', wip: 'WIP' };
+    const STATUS_ICONS  = {
+        done:   '<i data-feather="check-circle" class="feather-sm me-1"></i>',
+        not_ok: '<i data-feather="x-circle" class="feather-sm me-1"></i>',
+        idle:   '<i data-feather="pause-circle" class="feather-sm me-1"></i>',
+        wip:    '<i data-feather="loader" class="feather-sm me-1"></i>',
+    };
 
     let _allUsers = [];
 
@@ -325,14 +331,20 @@
 
             data.users.forEach(u => {
                 const projectBadges = u.projects.map(p => {
-                    const color = STATUS_COLORS[p.status] || 'secondary';
-                    const label = STATUS_LABELS[p.status] || p.status;
-                    const textClass = p.status === 'idle' ? 'text-dark' : '';
-                    return `<span class="badge bg-${color} ${textClass} me-1 mb-1 project-badge" 
-                                style="cursor:pointer; font-size:0.85em;" 
-                                title="${label}" 
-                                data-bs-toggle="tooltip"
-                                onclick="cycleProjectStatus('${u.username}', '${p.name.replace(/'/g, "\\'")}', '${p.status}')">${p.name}</span>`;
+                    const color    = STATUS_COLORS[p.status] || 'secondary';
+                    const label    = STATUS_LABELS[p.status] || p.status;
+                    const icon     = STATUS_ICONS[p.status]  || '';
+                    const textCls  = p.status === 'idle' ? 'text-dark' : '';
+                    const safeName = p.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const opts = Object.entries(STATUS_LABELS).map(([k, lbl]) =>
+                        `<li><a class="dropdown-item" href="javascript:void(0)" onclick="setProjectStatus('${u.username}','${safeName}','${k}')">`+
+                        `<span class="badge bg-${STATUS_COLORS[k]} ${k==='idle'?'text-dark':''} me-1">${STATUS_ICONS[k]||''}${lbl}</span></a></li>`
+                    ).join('');
+                    return `<div class="dropdown d-inline-block me-1 mb-1">`+
+                        `<button type="button" class="badge bg-${color} ${textCls} border-0 dropdown-toggle px-2 py-1" `+
+                        `data-bs-toggle="dropdown" aria-expanded="false" style="cursor:pointer;font-size:0.85em;">`+
+                        `${icon}${p.name}</button>`+
+                        `<ul class="dropdown-menu">${opts}</ul></div>`;
                 }).join('');
 
                 const adminToggle = u.username === adminUser
@@ -366,21 +378,14 @@
             });
 
             feather.replace();
-            // Init Bootstrap tooltips
-            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
 
         } catch (e) {
             document.getElementById('users-tbody').innerHTML = '<tr><td colspan="4" class="text-center text-danger">Error connecting to server.</td></tr>';
         }
     }
 
-    // Cycle through statuses on click: wip → done → idle → not_ok → wip
-    const STATUS_CYCLE = ['wip', 'done', 'idle', 'not_ok'];
-    async function cycleProjectStatus(username, projectName, currentStatus) {
-        const idx = STATUS_CYCLE.indexOf(currentStatus);
-        const newStatus = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+    async function setProjectStatus(username, projectName, newStatus) {
         const adminUser = PulpitansAuth.getUsername();
-
         try {
             const res = await fetch(`${API_BASE}/admin/projects/status`, {
                 method: 'POST',

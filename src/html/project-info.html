@@ -164,12 +164,12 @@
                                     <table class="table table-hover mb-0">
                                         <thead class="bg-dark text-white">
                                             <tr>
-                                                <th style="width:5%">#</th>
-                                                <th style="width:22%">Project</th>
-                                                <th style="width:18%">Folder</th>
-                                                <th style="width:22%">Assigned To</th>
-                                                <th style="width:15%">Status</th>
-                                                <th style="width:18%">Notes</th>
+                                                <th style="width:4%">#</th>
+                                                <th style="width:14%">Project</th>
+                                                <th style="width:12%">Folder</th>
+                                                <th style="width:14%">Assigned To</th>
+                                                <th style="width:10%">Status</th>
+                                                <th style="width:46%">Notes</th>
                                             </tr>
                                         </thead>
                                         <tbody id="projects-tbody">
@@ -262,7 +262,9 @@
     ];
 
     let _editMode = false;
+    let _isAdmin = false;
     let _projectsData = [];
+    let _pendingStatuses = {};
 
     function _escapeHtml(text) {
         const div = document.createElement('div');
@@ -291,6 +293,15 @@
     }
 
     async function loadProjectInfo() {
+        // Check admin status
+        const _curUser = PulpitansAuth.getUsername();
+        if (_curUser) {
+            try {
+                const profileRes = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(_curUser)}`);
+                const profileData = await profileRes.json();
+                _isAdmin = profileData.success && profileData.profile.is_admin;
+            } catch (e) { _isAdmin = false; }
+        }
         try {
             const res = await fetch(`${API_BASE}/report/project-info`);
             const data = await res.json();
@@ -365,6 +376,26 @@
 
             const rowClass = i % 2 === 0 ? 'bg-light' : '';
 
+            let statusCell;
+            if (_editMode && _isAdmin) {
+                const curSK = _pendingStatuses[p.name] || statusKey;
+                const curColor = STATUS_COLORS[curSK] || 'secondary';
+                const curLabel = STATUS_LABELS[curSK] || curSK || 'Unassigned';
+                const curIcon  = STATUS_ICONS[curSK] || '';
+                const textCls  = curSK === 'idle' ? 'text-dark' : '';
+                const opts = Object.entries(STATUS_LABELS).map(([k, lbl]) =>
+                    `<li><a class="dropdown-item" href="javascript:void(0)" onclick="changeStatus('${_escapeHtml(p.name)}','${k}')">`+
+                    `<span class="badge bg-${STATUS_COLORS[k]} ${k==='idle'?'text-dark':''} me-1">${STATUS_ICONS[k]||''}${lbl}</span></a></li>`
+                ).join('');
+                statusCell = `<td><div class="dropdown d-inline-block">`+
+                    `<button type="button" class="badge bg-${curColor} ${textCls} border-0 dropdown-toggle status-picker px-2 py-1" `+
+                    `data-bs-toggle="dropdown" aria-expanded="false" style="cursor:pointer;font-size:0.8em;" data-proj="${_escapeHtml(p.name)}">`+
+                    `${curIcon}${curLabel}</button>`+
+                    `<ul class="dropdown-menu">${opts}</ul></div></td>`;
+            } else {
+                statusCell = `<td>${statusBadge}</td>`;
+            }
+
             let notesCell;
             if (_editMode) {
                 notesCell = `<td><textarea class="form-control form-control-sm notes-editor" data-project="${_escapeHtml(p.name)}" rows="3" style="min-width:200px;font-size:13px;">${_escapeHtml(p.notes || '')}</textarea></td>`;
@@ -373,12 +404,12 @@
             }
 
             tbody.innerHTML += `
-                <tr class="${rowClass}">
+                <tr class="${rowClass}" data-project="${_escapeHtml(p.name)}">
                     <td class="text-muted">${i + 1}</td>
                     <td><span class="fw-bold">${_escapeHtml(p.name)}</span></td>
                     <td><code class="text-muted">${_escapeHtml(p.folder)}</code></td>
                     <td>${assignedTo}</td>
-                    <td>${statusBadge}</td>
+                    ${statusCell}
                     ${notesCell}
                 </tr>`;
         });
@@ -394,8 +425,27 @@
 
     function toggleEditMode(enable) {
         _editMode = enable;
+        if (!enable) _pendingStatuses = {};
         _updateEditButtons();
         _renderTable();
+    }
+
+    function changeStatus(projName, newStatus) {
+        _pendingStatuses[projName] = newStatus;
+        // Update the status button in-place without re-rendering (would lose textarea values)
+        const row = document.querySelector(`tr[data-project="${CSS.escape(projName)}"]`);
+        if (row) {
+            const btn = row.querySelector('.status-picker');
+            if (btn) {
+                const newColor = STATUS_COLORS[newStatus] || 'secondary';
+                const newLabel = STATUS_LABELS[newStatus] || newStatus;
+                const newIcon  = STATUS_ICONS[newStatus] || '';
+                const textCls  = newStatus === 'idle' ? 'text-dark' : '';
+                btn.className = `badge bg-${newColor} ${textCls} border-0 dropdown-toggle status-picker px-2 py-1`;
+                btn.innerHTML = newIcon + newLabel;
+                feather.replace();
+            }
+        }
     }
 
     async function saveNotes() {
@@ -414,21 +464,25 @@
             const res = await fetch(`${API_BASE}/report/save-notes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notes: notesMap })
+                body: JSON.stringify({ notes: notesMap, statuses: _pendingStatuses })
             });
             const data = await res.json();
             if (data.success) {
+                const _fullLabels = { done: 'Done', not_ok: 'Not OK', idle: 'Idle', wip: 'Work In Progress' };
                 // Update local data
                 _projectsData.forEach(p => {
-                    if (notesMap.hasOwnProperty(p.name)) {
-                        p.notes = notesMap[p.name];
+                    if (notesMap.hasOwnProperty(p.name)) p.notes = notesMap[p.name];
+                    if (_pendingStatuses.hasOwnProperty(p.name)) {
+                        p.status = _pendingStatuses[p.name];
+                        p.status_label = _fullLabels[_pendingStatuses[p.name]] || p.status_label;
                     }
                 });
+                _pendingStatuses = {};
                 _editMode = false;
                 _updateEditButtons();
                 _renderTable();
             } else {
-                alert('Error saving notes: ' + (data.error || 'Unknown error'));
+                alert('Error saving: ' + (data.error || 'Unknown error'));
             }
         } catch (e) {
             alert('Error connecting to server.');
