@@ -767,6 +767,8 @@ def srn_generate():
 
         def generate():
             import threading
+            import queue
+
             proc = subprocess.Popen(
                 ['bash', script_path],
                 stdout=subprocess.PIPE,
@@ -775,19 +777,41 @@ def srn_generate():
                 cwd=srn_base,
                 universal_newlines=True
             )
-            # Keepalive: send a comment every 15s so Apache proxy doesn't drop connection
-            keepalive_stop = threading.Event()
-            def keepalive():
-                while not keepalive_stop.is_set():
-                    keepalive_stop.wait(15)
-            # Not used for actual yield — just read stdout and yield lines
-            for line in iter(proc.stdout.readline, ''):
+
+            q = queue.Queue()
+            _SENTINEL = None  # marks end of stdout
+
+            def reader_thread():
+                """Read subprocess stdout in a background thread, push lines into the queue."""
+                try:
+                    for line in iter(proc.stdout.readline, ''):
+                        q.put(line)
+                finally:
+                    proc.stdout.close()
+                    q.put(_SENTINEL)
+
+            t = threading.Thread(target=reader_thread, daemon=True)
+            t.start()
+
+            # Poll the queue with a short timeout; when it expires without
+            # data, send an SSE comment so the proxy keeps the connection alive.
+            while True:
+                try:
+                    line = q.get(timeout=10)
+                except queue.Empty:
+                    # No output for 10 s — send keepalive comment to prevent proxy timeout
+                    yield ": keepalive\n\n"
+                    continue
+
+                if line is _SENTINEL:
+                    break
+
                 clean = _ansi_escape.sub('', line.rstrip())
                 if clean:
                     yield f"data: {clean}\n\n"
                 else:
                     yield ": keepalive\n\n"
-            proc.stdout.close()
+
             proc.wait()
             yield f"data: __EXIT__{proc.returncode}\n\n"
 

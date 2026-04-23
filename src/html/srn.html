@@ -583,6 +583,8 @@
                     const parts = buffer.split('\n\n');
                     buffer = parts.pop();
                     for (const part of parts) {
+                        // Skip SSE comments (keepalive pings from server)
+                        if (part.startsWith(':') || !part.trim()) continue;
                         if (!part.startsWith('data: ')) continue;
                         const msg = part.slice(6);
                         if (msg.startsWith('__EXIT__')) {
