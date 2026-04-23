@@ -79,6 +79,12 @@ const PulpitansAuth = (function () {
 
             const profileNameEl = document.getElementById('profile-modal-username');
             if (profileNameEl) profileNameEl.textContent = username;
+
+            // Check admin status and show admin menu items
+            if (data.success && data.profile.is_admin) {
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+                if (typeof feather !== 'undefined') feather.replace();
+            }
         } catch (e) {
             // Silently fall back to username
             const nameEl = document.getElementById('header-user-display-name');

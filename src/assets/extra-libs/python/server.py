@@ -66,10 +66,15 @@ def auth_login():
             return jsonify({"success": False, "error": "Incorrect password."})
 
         cfg = user_manager.get_user_config(username)
+
+        # Log the login activity
+        user_manager.log_activity(username, 'login', 'User logged in')
+
         return jsonify({
             "success": True,
             "username": username,
-            "display_name": cfg.get('display_name', '') or username
+            "display_name": cfg.get('display_name', '') or username,
+            "is_admin": user_manager.is_admin(username)
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -84,6 +89,7 @@ def auth_get_profile():
             return jsonify({"success": False, "error": "Invalid username."})
 
         cfg = user_manager.get_user_config(username)
+        cfg['is_admin'] = user_manager.is_admin(username)
         return jsonify({"success": True, "profile": cfg})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -349,6 +355,10 @@ def mkbuild_start():
         json_path = os.path.join(make_build_path, f'{build_id}.json')
         with open(json_path, 'w') as f:
             json.dump(tracking, f, indent=2)
+
+        # Log activity
+        user_manager.log_activity(owner or 'unknown', 'mkbuild_start',
+            f'Started build {build_id} on branch {branch_name} with role {selected_role}')
 
         return jsonify({"success": True, "build_id": build_id, "pid": proc.pid})
 
@@ -1201,6 +1211,191 @@ def srn_download(label):
         return jsonify({"success": False, "error": str(e)}), 500
 
 # End SRN endpoints
+# ============================================================
+
+# ============================================================
+# Admin endpoints
+# ============================================================
+
+@app.route('/admin/check')
+def admin_check():
+    """Check if the current user is an admin."""
+    username = request.args.get('username', '').strip()
+    if not username:
+        return jsonify({"is_admin": False})
+    return jsonify({"is_admin": user_manager.is_admin(username)})
+
+
+@app.route('/admin/activity-log')
+def admin_activity_log():
+    """Returns the activity log. Admin only."""
+    username = request.args.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    user_filter = request.args.get('filter_user', '').strip() or None
+    limit = int(request.args.get('limit', 500))
+    entries = user_manager.get_activity_log(limit=limit, username_filter=user_filter)
+    return jsonify({"success": True, "entries": entries})
+
+
+@app.route('/admin/projects', methods=['GET'])
+def admin_get_projects():
+    """Returns all project assignments."""
+    assignments = user_manager.get_all_projects()
+    status_labels = user_manager.get_status_labels()
+    status_colors = user_manager.get_status_colors()
+    return jsonify({
+        "success": True,
+        "assignments": assignments,
+        "status_labels": status_labels,
+        "status_colors": status_colors
+    })
+
+
+@app.route('/admin/projects/move', methods=['POST'])
+def admin_move_project():
+    """Move a project from one user to another. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    project_name = data.get('project_name', '').strip()
+    from_user = data.get('from_user', '').strip()
+    to_user = data.get('to_user', '').strip()
+
+    if not all([project_name, from_user, to_user]):
+        return jsonify({"success": False, "error": "Missing required fields."})
+
+    ok, msg = user_manager.move_project(project_name, from_user, to_user)
+    if ok:
+        user_manager.log_activity(admin_user, 'move_project',
+            f'Moved {project_name} from {from_user} to {to_user}')
+    return jsonify({"success": ok, "error": "" if ok else msg})
+
+
+@app.route('/admin/projects/status', methods=['POST'])
+def admin_set_project_status():
+    """Set the status/color of a project. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    username = data.get('username', '').strip()
+    project_name = data.get('project_name', '').strip()
+    status = data.get('status', '').strip()
+
+    ok, msg = user_manager.set_project_status(username, project_name, status)
+    if ok:
+        user_manager.log_activity(admin_user, 'set_project_status',
+            f'Set {project_name} ({username}) to {status}')
+    return jsonify({"success": ok, "error": "" if ok else msg})
+
+
+@app.route('/admin/projects/add', methods=['POST'])
+def admin_add_project():
+    """Add a new project to a user. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    username = data.get('username', '').strip()
+    project_name = data.get('project_name', '').strip()
+    status = data.get('status', 'wip').strip()
+
+    if not username or not project_name:
+        return jsonify({"success": False, "error": "Username and project name are required."})
+
+    ok, msg = user_manager.add_project(username, project_name, status)
+    if ok:
+        user_manager.log_activity(admin_user, 'add_project',
+            f'Added {project_name} to {username}')
+    return jsonify({"success": ok, "error": "" if ok else msg})
+
+
+@app.route('/admin/projects/remove', methods=['POST'])
+def admin_remove_project():
+    """Remove a project from a user. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    username = data.get('username', '').strip()
+    project_name = data.get('project_name', '').strip()
+
+    ok, msg = user_manager.remove_project(username, project_name)
+    if ok:
+        user_manager.log_activity(admin_user, 'remove_project',
+            f'Removed {project_name} from {username}')
+    return jsonify({"success": ok, "error": "" if ok else msg})
+
+
+@app.route('/admin/users', methods=['GET'])
+def admin_list_managed_users():
+    """List all users in the project assignments (managed users)."""
+    assignments = user_manager.get_all_projects()
+    system_users = user_manager.get_system_users()
+    result = []
+    for u in system_users:
+        info = assignments.get(u, {})
+        result.append({
+            "username": u,
+            "display_name": info.get('display_name', '') or user_manager.get_display_name(u),
+            "is_admin": user_manager.is_admin(u),
+            "projects": info.get('projects', []),
+            "in_list": u in assignments
+        })
+    return jsonify({"success": True, "users": result})
+
+
+@app.route('/admin/users/toggle-admin', methods=['POST'])
+def admin_toggle_admin():
+    """Toggle admin status for a user. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    target_user = data.get('username', '').strip()
+    make_admin = data.get('is_admin', False)
+
+    user_manager.set_admin(target_user, make_admin)
+    action = 'grant_admin' if make_admin else 'revoke_admin'
+    user_manager.log_activity(admin_user, action, f'{action} for {target_user}')
+    return jsonify({"success": True})
+
+
+@app.route('/admin/users/add-to-list', methods=['POST'])
+def admin_add_user_to_list():
+    """Add a system user to the managed users list. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    target_user = data.get('username', '').strip()
+    user_manager.add_user_to_projects(target_user)
+    user_manager.log_activity(admin_user, 'add_user_to_list', f'Added {target_user} to managed users')
+    return jsonify({"success": True})
+
+
+@app.route('/admin/users/remove-from-list', methods=['POST'])
+def admin_remove_user_from_list():
+    """Remove a user from the managed users list. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    target_user = data.get('username', '').strip()
+    user_manager.remove_user_from_projects(target_user)
+    user_manager.log_activity(admin_user, 'remove_user_from_list', f'Removed {target_user} from managed users')
+    return jsonify({"success": True})
+
+# End Admin endpoints
 # ============================================================
 
 if __name__ == '__main__':

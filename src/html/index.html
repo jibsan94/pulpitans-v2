@@ -265,6 +265,21 @@
                                     class="hide-menu">SRN
                                 </span></a>
                         </li>
+                        <!-- Admin section (visible only to admins) -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
                         <!-- <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="app-chat.html"
                                 aria-expanded="false"><i data-feather="message-square" class="feather-icon"></i><span
                                     class="hide-menu">Chat</span></a></li>
@@ -758,94 +773,10 @@
                                             </tr>
                                         </thead>
                                         <tbody id="engineers-tbody">
-                                            <!-- Jibsan -->
                                             <tr>
-                                                <td class="px-2 py-4">
-                                                    <div class="d-flex no-block align-items-center">
-                                                        <div class="me-3">
-                                                            <div class="btn btn-primary rounded-circle btn-circle font-16 d-flex align-items-center justify-content-center" style="width:45px;height:45px;">JT</div>
-                                                        </div>
-                                                        <div>
-                                                            <h5 class="text-dark mb-0 font-16 font-weight-medium">Jibsan Toirac</h5>
-                                                            <span class="text-muted font-14">jjrosat</span>
-                                                        </div>
-                                                    </div>
+                                                <td colspan="5" class="text-center text-muted py-3">
+                                                    <span class="spinner-border spinner-border-sm me-1"></span> Loading...
                                                 </td>
-                                                <td class="px-2 py-4">
-                                                    <span class="badge bg-primary me-1">AVINOR</span>
-                                                    <span class="badge bg-primary me-1">iCAS-LVNL</span>
-                                                    <span class="badge bg-primary">iSNS-LVNL</span>
-                                                </td>
-                                                <td class="text-center px-2 py-4 font-weight-medium text-dark">--</td>
-                                                <td class="text-center px-2 py-4 text-muted">-- GB</td>
-                                                <td class="text-center px-2 py-4 text-muted">--</td>
-                                            </tr>
-                                            <!-- Ismael -->
-                                            <tr>
-                                                <td class="px-2 py-4">
-                                                    <div class="d-flex no-block align-items-center">
-                                                        <div class="me-3">
-                                                            <div class="btn btn-info rounded-circle btn-circle font-16 d-flex align-items-center justify-content-center" style="width:45px;height:45px;">IM</div>
-                                                        </div>
-                                                        <div>
-                                                            <h5 class="text-dark mb-0 font-16 font-weight-medium">Ismael</h5>
-                                                            <span class="text-muted font-14">ismael</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="px-2 py-4">
-                                                    <span class="badge bg-info me-1">PANSA</span>
-                                                    <span class="badge bg-info me-1">FF-ICE</span>
-                                                    <span class="badge bg-info">ROMATSA</span>
-                                                </td>
-                                                <td class="text-center px-2 py-4 font-weight-medium text-dark">--</td>
-                                                <td class="text-center px-2 py-4 text-muted">-- GB</td>
-                                                <td class="text-center px-2 py-4 text-muted">--</td>
-                                            </tr>
-                                            <!-- Sergio -->
-                                            <tr>
-                                                <td class="px-2 py-4">
-                                                    <div class="d-flex no-block align-items-center">
-                                                        <div class="me-3">
-                                                            <div class="btn btn-success rounded-circle btn-circle font-16 d-flex align-items-center justify-content-center" style="width:45px;height:45px;">SG</div>
-                                                        </div>
-                                                        <div>
-                                                            <h5 class="text-dark mb-0 font-16 font-weight-medium">Sergio</h5>
-                                                            <span class="text-muted font-14">sergio</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="px-2 py-4">
-                                                    <span class="badge bg-success me-1">NAV-CANADA</span>
-                                                    <span class="badge bg-success">NATS</span>
-                                                </td>
-                                                <td class="text-center px-2 py-4 font-weight-medium text-dark">--</td>
-                                                <td class="text-center px-2 py-4 text-muted">-- GB</td>
-                                                <td class="text-center px-2 py-4 text-muted">--</td>
-                                            </tr>
-                                            <!-- Daniel -->
-                                            <tr>
-                                                <td class="border-bottom-0 px-2 py-4">
-                                                    <div class="d-flex no-block align-items-center">
-                                                        <div class="me-3">
-                                                            <div class="btn btn-warning rounded-circle btn-circle font-16 d-flex align-items-center justify-content-center" style="width:45px;height:45px;">DL</div>
-                                                        </div>
-                                                        <div>
-                                                            <h5 class="text-dark mb-0 font-16 font-weight-medium">Daniel</h5>
-                                                            <span class="text-muted font-14">daniel</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="border-bottom-0 px-2 py-4">
-                                                    <span class="badge bg-warning me-1">SKYNEX</span>
-                                                    <span class="badge bg-warning me-1">IRTOS</span>
-                                                    <span class="badge bg-warning me-1">UTM</span>
-                                                    <span class="badge bg-warning me-1">YAKARTA</span>
-                                                    <span class="badge bg-warning">SACTA</span>
-                                                </td>
-                                                <td class="border-bottom-0 text-center px-2 py-4 font-weight-medium text-dark">--</td>
-                                                <td class="border-bottom-0 text-center px-2 py-4 text-muted">-- GB</td>
-                                                <td class="border-bottom-0 text-center px-2 py-4 text-muted">--</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -995,11 +926,37 @@
                     legend: { show: false }
                 });
 
+                // Load project assignments with status colors from admin API
+                let projectAssignments = {};
+                const STATUS_COLORS_MAP = { done: 'success', not_ok: 'danger', idle: 'warning', wip: 'primary' };
+                const STATUS_LABELS_MAP = { done: 'Done', not_ok: 'Not OK', idle: 'Idle', wip: 'WIP' };
+                try {
+                    const projRes = await fetch(`${API_BASE}/admin/projects`);
+                    const projData = await projRes.json();
+                    if (projData.success) projectAssignments = projData.assignments;
+                } catch (e) {}
+
                 for (const [name, info] of Object.entries(data.engineers)) {
                     const color = colors[name] || 'secondary';
                     const initial = initials[name] || name[0];
-                    const badges = (info.projects_detail || info.projects.map(p => ({display: p, folder: ''}))).map(p =>
-                        `<span class="badge bg-${color} me-1 mb-1" style="white-space:normal;line-height:1.3">${p.display}${p.folder ? `<br><span style="font-size:0.7em;opacity:0.75">${p.folder}</span>` : ''}</span>`).join('');
+
+                    // Use project assignments for status-colored badges
+                    const userProjects = projectAssignments[info.username];
+                    let badges;
+                    if (userProjects && userProjects.projects) {
+                        badges = userProjects.projects.map(p => {
+                            const statusColor = STATUS_COLORS_MAP[p.status] || 'secondary';
+                            const statusLabel = STATUS_LABELS_MAP[p.status] || p.status;
+                            const textClass = p.status === 'idle' ? 'text-dark' : '';
+                            return `<span class="badge bg-${statusColor} ${textClass} me-1 mb-1" 
+                                style="white-space:normal;line-height:1.3;cursor:default;" 
+                                title="${statusLabel}"
+                                data-bs-toggle="tooltip">${p.name}</span>`;
+                        }).join('');
+                    } else {
+                        badges = (info.projects_detail || info.projects.map(p => ({display: p, folder: ''}))).map(p =>
+                            `<span class="badge bg-${color} me-1 mb-1" style="white-space:normal;line-height:1.3">${p.display}</span>`).join('');
+                    }
 
                     etbody.innerHTML += `
                         <tr>
@@ -1020,6 +977,9 @@
                             <td class="text-center px-2 py-4 text-muted">${info.latest_build}</td>
                         </tr>`;
                 }
+
+                // Initialize tooltips for project badges
+                document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
 
             } catch (e) {
                 console.error('Could not connect to server:', e);
