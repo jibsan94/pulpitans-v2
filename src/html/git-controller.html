@@ -469,29 +469,104 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ── Delete a Tag ── -->
+                <div class="row mt-3">
+                    <div class="col-lg-12">
+                        <div class="card" style="border-top: 3px solid #e57373;">
+                            <div class="card-body">
+
+                                <!-- Header -->
+                                <div class="d-flex align-items-center mb-4">
+                                    <div>
+                                        <h4 class="card-title mb-0" style="color:#c0392b;">Delete a Tag</h4>
+                                        <h6 class="card-subtitle mt-1">Remove a tag from your local and remote repository</h6>
+                                    </div>
+                                    <div class="ms-auto">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTags()">
+                                            <i data-feather="refresh-cw" class="feather-sm"></i> Refresh
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="row justify-content-center">
+                                    <div class="col-sm-12 col-md-6 col-lg-4">
+                                        <div class="card" style="background-color:#fff5f5; border-color:#f8d7da;">
+                                            <div class="card-body">
+                                                <h4 class="card-title" style="color:#c0392b;">Tag to Delete</h4>
+                                                <h6 class="card-subtitle">Select the <code>tag</code> you want to remove</h6>
+                                                <div class="form-group mt-4">
+                                                    <select class="form-select" id="delete_tag_select">
+                                                        <option value="">Loading tags...</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Delete Button -->
+                                <div class="row mt-2">
+                                    <div class="col-lg-12 text-center">
+                                        <div class="btn-list">
+                                            <button type="button" id="btn-delete-tag"
+                                                class="btn btn-lg btn-rounded waves-effect waves-light"
+                                                style="background-color:#e57373; color:#fff; border-color:#e57373;"
+                                                onmouseover="this.style.backgroundColor='#c0392b';this.style.borderColor='#c0392b';"
+                                                onmouseout="this.style.backgroundColor='#e57373';this.style.borderColor='#e57373';"
+                                                onclick="confirmDeleteTag()">
+                                                <i data-feather="trash-2"></i> Delete Tag
+                                            </button>
+                                        </div>
+                                        <div id="delete-tag-result" class="mt-3"></div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-            <!-- ============================================================== -->
-            <!-- End Container fluid  -->
-            <!-- ============================================================== -->
-            <!-- ============================================================== -->
-            <!-- footer -->
-            <!-- ============================================================== -->
+            <!-- End Container fluid -->
             <footer class="footer text-center text-muted">
                 All Rights Reserved by Freedash. Designed and Developed by <a
                     href="#">Jibsan the ruler of the Outlands</a>.
             </footer>
-            <!-- ============================================================== -->
-            <!-- End footer -->
-            <!-- ============================================================== -->
         </div>
-        <!-- ============================================================== -->
-        <!-- End Page wrapper  -->
-        <!-- ============================================================== -->
+        <!-- End Page wrapper -->
     </div>
-    <!-- ============================================================== -->
     <!-- End Wrapper -->
+    <!-- Modal Delete Tag Confirmation -->
     <!-- ============================================================== -->
-    <!-- End Wrapper -->
+    <div class="modal fade" id="modalDeleteTag" tabindex="-1" aria-labelledby="modalDeleteTagLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="modalDeleteTagLabel">
+                        <i data-feather="trash-2" class="feather-sm me-1"></i> Confirm Tag Deletion
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1">You are about to delete the local tag:</p>
+                    <p class="fs-5 fw-bold text-danger mb-3"><i data-feather="tag" class="feather-sm me-1"></i><span id="confirm-tag-name"></span></p>
+                    <div class="alert alert-warning py-2 mb-0">
+                        <i data-feather="alert-triangle" class="feather-sm me-1"></i>
+                        This will delete the tag both <strong>locally</strong> and from the <strong>remote</strong> repository.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-rounded" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="btn-confirm-delete-tag"
+                        class="btn btn-danger btn-rounded waves-effect waves-light"
+                        onclick="executeDeleteTag()">
+                        <i data-feather="trash-2"></i> Yes, Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- ============================================================== -->
     <!-- Modal Credentials -->
     <!-- ============================================================== -->
@@ -772,8 +847,10 @@
                 showMessage('tag-result', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
             } else {
                 showMessage('tag-result', `<div class="alert alert-success"><strong>Tag "${tagName}" applied successfully!</strong></div>`);
-                // Clear tag name after success
+                // Clear tag name after success and refresh tags list
                 document.getElementById('tag_name').value = '';
+                _lastTagsSnapshot = '';
+                loadTags();
             }
         } catch (e) {
             showMessage('tag-result', `<div class="alert alert-danger">Could not connect to the server.</div>`);
@@ -781,6 +858,85 @@
 
         btn.disabled = false;
         btn.innerHTML = '<i data-feather="tag"></i> Apply Tag';
+        feather.replace();
+    }
+
+    // ============================================================
+    // Tags list — load & real-time refresh
+    // ============================================================
+    let _tagsRefreshInterval = null;
+    let _lastTagsSnapshot = '';
+
+    async function loadTags() {
+        const sel = document.getElementById('delete_tag_select');
+        try {
+            const res  = await fetch(`${API_BASE}/git/get-tags`);
+            const data = await res.json();
+
+            const snapshot = JSON.stringify(data.tags || []);
+            if (snapshot === _lastTagsSnapshot) return;   // No change, skip re-render
+            _lastTagsSnapshot = snapshot;
+
+            if (!data.success || !data.tags || data.tags.length === 0) {
+                sel.innerHTML = '<option value="">— No tags found —</option>';
+                return;
+            }
+
+            const current = sel.value;
+            sel.innerHTML = '<option value="">Choose a tag...</option>' +
+                data.tags.map(t => `<option value="${t}"${t === current ? ' selected' : ''}>${t}</option>`).join('');
+        } catch (e) {
+            sel.innerHTML = '<option value="">Could not load tags</option>';
+        }
+    }
+
+    function startTagsPolling() {
+        loadTags();
+        _tagsRefreshInterval = setInterval(loadTags, 5000);
+    }
+
+    function confirmDeleteTag() {
+        const sel = document.getElementById('delete_tag_select');
+        const tag = sel.value;
+        if (!tag) {
+            showMessage('delete-tag-result', '<div class="alert alert-warning">Please select a tag to delete.</div>');
+            return;
+        }
+        document.getElementById('confirm-tag-name').textContent = tag;
+        const modal = new bootstrap.Modal(document.getElementById('modalDeleteTag'));
+        modal.show();
+    }
+
+    async function executeDeleteTag() {
+        const tag = document.getElementById('confirm-tag-name').textContent;
+        const btn = document.getElementById('btn-confirm-delete-tag');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+
+        try {
+            bootstrap.Modal.getInstance(document.getElementById('modalDeleteTag')).hide();
+            const res  = await fetch(`${API_BASE}/git/delete-tag`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tag_name: tag })
+            });
+            const data = await res.json();
+            if (data.success) {
+                const msg = data.warning
+                    ? `<div class="alert alert-warning"><strong>Tag "${tag}" deleted locally.</strong> ${data.warning}</div>`
+                    : `<div class="alert alert-success"><strong>Tag "${tag}" deleted successfully (local + remote).</strong></div>`;
+                showMessage('delete-tag-result', msg);
+                _lastTagsSnapshot = '';   // Force refresh
+                loadTags();
+            } else {
+                showMessage('delete-tag-result', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
+            }
+        } catch (e) {
+            showMessage('delete-tag-result', '<div class="alert alert-danger">Could not connect to the server.</div>');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="trash-2"></i> Yes, Delete';
         feather.replace();
     }
 
@@ -818,6 +974,8 @@
 
         // Auto-load branches if repo already cloned
         loadBranches();
+        // Start real-time tag list polling (every 5s)
+        startTagsPolling();
     });
 
         // Live date/time from internet

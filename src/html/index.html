@@ -910,8 +910,8 @@
                     legendContainer.innerHTML += `
                         <li class="mb-2 d-flex align-items-center">
                             <span class="d-inline-block rounded-circle me-2 flex-shrink-0" style="width:10px;height:10px;background-color:${color};"></span>
-                            <span class="text-muted">${name} (${projList || 'No projects'})</span>
-                            <span class="text-dark ms-auto font-weight-medium">${eng.total_builds} builds</span>
+                            <span class="text-muted text-truncate" style="font-size:15px; max-width:65%;" title="${name} (${projList || 'No projects'})">${name}</span>
+                            <span class="text-dark ms-auto font-weight-medium flex-shrink-0" style="font-size:15px;">${eng.total_builds} builds</span>
                         </li>`;
                 });
 

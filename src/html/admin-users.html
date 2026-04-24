@@ -289,6 +289,44 @@
         </div>
     </div>
 
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i data-feather="edit" class="feather-sm me-1"></i> Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit-user-username">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <input type="text" class="form-control" id="edit-user-username-display" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Display Name</label>
+                        <input type="text" class="form-control" id="edit-user-displayname" placeholder="Leave empty to use username">
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-2"><i data-feather="briefcase" class="feather-sm me-1"></i> Assigned Projects</h6>
+                    <div id="edit-user-projects" class="mb-3">
+                        <span class="text-muted">No projects</span>
+                    </div>
+                    <div id="edit-user-result"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger me-auto" onclick="removeUserFromEdit()">
+                        <i data-feather="user-minus" class="feather-sm me-1"></i> Remove User
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning text-dark" onclick="saveEditUser()">
+                        <i data-feather="save" class="feather-sm me-1"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
     <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
     <script src="../assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
@@ -348,20 +386,23 @@
                 }).join('');
 
                 const adminToggle = u.username === adminUser
-                    ? '<span class="badge bg-dark">Admin (you)</span>'
-                    : `<div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" ${u.is_admin ? 'checked' : ''}
-                            onchange="toggleAdmin('${u.username}', this.checked)">
-                        <label class="form-check-label text-muted">${u.is_admin ? 'Admin' : 'User'}</label>
+                    ? '<span class="badge bg-dark" style="vertical-align:middle;">Admin (you)</span>'
+                    : `<div style="display:inline-flex; align-items:center; gap:8px;">
+                        <div class="form-check form-switch mb-0" style="padding-left:2.5em; min-height:auto;">
+                            <input class="form-check-input" type="checkbox" ${u.is_admin ? 'checked' : ''}
+                                onchange="toggleAdmin('${u.username}', this.checked)"
+                                style="width:2.5em; height:1.3em; cursor:pointer; border:2px solid #495057;">
+                        </div>
+                        <span class="fw-medium text-dark">${u.is_admin ? 'Admin' : 'User'}</span>
                     </div>`;
 
-                const actions = `<button class="btn btn-sm btn-info me-1" onclick="showAddProject('${u.username}')">
+                const actions = `<button class="btn btn-sm btn-warning me-1" onclick="showEditUser('${u.username}')">
+                        <i data-feather="edit" class="feather-sm"></i> Edit
+                    </button>
+                    <button class="btn btn-sm btn-info me-1" onclick="showAddProject('${u.username}')">
                         <i data-feather="plus" class="feather-sm"></i> Project
                     </button>
-                    ${u.projects.map(p => `<button class="btn btn-sm btn-outline-primary me-1 mb-1" onclick="showMoveProject('${u.username}', '${p.name.replace(/'/g, "\\'")}')">
-                        <i data-feather="move" class="feather-sm"></i> ${p.name}
-                    </button>`).join('')}
-                    <button class="btn btn-sm btn-outline-danger ms-1" onclick="removeUserFromList('${u.username}')" title="Remove user from list">
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeUserFromList('${u.username}')" title="Remove user from list">
                         <i data-feather="user-minus" class="feather-sm"></i>
                     </button>`;
 
@@ -432,6 +473,93 @@
             });
             loadUsers();
         } catch (e) {}
+    }
+
+    // ── Edit User ──
+    function showEditUser(username) {
+        const user = _allUsers.find(u => u.username === username);
+        if (!user) return;
+
+        document.getElementById('edit-user-username').value = username;
+        document.getElementById('edit-user-username-display').value = username;
+        document.getElementById('edit-user-displayname').value = user.display_name === username ? '' : user.display_name;
+        document.getElementById('edit-user-result').innerHTML = '';
+
+        // Render assigned projects with move + remove buttons
+        const container = document.getElementById('edit-user-projects');
+        if (user.projects.length === 0) {
+            container.innerHTML = '<span class="text-muted fst-italic">No projects assigned</span>';
+        } else {
+            container.innerHTML = user.projects.map(p => {
+                const color = STATUS_COLORS[p.status] || 'secondary';
+                const label = STATUS_LABELS[p.status] || p.status;
+                const textCls = p.status === 'idle' ? 'text-dark' : '';
+                const safeName = p.name.replace(/'/g, "\\'");
+                return `<div class="d-flex align-items-center mb-2 py-1 px-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-${color} ${textCls} me-2">${label}</span>
+                    <span class="fw-medium flex-grow-1">${p.name}</span>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="showMoveProject('${username}','${safeName}')" title="Move to another user">
+                        <i data-feather="move" class="feather-sm"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeProjectFromEdit('${username}','${safeName}')" title="Remove project">
+                        <i data-feather="x" class="feather-sm"></i>
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+        modal.show();
+        feather.replace();
+    }
+
+    async function saveEditUser() {
+        const username = document.getElementById('edit-user-username').value;
+        const displayName = document.getElementById('edit-user-displayname').value.trim();
+        const adminUser = PulpitansAuth.getUsername();
+        const resultDiv = document.getElementById('edit-user-result');
+
+        try {
+            const res = await fetch(`${API_BASE}/admin/users/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, username, display_name: displayName })
+            });
+            const data = await res.json();
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+                loadUsers();
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger mt-2">${data.error}</div>`;
+            }
+        } catch (e) {
+            resultDiv.innerHTML = '<div class="alert alert-danger mt-2">Error connecting to server.</div>';
+        }
+    }
+
+    async function removeProjectFromEdit(username, projectName) {
+        if (!confirm(`Remove project "${projectName}" from ${username}?`)) return;
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            const res = await fetch(`${API_BASE}/admin/projects/remove`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, username, project_name: projectName })
+            });
+            const data = await res.json();
+            if (data.success) {
+                // Re-open edit modal with fresh data
+                bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+                await loadUsers();
+                showEditUser(username);
+            }
+        } catch (e) {}
+    }
+
+    function removeUserFromEdit() {
+        const username = document.getElementById('edit-user-username').value;
+        bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+        removeUserFromList(username);
     }
 
     async function showAddUser() {

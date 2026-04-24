@@ -632,6 +632,30 @@ def apply_tag():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+@app.route('/git/get-tags')
+def git_get_tags():
+    try:
+        config    = config_loader.load_config()
+        repo_path = git_manager.get_repo_path(config)
+        result    = git_manager.get_tags(repo_path)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "tags": [], "error": str(e)})
+
+@app.route('/git/delete-tag', methods=['POST'])
+def git_delete_tag():
+    try:
+        data     = request.get_json()
+        tag_name = data.get('tag_name', '').strip()
+        if not tag_name:
+            return jsonify({"success": False, "error": "Tag name is required."})
+        config    = config_loader.load_config()
+        repo_path = git_manager.get_repo_path(config)
+        result    = git_manager.delete_tag(repo_path, tag_name)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
     
 # When opening a browser and type http://localhost:5000/git/debug-path, it will show the repo path and if it exists or not. This is useful for debugging config issues.
 #######################################################################################################################################################################
@@ -672,7 +696,7 @@ def dashboard_builds():
                         latest_mtime = mtime
                         latest_build = matched["latest_build"]
 
-            display_name = info.get('display_name', username)
+            display_name = user_manager.get_display_name(username)
             engineers[display_name] = {
                 "username": username,
                 "projects": [p['name'] for p in info.get('projects', [])],
@@ -1527,6 +1551,23 @@ def admin_remove_user_from_list():
     target_user = data.get('username', '').strip()
     user_manager.remove_user_from_projects(target_user)
     user_manager.log_activity(admin_user, 'remove_user_from_list', f'Removed {target_user} from managed users')
+    return jsonify({"success": True})
+
+
+@app.route('/admin/users/update', methods=['POST'])
+def admin_update_user():
+    """Update display name for a user. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    target_user = data.get('username', '').strip()
+    display_name = data.get('display_name', '').strip()
+    if not target_user:
+        return jsonify({"success": False, "error": "Username is required."})
+    user_manager.update_display_name(target_user, display_name)
+    user_manager.log_activity(admin_user, 'update_user', f'Updated display name for {target_user} to "{display_name}"')
     return jsonify({"success": True})
 
 # End Admin endpoints

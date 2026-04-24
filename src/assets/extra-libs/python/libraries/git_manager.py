@@ -152,3 +152,30 @@ def apply_tag(repo_path, tag_name, commit_hash):
         "output": push_result.stdout.decode('utf-8'),
         "error":  push_result.stderr.decode('utf-8')
     }
+
+def delete_tag(repo_path, tag_name):
+    """Deletes a tag locally and pushes the deletion to remote."""
+    if not os.path.exists(repo_path):
+        return {"success": False, "error": "Repo not found. Please download it first."}
+
+    # Delete locally
+    result = subprocess.run(
+        ['git', '-C', repo_path, 'tag', '-d', tag_name],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    if result.returncode != 0:
+        return {"success": False, "error": result.stderr.decode('utf-8')}
+
+    # Push deletion to remote
+    push_result = subprocess.run(
+        ['git', '-C', repo_path, 'push', 'origin', ':refs/tags/' + tag_name],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    if push_result.returncode != 0:
+        return {"success": True, "output": result.stdout.decode('utf-8'),
+                "warning": "Tag deleted locally but failed to delete from remote: " + push_result.stderr.decode('utf-8'),
+                "error": ""}
+
+    return {"success": True, "output": result.stdout.decode('utf-8'), "error": ""}

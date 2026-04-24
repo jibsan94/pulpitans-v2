@@ -491,6 +491,19 @@ def get_display_name(username):
     return cfg.get('display_name', '') or username
 
 
+def update_display_name(username, display_name):
+    """Updates display_name in both user config and projects.json."""
+    # Update user config
+    cfg = get_user_config(username)
+    cfg['display_name'] = display_name
+    save_user_config(username, cfg)
+    # Update projects.json
+    data = _load_projects()
+    if username in data.get('assignments', {}):
+        data['assignments'][username]['display_name'] = display_name
+        _save_projects(data)
+
+
 def validate_username(username):
     """Checks that a username exists on the system."""
     try:
