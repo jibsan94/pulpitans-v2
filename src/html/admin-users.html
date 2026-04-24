@@ -158,12 +158,8 @@
                     <div class="col-12">
                         <div class="card">
                             <div class="card-body py-3">
-                                <div class="d-flex align-items-center flex-wrap gap-3">
+                                <div class="d-flex align-items-center flex-wrap gap-3" id="status-legend">
                                     <h6 class="mb-0 me-3 text-muted">Project Status Legend:</h6>
-                                    <span class="badge bg-success me-1 px-3 py-2">Done</span>
-                                    <span class="badge bg-danger me-1 px-3 py-2">Not OK</span>
-                                    <span class="badge bg-warning text-dark me-1 px-3 py-2">Idle</span>
-                                    <span class="badge bg-primary me-1 px-3 py-2">WIP</span>
                                 </div>
                             </div>
                         </div>
@@ -981,7 +977,25 @@
     document.addEventListener('DOMContentLoaded', async function () {
         await _detectStorageMode();
         loadUsers();
+        _loadStatusLegend();
     });
+
+    async function _loadStatusLegend() {
+        try {
+            const res = await fetch(`${API_BASE}/settings/project-statuses`);
+            const data = await res.json();
+            if (!data.success || !data.statuses) return;
+            const legend = document.getElementById('status-legend');
+            data.statuses.forEach(function (s) {
+                const badge = document.createElement('span');
+                const colorClass = s.color ? `bg-${s.color}` : 'bg-secondary';
+                const textClass = s.color === 'warning' ? 'text-dark' : '';
+                badge.className = `badge ${colorClass} ${textClass} me-1 px-3 py-2`.trim();
+                badge.textContent = s.name;
+                legend.appendChild(badge);
+            });
+        } catch (e) {}
+    }
 
     // Live clock
     (async function initClock() {
