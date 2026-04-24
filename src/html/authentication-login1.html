@@ -39,9 +39,9 @@
                                 <label class="form-label text-dark" for="uname">User</label>
                                 <input type="text" class="form-control" id="uname" placeholder="Enter your username" autocomplete="username">
                             </div>
-                            <div class="form-group mb-3">
+                            <div class="form-group mb-3" id="pass-group">
                                 <label class="form-label text-dark" for="upass">Password</label>
-                                <input type="password" class="form-control" id="upass" placeholder="System password" autocomplete="current-password">
+                                <input type="password" class="form-control" id="upass" placeholder="Password" autocomplete="current-password">
                             </div>
                             <div class="col-lg-12 text-center">
                                 <button type="submit" id="btn-login" class="btn w-100 btn-dark">
@@ -70,16 +70,59 @@
         // Hide preloader
         $(".preloader").fadeOut();
 
+        // Check on username blur whether this is a new user needing initial password
+        let _isNewUser = false;
+
+        function _resetLoginForm() {
+            _isNewUser = false;
+            document.getElementById('pass-group').classList.remove('d-none');
+            document.getElementById('btn-login').textContent = 'Sign In';
+        }
+
+        // Reset immediately when the user edits the username field
+        document.getElementById('uname').addEventListener('input', _resetLoginForm);
+
+        document.getElementById('uname').addEventListener('blur', async function () {
+            const username = this.value.trim();
+            _isNewUser = false;
+            if (!username) return;
+            try {
+                const res  = await fetch(`${API_BASE}/auth/needs-password?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                // Ignore stale result if username changed while fetch was in flight
+                if (document.getElementById('uname').value.trim() !== username) return;
+                if (data.needs_password) {
+                    _isNewUser = true;
+                    document.getElementById('pass-group').classList.add('d-none');
+                    document.getElementById('btn-login').textContent = 'Continue';
+                } else {
+                    _resetLoginForm();
+                }
+            } catch (e) {}
+        });
+
         document.getElementById('login-form').addEventListener('submit', async function (e) {
             e.preventDefault();
             const errBox = document.getElementById('login-error');
             errBox.classList.add('d-none');
 
             const username = document.getElementById('uname').value.trim();
-            const password = document.getElementById('upass').value;
 
             if (!username) {
                 errBox.textContent = 'Please enter your username.';
+                errBox.classList.remove('d-none');
+                return;
+            }
+
+            // New user — skip login and go straight to set password
+            if (_isNewUser) {
+                window.location.href = `set-password.html?u=${encodeURIComponent(username)}`;
+                return;
+            }
+
+            const password = document.getElementById('upass').value;
+            if (!password) {
+                errBox.textContent = 'Please enter your password.';
                 errBox.classList.remove('d-none');
                 return;
             }
@@ -100,7 +143,7 @@
                     PulpitansAuth.login(username);
                     window.location.href = 'index.html';
                 } else if (data.needs_password) {
-                    // New DB user with no password set — redirect to initial password page
+                    // Fallback: server says needs_password (e.g. username was typed without triggering blur)
                     window.location.href = `set-password.html?u=${encodeURIComponent(data.username || username)}`;
                 } else {
                     errBox.textContent = data.error || 'Login failed.';

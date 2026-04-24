@@ -139,13 +139,25 @@ def auth_login():
         if auth_method == 'database' and _storage_is_db():
             # --- Database authentication ---
             stored_hash = _db_get_password_hash(username)
-            if not stored_hash:
-                # New DB user — no password set yet, must go through initial-password flow
+            is_os_user = user_manager.validate_username(username)
+            if not stored_hash and not is_os_user:
+                # DB-only user with no password — must go through initial-password flow
                 return jsonify({"success": False, "needs_password": True, "username": username})
-            if not password:
-                return jsonify({"success": False, "error": "Password is required."})
-            if not _verify_password(password, stored_hash):
-                return jsonify({"success": False, "error": "Incorrect password."})
+            if not stored_hash and is_os_user:
+                # OS user with no DB hash yet — fall through to PAM and sync
+                if not password:
+                    return jsonify({"success": False, "error": "Password is required."})
+                import pam
+                p = pam.pam()
+                if not p.authenticate(username, password):
+                    return jsonify({"success": False, "error": "Incorrect password."})
+                _db_set_password_hash(username, _hash_password(password))
+            else:
+                # Has a DB hash — verify against it
+                if not password:
+                    return jsonify({"success": False, "error": "Password is required."})
+                if not _verify_password(password, stored_hash):
+                    return jsonify({"success": False, "error": "Incorrect password."})
         else:
             # --- System (PAM) authentication ---
             if not password:
@@ -285,6 +297,28 @@ def auth_update_profile():
 def auth_get_method():
     """Return the current auth method so the frontend can show/hide password change."""
     return jsonify({"success": True, "method": _get_auth_method()})
+
+
+@app.route('/auth/needs-password', methods=['GET'])
+def auth_needs_password():
+    """Check whether a user needs to set their initial password (DB auth, no hash yet).
+    Returns needs_password=True only if: DB mode is active, auth_method is database,
+    the user exists in the managed list, and has no password hash."""
+    username = request.args.get('username', '').strip()
+    if not username or not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+        return jsonify({"needs_password": False})
+    if not (_get_auth_method() == 'database' and _storage_is_db()):
+        return jsonify({"needs_password": False})
+    assignments = _db_get_all_assignments()
+    if username not in assignments:
+        return jsonify({"needs_password": False})
+    stored_hash = _db_get_password_hash(username)
+    if stored_hash:
+        return jsonify({"needs_password": False})
+    # Only DB-only users (no OS account) need the initial-password flow.
+    # OS users can authenticate via PAM and their hash will be synced.
+    is_os_user = user_manager.validate_username(username)
+    return jsonify({"needs_password": not is_os_user})
 
 
 @app.route('/auth/change-password', methods=['POST'])

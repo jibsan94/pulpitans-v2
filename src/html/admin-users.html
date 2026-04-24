@@ -439,7 +439,7 @@
         try {
             const res  = await fetch(`${API_BASE}/settings/storage?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
             const data = await res.json();
-            _storageMode = (data.success && data.settings && data.settings.storage_mode === 'database') ? 'database' : 'local';
+            _storageMode = (data.success && data.storage_mode === 'database') ? 'database' : 'local';
         } catch (e) {}
     }
 
