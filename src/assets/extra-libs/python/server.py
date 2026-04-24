@@ -5,6 +5,8 @@ import json
 import signal
 import shutil
 import tarfile
+import hashlib
+import secrets
 import datetime
 import subprocess
 from flask import Flask, jsonify, request, Response, stream_with_context
@@ -26,6 +28,64 @@ import report_generator
 # Global variable to store the running process
 current_process = None
 
+
+# ============================================================
+# Password hashing helpers (PBKDF2-HMAC-SHA256)
+# ============================================================
+
+def _hash_password(password):
+    """Return a salted PBKDF2-SHA256 hash of a plaintext password."""
+    salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 200000)
+    return salt + ':' + key.hex()
+
+
+def _verify_password(password, stored_hash):
+    """Verify a plaintext password against a stored salt:hash string."""
+    try:
+        salt, key_hex = stored_hash.split(':', 1)
+        key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 200000)
+        return secrets.compare_digest(key.hex(), key_hex)
+    except Exception:
+        return False
+
+
+def _get_auth_method():
+    """Return the configured auth method: 'system', 'database', or 'sso'."""
+    return _get_system_settings().get('auth', {}).get('method', 'system')
+
+
+def _db_get_password_hash(username):
+    """Fetch the stored password_hash for a user from the DB. Returns '' if not found."""
+    conn = _db_connect()
+    if not conn:
+        return ''
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT password_hash FROM users WHERE username=%s LIMIT 1", (username,))
+        row = cur.fetchone()
+        return (row['password_hash'] or '') if row else ''
+    except Exception:
+        return ''
+    finally:
+        conn.close()
+
+
+def _db_set_password_hash(username, password_hash):
+    """Persist a hashed password for a user in the DB."""
+    conn = _db_connect()
+    if not conn:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET password_hash=%s WHERE username=%s",
+                    (password_hash, username))
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
 # ============================================================
 # Auth / User endpoints
 # ============================================================
@@ -34,7 +94,10 @@ current_process = None
 def auth_list_users():
     """Return the list of managed users (those in projects.json) available for login."""
     try:
-        assignments = user_manager.get_all_projects()
+        if _storage_is_db():
+            assignments = _db_get_all_assignments()
+        else:
+            assignments = user_manager.get_all_projects()
         users = sorted(assignments.keys())
         return jsonify({"success": True, "users": users})
     except Exception as e:
@@ -43,44 +106,121 @@ def auth_list_users():
 
 @app.route('/auth/login', methods=['POST'])
 def auth_login():
-    """Validate username + password via PAM and return profile."""
+    """Validate username + password and return profile.
+    - auth_method=system: authenticate via PAM; sync hash to DB if DB mode.
+    - auth_method=database: verify against DB password_hash.
+      If user has no hash yet (new DB user), returns needs_password=True.
+    """
     try:
         data = request.get_json()
-        username = data.get('username', '').strip()
-        password = data.get('password', '')
+        username = (data.get('username') or '').strip()
+        password = (data.get('password') or '')
 
         if not username:
             return jsonify({"success": False, "error": "Username is required."})
-
-        if not password:
-            return jsonify({"success": False, "error": "Password is required."})
-
         if not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
             return jsonify({"success": False, "error": "Invalid username."})
 
-        if not user_manager.validate_username(username):
-            return jsonify({"success": False, "error": f"User '{username}' does not exist on this system."})
+        auth_method = _get_auth_method()
 
-        # Check user is in the managed list (projects.json)
-        assignments = user_manager.get_all_projects()
+        # For system auth, user must exist on the OS. DB-only users may not be OS users.
+        if not (auth_method == 'database' and _storage_is_db()):
+            if not user_manager.validate_username(username):
+                return jsonify({"success": False, "error": f"User '{username}' does not exist on this system."})
+
+        # Check user is in the managed list
+        if _storage_is_db():
+            assignments = _db_get_all_assignments()
+        else:
+            assignments = user_manager.get_all_projects()
         if username not in assignments:
             return jsonify({"success": False, "error": "User is not enabled. Contact an administrator."})
-        # Authenticate against PAM (system password)
-        import pam
-        p = pam.pam()
-        if not p.authenticate(username, password):
-            return jsonify({"success": False, "error": "Incorrect password."})
 
-        cfg = user_manager.get_user_config(username)
+        if auth_method == 'database' and _storage_is_db():
+            # --- Database authentication ---
+            stored_hash = _db_get_password_hash(username)
+            if not stored_hash:
+                # New DB user — no password set yet, must go through initial-password flow
+                return jsonify({"success": False, "needs_password": True, "username": username})
+            if not password:
+                return jsonify({"success": False, "error": "Password is required."})
+            if not _verify_password(password, stored_hash):
+                return jsonify({"success": False, "error": "Incorrect password."})
+        else:
+            # --- System (PAM) authentication ---
+            if not password:
+                return jsonify({"success": False, "error": "Password is required."})
+            import pam
+            p = pam.pam()
+            if not p.authenticate(username, password):
+                return jsonify({"success": False, "error": "Incorrect password."})
+            # Keep DB hash in sync with system password
+            if _storage_is_db():
+                _db_set_password_hash(username, _hash_password(password))
 
-        # Log the login activity
+        if _storage_is_db():
+            cfg = _db_get_user_config(username)
+            is_admin = _db_is_admin(username)
+        else:
+            cfg = user_manager.get_user_config(username)
+            is_admin = user_manager.is_admin(username)
         user_manager.log_activity(username, 'login', 'User logged in')
 
         return jsonify({
             "success": True,
             "username": username,
             "display_name": cfg.get('display_name', '') or username,
-            "is_admin": user_manager.is_admin(username)
+            "is_admin": is_admin
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/auth/set-initial-password', methods=['POST'])
+def auth_set_initial_password():
+    """Set the first password for a new DB-mode user who has no password yet.
+    Security: only works if the user currently has NO password_hash in the DB.
+    """
+    try:
+        data = request.get_json()
+        username = (data.get('username') or '').strip()
+        password = (data.get('password') or '')
+
+        if not username or not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+            return jsonify({"success": False, "error": "Invalid username."})
+
+        if not (_get_auth_method() == 'database' and _storage_is_db()):
+            return jsonify({"success": False, "error": "Initial password setup is only available in Database auth mode."})
+
+        # Security: reject if a hash already exists (this is not a password-reset endpoint)
+        if _db_get_password_hash(username):
+            return jsonify({"success": False, "error": "Password already set. Use Change Password instead."})
+
+        # Verify user is in the managed list
+        assignments = _db_get_all_assignments()
+        if username not in assignments:
+            return jsonify({"success": False, "error": "User is not enabled."})
+
+        # Validate password requirements
+        if not password or len(password) < 4:
+            return jsonify({"success": False, "error": "Password must be at least 4 characters."})
+        if not re.search(r'[0-9]', password):
+            return jsonify({"success": False, "error": "Password must contain at least one number."})
+        if not re.search(r'[A-Z]', password):
+            return jsonify({"success": False, "error": "Password must contain at least one uppercase letter."})
+        if not re.search(r'[.,&@#!]', password):
+            return jsonify({"success": False, "error": "Password must contain at least one special character (. , & @ # !)."})
+
+        _db_set_password_hash(username, _hash_password(password))
+
+        cfg = _db_get_user_config(username)
+        user_manager.log_activity(username, 'set_initial_password', 'User set initial password')
+
+        return jsonify({
+            "success": True,
+            "username": username,
+            "display_name": cfg.get('display_name', '') or username,
+            "is_admin": _db_is_admin(username)
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -94,8 +234,12 @@ def auth_get_profile():
         if not username or not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
             return jsonify({"success": False, "error": "Invalid username."})
 
-        cfg = user_manager.get_user_config(username)
-        cfg['is_admin'] = user_manager.is_admin(username)
+        if _storage_is_db():
+            cfg = _db_get_user_config(username)
+            cfg['is_admin'] = _db_is_admin(username)
+        else:
+            cfg = user_manager.get_user_config(username)
+            cfg['is_admin'] = user_manager.is_admin(username)
         return jsonify({"success": True, "profile": cfg})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -112,7 +256,10 @@ def auth_update_profile():
         if not username or not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
             return jsonify({"success": False, "error": "Invalid username."})
 
-        cfg = user_manager.get_user_config(username)
+        if _storage_is_db():
+            cfg = _db_get_user_config(username)
+        else:
+            cfg = user_manager.get_user_config(username)
         cfg['display_name'] = display_name
 
         # BitBucket credentials (optional)
@@ -121,7 +268,10 @@ def auth_update_profile():
         if 'bitbucket_password' in data:
             cfg['bitbucket_password'] = data['bitbucket_password']
 
-        user_manager.save_user_config(username, cfg)
+        if _storage_is_db():
+            _db_save_user_config(username, cfg)
+        else:
+            user_manager.save_user_config(username, cfg)
 
         return jsonify({
             "success": True,
@@ -129,6 +279,157 @@ def auth_update_profile():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/auth/method', methods=['GET'])
+def auth_get_method():
+    """Return the current auth method so the frontend can show/hide password change."""
+    return jsonify({"success": True, "method": _get_auth_method()})
+
+
+@app.route('/auth/change-password', methods=['POST'])
+def auth_change_password():
+    """Change the user's DB password. Only allowed when auth_method='database' and DB mode is on."""
+    try:
+        data = request.get_json()
+        username = data.get('username', '').strip()
+        current_password = data.get('current_password', '')
+        new_password = data.get('new_password', '')
+
+        if not username or not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+            return jsonify({"success": False, "error": "Invalid username."})
+
+        if _get_auth_method() != 'database':
+            return jsonify({"success": False, "error": "Password change is only available in Database auth mode."})
+
+        if not _storage_is_db():
+            return jsonify({"success": False, "error": "Database storage is required to change passwords."})
+
+        if not new_password or len(new_password) < 6:
+            return jsonify({"success": False, "error": "New password must be at least 6 characters."})
+
+        stored_hash = _db_get_password_hash(username)
+        if stored_hash:
+            if not _verify_password(current_password, stored_hash):
+                return jsonify({"success": False, "error": "Current password is incorrect."})
+        else:
+            # No hash yet — verify via PAM before allowing change
+            import pam
+            p = pam.pam()
+            if not p.authenticate(username, current_password):
+                return jsonify({"success": False, "error": "Current password is incorrect."})
+
+        _db_set_password_hash(username, _hash_password(new_password))
+        user_manager.log_activity(username, 'change_password', 'User changed their password')
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+def _get_user_picture_paths(username):
+    """Returns (data_path, mime_path) for persisting a user's profile picture on disk."""
+    users_dir = os.path.join(user_manager._get_base_dir(), 'users')
+    os.makedirs(users_dir, exist_ok=True)
+    return (
+        os.path.join(users_dir, f'{username}_pic'),
+        os.path.join(users_dir, f'{username}_pic.mime')
+    )
+
+
+@app.route('/auth/profile-picture/<username>', methods=['GET'])
+def auth_get_profile_picture(username):
+    """Serve the user's profile picture. Checks filesystem first, then DB, then default."""
+    from flask import send_file
+    import io
+    if not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+        return ('', 400)
+    # 1) Filesystem (works without DB, no Deploy required)
+    data_path, mime_path = _get_user_picture_paths(username)
+    if os.path.isfile(data_path):
+        mime = 'image/jpeg'
+        if os.path.isfile(mime_path):
+            with open(mime_path, 'r') as fp:
+                mime = fp.read().strip() or 'image/jpeg'
+        return send_file(data_path, mimetype=mime)
+    # 2) DB (if deployed and enabled)
+    if _storage_is_db():
+        conn = _db_connect()
+        if conn:
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    "SELECT up.picture_data, up.mime_type FROM user_pictures up "
+                    "JOIN users u ON u.id = up.user_id "
+                    "WHERE u.username = %s LIMIT 1",
+                    (username,)
+                )
+                row = cur.fetchone()
+                if row and row['picture_data']:
+                    return send_file(
+                        io.BytesIO(row['picture_data']),
+                        mimetype=row['mime_type'] or 'image/jpeg',
+                        as_attachment=False
+                    )
+            except Exception:
+                pass
+            finally:
+                conn.close()
+    # 3) Default static picture
+    default_pic = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               '..', '..', 'images', 'users', 'profile-pic.jpg')
+    if os.path.isfile(default_pic):
+        return send_file(default_pic, mimetype='image/jpeg')
+    return ('', 404)
+
+
+@app.route('/auth/profile-picture', methods=['POST'])
+def auth_upload_profile_picture():
+    """Upload a new profile picture. Always saves to filesystem; also saves to DB if available."""
+    username = request.form.get('username', '').strip()
+    if not username or not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+        return jsonify({"success": False, "error": "Invalid username."})
+    if 'picture' not in request.files:
+        return jsonify({"success": False, "error": "No file provided."})
+    f = request.files['picture']
+    if not f or f.filename == '':
+        return jsonify({"success": False, "error": "No file selected."})
+    mime = f.content_type or 'image/jpeg'
+    if not mime.startswith('image/'):
+        return jsonify({"success": False, "error": "Only image files are allowed."})
+    data = f.read()
+    if len(data) > 5 * 1024 * 1024:
+        return jsonify({"success": False, "error": "Image must be smaller than 5 MB."})
+    # 1) Always save to filesystem (no DB or Deploy needed)
+    try:
+        data_path, mime_path = _get_user_picture_paths(username)
+        with open(data_path, 'wb') as fp:
+            fp.write(data)
+        with open(mime_path, 'w') as fp:
+            fp.write(mime)
+    except Exception as e:
+        return jsonify({"success": False, "error": "Could not save picture: " + str(e)})
+    # 2) Also save to DB if available (best-effort, won't fail the request)
+    if _storage_is_db():
+        conn = _db_connect()
+        if conn:
+            try:
+                cur = conn.cursor()
+                cur.execute("INSERT IGNORE INTO users (username) VALUES (%s)", (username,))
+                cur.execute("SELECT id FROM users WHERE username=%s LIMIT 1", (username,))
+                row = cur.fetchone()
+                if row:
+                    cur.execute(
+                        "INSERT INTO user_pictures (user_id, picture_data, mime_type) VALUES (%s, %s, %s) "
+                        "ON DUPLICATE KEY UPDATE picture_data=VALUES(picture_data), mime_type=VALUES(mime_type)",
+                        (row['id'], data, mime)
+                    )
+            except Exception:
+                pass  # DB table may not exist yet — filesystem save is enough
+            finally:
+                conn.close()
+    user_manager.log_activity(username, 'upload_picture', 'User updated profile picture')
+    return jsonify({"success": True})
+
 
 @app.route('/search-roles')
 def search_roles():
@@ -724,7 +1025,12 @@ def dashboard_builds():
 def dashboard_system():
     """Returns real-time memory and /iDASREPO disk usage."""
     try:
-        # --- Memory ---
+        settings = _get_system_settings()
+
+        if settings['mode'] == 'remote' and settings.get('remote_ip'):
+            return _dashboard_system_remote(settings['remote_ip'], settings.get('ssh_user', 'root'))
+
+        # --- Local: Memory ---
         with open('/proc/meminfo', 'r') as f:
             meminfo = {}
             for line in f:
@@ -738,7 +1044,7 @@ def dashboard_system():
         def fmt_gb(kb):
             return f"{kb / 1048576:.1f} GB"
 
-        # --- Disk /iDASREPO ---
+        # --- Local: Disk /iDASREPO ---
         disk = {"total": "--", "used": "--", "free": "--", "percent": 0}
         try:
             st = os.statvfs('/iDASREPO')
@@ -771,6 +1077,52 @@ def dashboard_system():
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+
+def _dashboard_system_remote(remote_ip, ssh_user):
+    """Fetch memory and disk info from remote host via SSH."""
+    try:
+        out = _run_remote(['cat', '/proc/meminfo'], remote_ip, ssh_user)
+        meminfo = {}
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) >= 2:
+                meminfo[parts[0].rstrip(':')] = int(parts[1])
+        mem_total = meminfo.get('MemTotal', 0)
+        mem_available = meminfo.get('MemAvailable', meminfo.get('MemFree', 0))
+        mem_used = mem_total - mem_available
+        mem_percent = round(mem_used / mem_total * 100, 1) if mem_total else 0
+
+        def fmt_gb(kb):
+            return '{:.1f} GB'.format(kb / 1048576)
+
+        disk = {"total": "--", "used": "--", "free": "--", "percent": 0}
+        try:
+            df_out = _run_remote(['df', '-B1', '/iDASREPO'], remote_ip, ssh_user)
+            df_lines = df_out.strip().splitlines()
+            if len(df_lines) >= 2:
+                parts = df_lines[1].split()
+                d_total = int(parts[1])
+                d_used = int(parts[2])
+                d_free = int(parts[3])
+                d_pct = round(d_used / d_total * 100, 1) if d_total else 0
+                def fmt_bytes(b):
+                    if b >= 1099511627776:
+                        return '{:.1f}T'.format(b / 1099511627776)
+                    return '{:.0f}G'.format(b / 1073741824)
+                disk = {"total": fmt_bytes(d_total), "used": fmt_bytes(d_used),
+                        "free": fmt_bytes(d_free), "percent": d_pct}
+        except Exception:
+            pass
+
+        return jsonify({
+            "success": True,
+            "memory": {"total": fmt_gb(mem_total), "used": fmt_gb(mem_used),
+                       "free": fmt_gb(mem_available), "percent": mem_percent},
+            "disk": disk
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": "Remote: " + str(e)})
 
 # All above this is endpoints, do not delete the lines below
 
@@ -1294,14 +1646,20 @@ def admin_activity_log():
         return jsonify({"success": False, "error": "Unauthorized."}), 403
     user_filter = request.args.get('filter_user', '').strip() or None
     limit = int(request.args.get('limit', 500))
-    entries = user_manager.get_activity_log(limit=limit, username_filter=user_filter)
+    if _storage_is_db():
+        entries = _db_get_activity_log(limit=limit, username_filter=user_filter)
+    else:
+        entries = user_manager.get_activity_log(limit=limit, username_filter=user_filter)
     return jsonify({"success": True, "entries": entries})
 
 
 @app.route('/admin/projects', methods=['GET'])
 def admin_get_projects():
     """Returns all project assignments."""
-    assignments = user_manager.get_all_projects()
+    if _storage_is_db():
+        assignments = _db_get_all_assignments()
+    else:
+        assignments = user_manager.get_all_projects()
     status_labels = user_manager.get_status_labels()
     status_colors = user_manager.get_status_colors()
     return jsonify({
@@ -1327,9 +1685,12 @@ def admin_move_project():
     if not all([project_name, from_user, to_user]):
         return jsonify({"success": False, "error": "Missing required fields."})
 
-    ok, msg = user_manager.move_project(project_name, from_user, to_user)
+    if _storage_is_db():
+        ok, msg = _db_move_project_assignment(project_name, from_user, to_user)
+    else:
+        ok, msg = user_manager.move_project(project_name, from_user, to_user)
     if ok:
-        user_manager.log_activity(admin_user, 'move_project',
+        _log_activity(admin_user, 'move_project',
             f'Moved {project_name} from {from_user} to {to_user}')
     return jsonify({"success": ok, "error": "" if ok else msg})
 
@@ -1346,9 +1707,12 @@ def admin_set_project_status():
     project_name = data.get('project_name', '').strip()
     status = data.get('status', '').strip()
 
-    ok, msg = user_manager.set_project_status(username, project_name, status)
+    if _storage_is_db():
+        ok, msg = _db_set_project_status(username, project_name, status)
+    else:
+        ok, msg = user_manager.set_project_status(username, project_name, status)
     if ok:
-        user_manager.log_activity(admin_user, 'set_project_status',
+        _log_activity(admin_user, 'set_project_status',
             f'Set {project_name} ({username}) to {status}')
     return jsonify({"success": ok, "error": "" if ok else msg})
 
@@ -1368,9 +1732,12 @@ def admin_add_project():
     if not username or not project_name:
         return jsonify({"success": False, "error": "Username and project name are required."})
 
-    ok, msg = user_manager.add_project(username, project_name, status)
+    if _storage_is_db():
+        ok, msg = _db_add_project_assignment(username, project_name, status)
+    else:
+        ok, msg = user_manager.add_project(username, project_name, status)
     if ok:
-        user_manager.log_activity(admin_user, 'add_project',
+        _log_activity(admin_user, 'add_project',
             f'Added {project_name} to {username}')
     return jsonify({"success": ok, "error": "" if ok else msg})
 
@@ -1386,9 +1753,12 @@ def admin_remove_project():
     username = data.get('username', '').strip()
     project_name = data.get('project_name', '').strip()
 
-    ok, msg = user_manager.remove_project(username, project_name)
+    if _storage_is_db():
+        ok, msg = _db_remove_project_assignment(username, project_name)
+    else:
+        ok, msg = user_manager.remove_project(username, project_name)
     if ok:
-        user_manager.log_activity(admin_user, 'remove_project',
+        _log_activity(admin_user, 'remove_project',
             f'Removed {project_name} from {username}')
     return jsonify({"success": ok, "error": "" if ok else msg})
 
@@ -1396,23 +1766,34 @@ def admin_remove_project():
 @app.route('/admin/projects/available', methods=['GET'])
 def admin_available_projects():
     """Returns the list of master projects not yet assigned to any user."""
-    available = user_manager.get_available_projects()
+    if _storage_is_db():
+        available = _db_get_available_projects()
+    else:
+        available = user_manager.get_available_projects()
     return jsonify({"success": True, "projects": available})
 
 
 @app.route('/admin/projects/master', methods=['GET'])
 def admin_master_projects():
     """Returns all master projects with their assignment info."""
-    master = user_manager.get_master_projects()
-    result = []
-    for p in master:
-        assigned_to, status = user_manager.get_project_assignment(p['name'])
-        result.append({
-            "name": p['name'],
-            "folder": p['folder'],
-            "assigned_to": assigned_to or '',
-            "status": status or ''
-        })
+    if _storage_is_db():
+        master = _db_get_master_projects()
+        result = []
+        for p in master:
+            assigned_to, status = _db_get_project_assignment(p['name'])
+            result.append({
+                "name": p['name'], "folder": p['folder'],
+                "assigned_to": assigned_to or '', "status": status or ''
+            })
+    else:
+        master = user_manager.get_master_projects()
+        result = []
+        for p in master:
+            assigned_to, status = user_manager.get_project_assignment(p['name'])
+            result.append({
+                "name": p['name'], "folder": p['folder'],
+                "assigned_to": assigned_to or '', "status": status or ''
+            })
     return jsonify({"success": True, "projects": result})
 
 
@@ -1434,13 +1815,21 @@ def admin_add_master_project():
     if not folder:
         folder = name.lower().replace(' ', '-')
 
-    ok, msg = user_manager.add_master_project(name, folder)
-    if ok:
-        user_manager.log_activity(admin_user, 'create_project', f'Created project {name} (folder: {folder})')
-        # Optionally assign to a user
-        if assign_to:
-            user_manager.add_project(assign_to, name, status)
-            user_manager.log_activity(admin_user, 'assign_project', f'Assigned {name} to {assign_to}')
+    if _storage_is_db():
+        ok, msg = _db_add_master_project(name, folder)
+        if ok:
+            _db_log_activity(admin_user, 'create_project', f'Created project {name} (folder: {folder})')
+            if assign_to:
+                _db_add_project_assignment(assign_to, name, status)
+                _db_log_activity(admin_user, 'assign_project', f'Assigned {name} to {assign_to}')
+    else:
+        ok, msg = user_manager.add_master_project(name, folder)
+        if ok:
+            user_manager.log_activity(admin_user, 'create_project', f'Created project {name} (folder: {folder})')
+            # Optionally assign to a user
+            if assign_to:
+                user_manager.add_project(assign_to, name, status)
+                user_manager.log_activity(admin_user, 'assign_project', f'Assigned {name} to {assign_to}')
     return jsonify({"success": ok, "error": "" if ok else msg})
 
 
@@ -1461,9 +1850,12 @@ def admin_update_master_project():
     if not new_folder:
         new_folder = new_name.lower().replace(' ', '-')
 
-    ok, msg = user_manager.update_master_project(old_name, new_name, new_folder)
+    if _storage_is_db():
+        ok, msg = _db_update_master_project(old_name, new_name, new_folder)
+    else:
+        ok, msg = user_manager.update_master_project(old_name, new_name, new_folder)
     if ok:
-        user_manager.log_activity(admin_user, 'update_project', f'Updated project {old_name} → {new_name} (folder: {new_folder})')
+        _log_activity(admin_user, 'update_project', f'Updated project {old_name} \u2192 {new_name} (folder: {new_folder})')
     return jsonify({"success": ok, "error": "" if ok else msg})
 
 
@@ -1479,15 +1871,20 @@ def admin_delete_master_project():
     if not name:
         return jsonify({"success": False, "error": "Project name is required."})
 
-    ok, msg = user_manager.delete_master_project(name)
+    if _storage_is_db():
+        ok, msg = _db_delete_master_project(name)
+    else:
+        ok, msg = user_manager.delete_master_project(name)
     if ok:
-        user_manager.log_activity(admin_user, 'delete_project', f'Deleted project {name}')
+        _log_activity(admin_user, 'delete_project', f'Deleted project {name}')
     return jsonify({"success": ok, "error": "" if ok else msg})
 
 
 @app.route('/admin/users', methods=['GET'])
 def admin_list_managed_users():
     """List only managed users (those in projects.json)."""
+    if _storage_is_db():
+        return jsonify({"success": True, "users": _db_list_users()})
     assignments = user_manager.get_all_projects()
     result = []
     for username, info in assignments.items():
@@ -1520,9 +1917,11 @@ def admin_toggle_admin():
     target_user = data.get('username', '').strip()
     make_admin = data.get('is_admin', False)
 
-    user_manager.set_admin(target_user, make_admin)
+    user_manager.set_admin(target_user, make_admin)  # always keep admin.json in sync
+    if _storage_is_db():
+        _db_toggle_admin(target_user, make_admin)
     action = 'grant_admin' if make_admin else 'revoke_admin'
-    user_manager.log_activity(admin_user, action, f'{action} for {target_user}')
+    _log_activity(admin_user, action, f'{action} for {target_user}')
     return jsonify({"success": True})
 
 
@@ -1535,8 +1934,10 @@ def admin_add_user_to_list():
         return jsonify({"success": False, "error": "Unauthorized."}), 403
 
     target_user = data.get('username', '').strip()
-    user_manager.add_user_to_projects(target_user)
-    user_manager.log_activity(admin_user, 'add_user_to_list', f'Added {target_user} to managed users')
+    user_manager.add_user_to_projects(target_user)  # always keep JSON in sync
+    if _storage_is_db():
+        _db_add_user(target_user)
+    _log_activity(admin_user, 'add_user_to_list', f'Added {target_user} to managed users')
     return jsonify({"success": True})
 
 
@@ -1549,8 +1950,10 @@ def admin_remove_user_from_list():
         return jsonify({"success": False, "error": "Unauthorized."}), 403
 
     target_user = data.get('username', '').strip()
-    user_manager.remove_user_from_projects(target_user)
-    user_manager.log_activity(admin_user, 'remove_user_from_list', f'Removed {target_user} from managed users')
+    user_manager.remove_user_from_projects(target_user)  # always keep JSON in sync
+    if _storage_is_db():
+        _db_remove_user(target_user)
+    _log_activity(admin_user, 'remove_user_from_list', f'Removed {target_user} from managed users')
     return jsonify({"success": True})
 
 
@@ -1566,8 +1969,80 @@ def admin_update_user():
     display_name = data.get('display_name', '').strip()
     if not target_user:
         return jsonify({"success": False, "error": "Username is required."})
-    user_manager.update_display_name(target_user, display_name)
-    user_manager.log_activity(admin_user, 'update_user', f'Updated display name for {target_user} to "{display_name}"')
+    user_manager.update_display_name(target_user, display_name)  # always keep JSON in sync
+    if _storage_is_db():
+        _db_update_display_name(target_user, display_name)
+    _log_activity(admin_user, 'update_user', f'Updated display name for {target_user} to "{display_name}"')
+    return jsonify({"success": True})
+
+
+@app.route('/admin/users/add-db-user', methods=['POST'])
+def admin_add_db_user():
+    """Create a new DB-only user (no OS account required). Only in DB storage mode."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    if not _storage_is_db():
+        return jsonify({"success": False, "error": "DB storage mode is required."})
+
+    username = data.get('username', '').strip().lower()
+    if not username:
+        return jsonify({"success": False, "error": "Username is required."})
+    if not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+        return jsonify({"success": False, "error": "Invalid username. Use only letters, numbers, _ . -"})
+
+    # Check for duplicates
+    assignments = _db_get_all_assignments()
+    if username in assignments:
+        return jsonify({"success": False, "error": f"User '{username}' already exists."})
+
+    user_manager.add_user_to_projects(username)   # keep JSON in sync
+    _db_add_user(username)
+    _log_activity(admin_user, 'add_db_user', f'Created DB user {username}')
+    return jsonify({"success": True})
+
+
+@app.route('/admin/users/bulk-action', methods=['POST'])
+def admin_bulk_action():
+    """Perform a bulk action (delete or set_role) on multiple users. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    action    = data.get('action', '')       # 'delete' | 'set_admin' | 'set_user'
+    usernames = data.get('usernames', [])    # list of strings
+
+    if action not in ('delete', 'set_admin', 'set_user'):
+        return jsonify({"success": False, "error": "Invalid action."})
+    if not usernames or not isinstance(usernames, list):
+        return jsonify({"success": False, "error": "No users provided."})
+
+    errors = []
+    for username in usernames:
+        username = str(username).strip()
+        if not username or not re.match(r'^[a-zA-Z0-9_.\-]+$', username):
+            continue
+        if username == admin_user:
+            continue  # never self-modify
+        try:
+            if action == 'delete':
+                user_manager.remove_user_from_projects(username)
+                if _storage_is_db():
+                    _db_remove_user(username)
+                _log_activity(admin_user, 'bulk_delete_user', f'Bulk-deleted {username}')
+            elif action in ('set_admin', 'set_user'):
+                make_admin = (action == 'set_admin')
+                user_manager.set_admin(username, make_admin)
+                if _storage_is_db():
+                    _db_toggle_admin(username, make_admin)
+                _log_activity(admin_user, 'bulk_set_role', f'Bulk set {username} as {"admin" if make_admin else "user"}')
+        except Exception as e:
+            errors.append(f'{username}: {str(e)}')
+
+    if errors:
+        return jsonify({"success": True, "warnings": errors})
     return jsonify({"success": True})
 
 # End Admin endpoints
@@ -1581,22 +2056,32 @@ def admin_update_user():
 def report_project_info():
     """Returns project info data for the project information page."""
     try:
-        master_projects = user_manager.get_master_projects()
-        projects = []
-        for mp in master_projects:
-            assigned_to, status = user_manager.get_project_assignment(mp['name'])
-            display_name = ''
-            if assigned_to:
-                display_name = user_manager.get_display_name(assigned_to)
-            projects.append({
-                'name': mp['name'],
-                'folder': mp['folder'],
-                'assigned_to': assigned_to or '',
-                'display_name': display_name,
-                'status': status or '',
-                'status_label': user_manager.get_status_labels().get(status, 'Unassigned'),
-                'notes': mp.get('notes', ''),
-            })
+        if _storage_is_db():
+            raw = _db_get_user_projects()
+            projects = []
+            for p in raw:
+                projects.append({
+                    'name': p['name'], 'folder': p['folder'],
+                    'assigned_to': p['assigned_to'], 'display_name': p['display_name'],
+                    'status': p['status'],
+                    'status_label': user_manager.get_status_labels().get(p['status'], 'Unassigned'),
+                    'notes': p['notes'],
+                })
+        else:
+            master_projects = user_manager.get_master_projects()
+            projects = []
+            for mp in master_projects:
+                assigned_to, status = user_manager.get_project_assignment(mp['name'])
+                display_name = ''
+                if assigned_to:
+                    display_name = user_manager.get_display_name(assigned_to)
+                projects.append({
+                    'name': mp['name'], 'folder': mp['folder'],
+                    'assigned_to': assigned_to or '', 'display_name': display_name,
+                    'status': status or '',
+                    'status_label': user_manager.get_status_labels().get(status, 'Unassigned'),
+                    'notes': mp.get('notes', ''),
+                })
 
         # Status counts
         counts = {}
@@ -1617,14 +2102,25 @@ def report_save_notes():
         notes_map = data.get('notes', {})   # { "PROJECT_NAME": "notes text", ... }
         status_map = data.get('statuses', {})  # { "PROJECT_NAME": "wip", ... }
         for project_name, notes_text in notes_map.items():
-            user_manager.set_project_notes(project_name, notes_text)
+            if _storage_is_db():
+                _db_set_project_notes(project_name, notes_text)
+            else:
+                user_manager.set_project_notes(project_name, notes_text)
         valid_statuses = {'done', 'not_ok', 'idle', 'wip'}
+        if _storage_is_db():
+            all_st = _db_get_all_statuses()
+            valid_statuses = set(_db_status_name_to_key(s['name']) for s in all_st)
         for project_name, status in status_map.items():
             if status not in valid_statuses:
                 continue
-            username, _ = user_manager.get_project_assignment(project_name)
-            if username:
-                user_manager.set_project_status(username, project_name, status)
+            if _storage_is_db():
+                username, _ = _db_get_project_assignment(project_name)
+                if username:
+                    _db_set_project_status(username, project_name, status)
+            else:
+                username, _ = user_manager.get_project_assignment(project_name)
+                if username:
+                    user_manager.set_project_status(username, project_name, status)
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -1654,11 +2150,18 @@ def report_download():
 def system_processes():
     """Returns the current list of running processes, sorted by CPU%."""
     try:
-        result = subprocess.run(
-            ['ps', 'aux', '--sort=-%cpu'],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        lines = result.stdout.decode('utf-8', errors='replace').splitlines()
+        settings = _get_system_settings()
+
+        if settings['mode'] == 'remote' and settings.get('remote_ip'):
+            raw = _run_remote(['ps', 'aux', '--sort=-%cpu'], settings['remote_ip'], settings.get('ssh_user', 'root'))
+            lines = raw.splitlines()
+        else:
+            result = subprocess.run(
+                ['ps', 'aux', '--sort=-%cpu'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            lines = result.stdout.decode('utf-8', errors='replace').splitlines()
+
         processes = []
         for line in lines[1:]:  # skip header
             parts = line.split(None, 10)
@@ -1700,6 +2203,16 @@ def system_kill_process():
     if pid <= 1:
         return jsonify({"success": False, "error": "Cannot kill this process."})
 
+    settings = _get_system_settings()
+
+    if settings['mode'] == 'remote' and settings.get('remote_ip'):
+        try:
+            _run_remote(['kill', '-15', str(pid)], settings['remote_ip'], settings.get('ssh_user', 'root'))
+            user_manager.log_activity(admin_user, 'kill_process', 'Killed PID {} on {}'.format(pid, settings['remote_ip']))
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)})
+
     try:
         os.kill(pid, 15)  # SIGTERM
         user_manager.log_activity(admin_user, 'kill_process', f'Killed PID {pid}')
@@ -1717,8 +2230,46 @@ def system_process_detail(pid):
     if pid <= 0:
         return jsonify({"success": False, "error": "Invalid PID."})
 
+    settings = _get_system_settings()
+    is_remote = settings['mode'] == 'remote' and settings.get('remote_ip')
+
     detail = {"pid": pid}
 
+    if is_remote:
+        remote_ip = settings['remote_ip']
+        ssh_user = settings.get('ssh_user', 'root')
+        try:
+            out = _run_remote(['cat', '/proc/{}/status'.format(pid)], remote_ip, ssh_user)
+            for line in out.splitlines():
+                parts = line.strip().split(':', 1)
+                if len(parts) == 2:
+                    detail[parts[0].strip()] = parts[1].strip()
+        except Exception:
+            return jsonify({"success": False, "error": "Process not found on remote host."})
+        try:
+            out = _run_remote(['cat', '/proc/{}/cmdline'.format(pid)], remote_ip, ssh_user)
+            detail['cmdline_full'] = out.replace('\x00', ' ').strip()
+        except Exception:
+            detail['cmdline_full'] = ''
+        try:
+            out = _run_remote(['cat', '/proc/{}/io'.format(pid)], remote_ip, ssh_user)
+            io = {}
+            for line in out.splitlines():
+                parts = line.strip().split(':', 1)
+                if len(parts) == 2:
+                    io[parts[0].strip()] = parts[1].strip()
+            detail['io'] = io
+        except Exception:
+            detail['io'] = {}
+        try:
+            out = _run_remote(['cat', '/proc/{}/wchan'.format(pid)], remote_ip, ssh_user)
+            detail['wchan'] = out.strip()
+        except Exception:
+            detail['wchan'] = ''
+        detail['env_var_count'] = None
+        return jsonify({"success": True, "detail": detail})
+
+    # Local mode
     # /proc/<pid>/status
     try:
         with open('/proc/{}/status'.format(pid), 'r') as f:
@@ -1767,6 +2318,1422 @@ def system_process_detail(pid):
     return jsonify({"success": True, "detail": detail})
 
 # End Processes endpoints
+# ============================================================
+
+# ============================================================
+# System Settings endpoints (Local / Remote mode)
+# ============================================================
+
+def _get_system_settings():
+    """Load system settings from /opt/pulpitans/system_settings.json."""
+    base_dir = user_manager._get_base_dir()
+    path = os.path.join(base_dir, 'system_settings.json')
+    defaults = {
+        'mode': 'local', 'remote_ip': '', 'ssh_user': 'root',
+        'db': {'type': 'mariadb', 'host': '127.0.0.1', 'port': 3306, 'name': '', 'user': '', 'password': ''},
+        'auth': {'method': 'system', 'sso': {}},
+        'storage_mode': 'local'
+    }
+    if os.path.isfile(path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+        for k, v in defaults.items():
+            data.setdefault(k, v)
+        if 'db' in data and isinstance(data['db'], dict):
+            for dk, dv in defaults['db'].items():
+                data['db'].setdefault(dk, dv)
+        return data
+    return dict(defaults)
+
+
+def _save_system_settings(data):
+    base_dir = user_manager._get_base_dir()
+    path = os.path.join(base_dir, 'system_settings.json')
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=2)
+
+
+# ============================================================
+# Database Data Layer (used when storage_mode == 'database')
+# ============================================================
+
+def _storage_is_db():
+    """Returns True if storage mode is set to 'database'."""
+    return _get_system_settings().get('storage_mode', 'local') == 'database'
+
+
+def _db_connect():
+    """Get a PyMySQL connection from system settings. Returns None if unavailable."""
+    try:
+        import pymysql
+        s = _get_system_settings()
+        db = s.get('db', {})
+        if not db.get('host') or not db.get('user') or not db.get('name'):
+            return None
+        return pymysql.connect(
+            host=db['host'], port=int(db.get('port', 3306)),
+            user=db['user'], password=db.get('password', ''),
+            database=db['name'], connect_timeout=5, autocommit=True,
+            cursorclass=pymysql.cursors.DictCursor
+        )
+    except Exception:
+        return None
+
+
+# -- DB: Project Status --
+
+def _db_get_all_statuses():
+    """Returns list of all project statuses ordered by sort_order."""
+    conn = _db_connect()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, color, icon, is_default, sort_order FROM project_status ORDER BY sort_order, id")
+        return [{'id': r['id'], 'name': r['name'], 'color': r['color'] or 'secondary',
+                 'icon': r['icon'] or 'circle', 'is_default': bool(r['is_default']),
+                 'sort_order': r['sort_order']} for r in cur.fetchall()]
+    except Exception:
+        return []
+    finally:
+        conn.close()
+
+
+def _db_get_status_name(status_id):
+    """Resolve a status_id to its name. Returns '' if not found."""
+    conn = _db_connect()
+    if not conn: return ''
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM project_status WHERE id=%s", (status_id,))
+        row = cur.fetchone()
+        return row['name'] if row else ''
+    finally:
+        conn.close()
+
+
+def _db_status_name_to_key(status_name):
+    """Convert a DB status name (e.g. 'WIP') to the legacy key (e.g. 'wip') for JSON compat."""
+    _map = {'DONE': 'done', 'NOT OK': 'not_ok', 'IDLE': 'idle', 'WIP': 'wip'}
+    return _map.get(status_name, status_name.lower().replace(' ', '_'))
+
+
+def _db_resolve_status_id(status_key):
+    """Convert legacy status key (e.g. 'wip') to a status_id in project_status table."""
+    _key_to_name = {'done': 'DONE', 'not_ok': 'NOT OK', 'idle': 'IDLE', 'wip': 'WIP'}
+    name = _key_to_name.get(status_key, status_key.upper() if status_key else None)
+    if not name:
+        return None
+    conn = _db_connect()
+    if not conn: return None
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM project_status WHERE name=%s", (name,))
+        row = cur.fetchone()
+        return row['id'] if row else None
+    finally:
+        conn.close()
+
+
+# -- DB: Admin Projects (admin-projects.html) --
+# admin_projects has assigned_to (FK→users.id) and status_id (FK→project_status.id)
+
+def _db_get_master_projects():
+    """Read master project catalog with assigned user and status."""
+    conn = _db_connect()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT ap.id, ap.name, ap.folder, u.username AS assigned_to, "
+            "ps.name AS status_name "
+            "FROM admin_projects ap "
+            "LEFT JOIN users u ON u.id = ap.assigned_to "
+            "LEFT JOIN project_status ps ON ps.id = ap.status_id "
+            "ORDER BY ap.name"
+        )
+        return [{'id': r['id'], 'name': r['name'], 'folder': r['folder'] or '',
+                 'assigned_to': r['assigned_to'] or '',
+                 'status': _db_status_name_to_key(r['status_name']) if r['status_name'] else '',
+                 'status_name': r['status_name'] or ''} for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def _db_add_master_project(name, folder):
+    conn = _db_connect()
+    if not conn: return False, "DB not available"
+    try:
+        cur = conn.cursor()
+        cur.execute("INSERT INTO admin_projects (name, folder) VALUES (%s, %s)", (name, folder))
+        return True, ''
+    except Exception as e:
+        return False, "Project already exists." if 'Duplicate' in str(e) else str(e)
+    finally:
+        conn.close()
+
+
+def _db_update_master_project(old_name, new_name, new_folder):
+    """Rename/update a project. user_projects rows stay linked via project_id FK."""
+    conn = _db_connect()
+    if not conn: return False, "DB not available"
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE admin_projects SET name=%s, folder=%s WHERE name=%s",
+            (new_name, new_folder, old_name)
+        )
+        return True, ''
+    except Exception as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+
+def _db_delete_master_project(name):
+    """Delete a project. ON DELETE CASCADE removes linked user_projects rows."""
+    conn = _db_connect()
+    if not conn: return False, "DB not available"
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM admin_projects WHERE name=%s", (name,))
+        return True, ''
+    except Exception as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+
+def _db_get_project_assignment(project_name):
+    """Returns (username, status_key) from admin_projects."""
+    conn = _db_connect()
+    if not conn: return None, None
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT u.username, ps.name AS status_name "
+            "FROM admin_projects ap "
+            "LEFT JOIN users u ON u.id = ap.assigned_to "
+            "LEFT JOIN project_status ps ON ps.id = ap.status_id "
+            "WHERE ap.name = %s LIMIT 1",
+            (project_name,)
+        )
+        row = cur.fetchone()
+        if not row or not row['username']:
+            return None, None
+        return (row['username'], _db_status_name_to_key(row['status_name']) if row['status_name'] else '')
+    finally:
+        conn.close()
+
+
+def _db_get_available_projects():
+    """Returns names of admin_projects not assigned to any user."""
+    conn = _db_connect()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM admin_projects WHERE assigned_to IS NULL ORDER BY name")
+        return [r['name'] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+# -- DB: User Projects (project-info.html) --
+# user_projects stores the assignment (user_id FK → users, project_id FK → admin_projects)
+# plus status and notes (owned by project-info page)
+
+def _db_get_user_projects():
+    """All projects with assignment info, status, and notes — for project-info page."""
+    conn = _db_connect()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT ap.name, ap.folder, u.username, u.display_name, "
+            "ps.name AS status_name, up.notes "
+            "FROM user_projects up "
+            "JOIN admin_projects ap ON ap.id = up.project_id "
+            "JOIN users u ON u.id = up.user_id "
+            "LEFT JOIN project_status ps ON ps.id = up.status_id "
+            "ORDER BY ap.name"
+        )
+        results = []
+        for r in cur.fetchall():
+            results.append({
+                'name': r['name'], 'folder': r['folder'] or '',
+                'assigned_to': r['username'] or '', 'display_name': r['display_name'] or '',
+                'status': _db_status_name_to_key(r['status_name']) if r['status_name'] else '',
+                'notes': r['notes'] or '',
+            })
+        # Unassigned projects
+        cur.execute(
+            "SELECT ap.name, ap.folder FROM admin_projects ap "
+            "WHERE ap.assigned_to IS NULL ORDER BY ap.name"
+        )
+        for r in cur.fetchall():
+            results.append({
+                'name': r['name'], 'folder': r['folder'] or '',
+                'assigned_to': '', 'display_name': '', 'status': '', 'notes': '',
+            })
+        return results
+    finally:
+        conn.close()
+
+
+def _db_set_project_notes(project_name, notes):
+    """Save notes for a project (identified by name) in user_projects."""
+    conn = _db_connect()
+    if not conn: return
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE user_projects up "
+            "JOIN admin_projects ap ON ap.id = up.project_id "
+            "SET up.notes = %s "
+            "WHERE ap.name = %s",
+            (notes, project_name)
+        )
+    finally:
+        conn.close()
+
+
+# -- DB: User-Project Assignments (admin-projects.html) --
+
+def _db_get_all_assignments():
+    """Returns dict {username: {display_name, projects: [{name, status}]}}."""
+    conn = _db_connect()
+    if not conn: return {}
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT username, display_name FROM users ORDER BY username")
+        result = {r['username']: {'display_name': r['display_name'] or '', 'projects': []} for r in cur.fetchall()}
+        cur.execute(
+            "SELECT u.username, ap.name AS project_name, ps.name AS status_name, u.display_name "
+            "FROM user_projects up "
+            "JOIN users u ON u.id = up.user_id "
+            "JOIN admin_projects ap ON ap.id = up.project_id "
+            "LEFT JOIN project_status ps ON ps.id = up.status_id "
+            "ORDER BY u.username, ap.name"
+        )
+        for r in cur.fetchall():
+            un = r['username']
+            if un not in result:
+                result[un] = {'display_name': r['display_name'] or '', 'projects': []}
+            status_key = _db_status_name_to_key(r['status_name']) if r['status_name'] else 'idle'
+            result[un]['projects'].append({'name': r['project_name'], 'status': status_key})
+        return result
+    finally:
+        conn.close()
+
+
+def _db_add_project_assignment(username, project_name, status='wip'):
+    """Assign a user to a project. Also updates admin_projects.assigned_to + status_id."""
+    conn = _db_connect()
+    if not conn: return False, "DB not available"
+    try:
+        cur = conn.cursor()
+        cur.execute("INSERT IGNORE INTO users (username) VALUES (%s)", (username,))
+        status_id = _db_resolve_status_id(status)
+        cur.execute(
+            "INSERT INTO user_projects (user_id, project_id, status_id) "
+            "SELECT u.id, ap.id, %s "
+            "FROM users u JOIN admin_projects ap ON ap.name = %s "
+            "WHERE u.username = %s "
+            "ON DUPLICATE KEY UPDATE status_id = VALUES(status_id)",
+            (status_id, project_name, username)
+        )
+        # Sync admin_projects
+        cur.execute(
+            "UPDATE admin_projects SET assigned_to = "
+            "(SELECT id FROM users WHERE username = %s LIMIT 1), "
+            "status_id = %s WHERE name = %s",
+            (username, status_id, project_name)
+        )
+        return True, ''
+    except Exception as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+
+def _db_remove_project_assignment(username, project_name):
+    conn = _db_connect()
+    if not conn: return False, "DB not available"
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE up FROM user_projects up "
+            "JOIN users u ON u.id = up.user_id "
+            "JOIN admin_projects ap ON ap.id = up.project_id "
+            "WHERE u.username = %s AND ap.name = %s",
+            (username, project_name)
+        )
+        # Clear admin_projects assignment
+        cur.execute(
+            "UPDATE admin_projects SET assigned_to = NULL, status_id = NULL WHERE name = %s",
+            (project_name,)
+        )
+        return True, ''
+    except Exception as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+
+def _db_move_project_assignment(project_name, from_user, to_user):
+    """Move a project assignment from one user to another, preserving status/notes."""
+    conn = _db_connect()
+    if not conn: return False, "DB not available"
+    try:
+        cur = conn.cursor()
+        cur.execute("INSERT IGNORE INTO users (username) VALUES (%s)", (to_user,))
+        cur.execute(
+            "UPDATE user_projects up "
+            "JOIN admin_projects ap ON ap.id = up.project_id AND ap.name = %s "
+            "JOIN users fu ON fu.id = up.user_id AND fu.username = %s "
+            "SET up.user_id = (SELECT id FROM users WHERE username = %s LIMIT 1)",
+            (project_name, from_user, to_user)
+        )
+        # Sync admin_projects.assigned_to
+        cur.execute(
+            "UPDATE admin_projects SET assigned_to = "
+            "(SELECT id FROM users WHERE username = %s LIMIT 1) WHERE name = %s",
+            (to_user, project_name)
+        )
+        return True, ''
+    except Exception as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+
+def _db_set_project_status(username, project_name, status):
+    """Set status on both user_projects and admin_projects via status_id."""
+    conn = _db_connect()
+    if not conn: return False, "DB not available"
+    try:
+        cur = conn.cursor()
+        status_id = _db_resolve_status_id(status)
+        cur.execute(
+            "UPDATE user_projects up "
+            "JOIN users u ON u.id = up.user_id AND u.username = %s "
+            "JOIN admin_projects ap ON ap.id = up.project_id AND ap.name = %s "
+            "SET up.status_id = %s",
+            (username, project_name, status_id)
+        )
+        # Sync admin_projects
+        cur.execute("UPDATE admin_projects SET status_id = %s WHERE name = %s",
+                     (status_id, project_name))
+        return True, ''
+    except Exception as e:
+        return False, str(e)
+    finally:
+        conn.close()
+
+
+# -- DB: Users --
+
+def _db_list_users():
+    """Returns list of user dicts for admin panel (with their project assignments)."""
+    conn = _db_connect()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, username, display_name, is_admin FROM users ORDER BY username")
+        users = {r['id']: {
+            'username': r['username'], 'display_name': r['display_name'] or '',
+            'is_admin': bool(r['is_admin']), 'projects': []
+        } for r in cur.fetchall()}
+        cur.execute(
+            "SELECT up.user_id, ap.name AS project_name, ps.name AS status_name "
+            "FROM user_projects up "
+            "JOIN admin_projects ap ON ap.id = up.project_id "
+            "LEFT JOIN project_status ps ON ps.id = up.status_id "
+            "ORDER BY up.user_id, ap.name"
+        )
+        for r in cur.fetchall():
+            uid = r['user_id']
+            if uid in users:
+                status_key = _db_status_name_to_key(r['status_name']) if r['status_name'] else 'idle'
+                users[uid]['projects'].append({'name': r['project_name'], 'status': status_key})
+        return list(users.values())
+    finally:
+        conn.close()
+
+
+def _db_add_user(username):
+    conn = _db_connect()
+    if not conn: return
+    try:
+        cur = conn.cursor()
+        cur.execute("INSERT IGNORE INTO users (username) VALUES (%s)", (username,))
+    finally:
+        conn.close()
+
+
+def _db_remove_user(username):
+    """Delete user. ON DELETE CASCADE removes user_projects and user_config rows."""
+    conn = _db_connect()
+    if not conn: return
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM users WHERE username=%s", (username,))
+    finally:
+        conn.close()
+
+
+def _db_toggle_admin(username, make_admin):
+    conn = _db_connect()
+    if not conn: return
+    try:
+        cur = conn.cursor()
+        cur.execute("INSERT IGNORE INTO users (username) VALUES (%s)", (username,))
+        cur.execute("UPDATE users SET is_admin=%s WHERE username=%s", (1 if make_admin else 0, username))
+    finally:
+        conn.close()
+
+
+def _db_update_display_name(username, display_name):
+    conn = _db_connect()
+    if not conn: return
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET display_name=%s WHERE username=%s", (display_name, username))
+    finally:
+        conn.close()
+
+
+def _db_get_display_name(username):
+    conn = _db_connect()
+    if not conn: return ''
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT display_name FROM users WHERE username=%s", (username,))
+        row = cur.fetchone()
+        return row['display_name'] if row else ''
+    finally:
+        conn.close()
+
+
+def _db_is_admin(username):
+    conn = _db_connect()
+    if not conn: return False
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT is_admin FROM users WHERE username=%s", (username,))
+        row = cur.fetchone()
+        return bool(row['is_admin']) if row else False
+    finally:
+        conn.close()
+
+
+def _db_get_user_config(username):
+    conn = _db_connect()
+    if not conn: return {'username': username}
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, username, display_name, bitbucket_username, bitbucket_password "
+            "FROM users WHERE username=%s", (username,)
+        )
+        row = cur.fetchone()
+        if not row: return {'username': username}
+        cfg = {
+            'username': row['username'], 'display_name': row['display_name'] or '',
+            'bitbucket_username': row['bitbucket_username'] or '',
+            'bitbucket_password': row['bitbucket_password'] or '',
+        }
+        # Extended config from user_config via user_id FK
+        cur.execute(
+            "SELECT config_key, config_value FROM user_config WHERE user_id=%s",
+            (row['id'],)
+        )
+        for r in cur.fetchall():
+            if r['config_key'] not in cfg:
+                cfg[r['config_key']] = r['config_value']
+        return cfg
+    finally:
+        conn.close()
+
+
+def _db_save_user_config(username, data):
+    conn = _db_connect()
+    if not conn: return
+    try:
+        cur = conn.cursor()
+        cur.execute("INSERT IGNORE INTO users (username) VALUES (%s)", (username,))
+        cur.execute(
+            "UPDATE users SET display_name=%s, bitbucket_username=%s, bitbucket_password=%s "
+            "WHERE username=%s",
+            (data.get('display_name', ''), data.get('bitbucket_username', ''),
+             data.get('bitbucket_password', ''), username)
+        )
+        skip = {'username', 'display_name', 'bitbucket_username', 'bitbucket_password', 'is_admin'}
+        for k, v in data.items():
+            if k in skip: continue
+            # Resolve user_id in the INSERT using a subquery
+            cur.execute(
+                "INSERT INTO user_config (user_id, config_key, config_value) "
+                "SELECT id, %s, %s FROM users WHERE username=%s "
+                "ON DUPLICATE KEY UPDATE config_value=VALUES(config_value)",
+                (k, str(v), username)
+            )
+    finally:
+        conn.close()
+
+
+# -- DB: Activity Log --
+
+def _db_log_activity(username, action, details=''):
+    """Log an action. user_id is resolved from username (NULL if user not found)."""
+    conn = _db_connect()
+    if not conn: return
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO activity_log (user_id, username, action, details) "
+            "VALUES ((SELECT id FROM users WHERE username=%s LIMIT 1), %s, %s, %s)",
+            (username, username, action, details)
+        )
+    except Exception:
+        pass
+    finally:
+        conn.close()
+
+
+def _db_get_activity_log(limit=500, username_filter=None):
+    conn = _db_connect()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        if username_filter:
+            cur.execute(
+                "SELECT al.timestamp, al.username, al.action, al.details "
+                "FROM activity_log al "
+                "WHERE al.username = %s "
+                "ORDER BY al.timestamp DESC LIMIT %s",
+                (username_filter, limit)
+            )
+        else:
+            cur.execute(
+                "SELECT al.timestamp, al.username, al.action, al.details "
+                "FROM activity_log al "
+                "ORDER BY al.timestamp DESC LIMIT %s",
+                (limit,)
+            )
+        return [
+            {'timestamp': str(r['timestamp']), 'username': r['username'],
+             'action': r['action'], 'details': r['details'] or ''}
+            for r in cur.fetchall()
+        ]
+    finally:
+        conn.close()
+
+
+def _log_activity(username, action, details=''):
+    """Log to JSON (always) and also to DB if storage mode is database."""
+    user_manager.log_activity(username, action, details)
+    if _storage_is_db():
+        _db_log_activity(username, action, details)
+
+
+# End DB Data Layer
+
+
+def _run_remote(cmd_list, remote_ip, ssh_user='root'):
+    """Run a command on a remote host via SSH and return stdout."""
+    ssh_cmd = [
+        'ssh', '-o', 'StrictHostKeyChecking=no',
+        '-o', 'ConnectTimeout=5',
+        '-o', 'BatchMode=yes',
+        '{}@{}'.format(ssh_user, remote_ip)
+    ] + cmd_list
+    result = subprocess.run(ssh_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.decode('utf-8', errors='replace').strip())
+    return result.stdout.decode('utf-8', errors='replace')
+
+
+@app.route('/settings/system', methods=['GET'])
+def settings_get():
+    """Get current system settings. Admin only."""
+    username = request.args.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    settings = _get_system_settings()
+    # Check if SSH key exists
+    key_exists = os.path.isfile(os.path.expanduser('~/.ssh/id_rsa.pub'))
+    settings['ssh_key_exists'] = key_exists
+    return jsonify({"success": True, "settings": settings})
+
+
+@app.route('/settings/system', methods=['POST'])
+def settings_save():
+    """Save system settings (mode, remote_ip). Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    mode = data.get('mode', 'local').strip()
+    if mode not in ('local', 'remote'):
+        return jsonify({"success": False, "error": "Invalid mode."})
+
+    remote_ip = data.get('remote_ip', '').strip()
+    ssh_user = data.get('ssh_user', 'root').strip() or 'root'
+
+    if mode == 'remote' and not remote_ip:
+        return jsonify({"success": False, "error": "Remote IP is required for remote mode."})
+
+    # Basic IP validation
+    if remote_ip and not re.match(r'^[\d\.]+$|^[\w\.\-]+$', remote_ip):
+        return jsonify({"success": False, "error": "Invalid IP / hostname."})
+
+    settings = _get_system_settings()
+    settings['mode'] = mode
+    settings['remote_ip'] = remote_ip
+    settings['ssh_user'] = ssh_user
+    _save_system_settings(settings)
+
+    user_manager.log_activity(username, 'settings_change',
+                              'Mode: {}, IP: {}'.format(mode, remote_ip or 'N/A'))
+    return jsonify({"success": True})
+
+
+@app.route('/settings/storage', methods=['GET'])
+def settings_get_storage():
+    """Get storage mode. Admin only."""
+    username = request.args.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    s = _get_system_settings()
+    return jsonify({"success": True, "storage_mode": s.get('storage_mode', 'local')})
+
+
+@app.route('/settings/storage', methods=['POST'])
+def settings_save_storage():
+    """Save storage mode. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    mode = data.get('storage_mode', 'local').strip()
+    if mode not in ('local', 'database'):
+        return jsonify({"success": False, "error": "Invalid storage mode."})
+    if mode == 'database':
+        # Validate DB is configured
+        s = _get_system_settings()
+        db = s.get('db', {})
+        if not db.get('host') or not db.get('user') or not db.get('name'):
+            return jsonify({"success": False, "error": "Database not configured. Configure and test DB connection first."})
+    settings = _get_system_settings()
+    settings['storage_mode'] = mode
+    _save_system_settings(settings)
+    user_manager.log_activity(username, 'storage_mode_change', 'Storage mode: ' + mode)
+    return jsonify({"success": True})
+
+
+@app.route('/settings/ssh-keygen', methods=['POST'])
+def settings_ssh_keygen():
+    """Generate SSH key pair. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    key_type = data.get('key_type', 'rsa').strip()
+    bits = data.get('bits', '4096').strip()
+    passphrase = data.get('passphrase', '')
+    key_path = os.path.expanduser('~/.ssh/id_rsa')
+
+    if key_type not in ('rsa', 'ed25519', 'ecdsa'):
+        return jsonify({"success": False, "error": "Invalid key type."})
+
+    # If key already exists, don't overwrite
+    if os.path.isfile(key_path):
+        return jsonify({"success": False, "error": "SSH key already exists at {}. Delete it first if you want to regenerate.".format(key_path)})
+
+    try:
+        os.makedirs(os.path.expanduser('~/.ssh'), mode=0o700, exist_ok=True)
+        cmd = ['ssh-keygen', '-t', key_type, '-f', key_path, '-N', passphrase]
+        if key_type == 'rsa':
+            cmd += ['-b', bits]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        if result.returncode != 0:
+            return jsonify({"success": False, "error": result.stderr.decode('utf-8', errors='replace')})
+        user_manager.log_activity(username, 'ssh_keygen', 'Generated {} key'.format(key_type))
+        return jsonify({"success": True, "message": "SSH key generated successfully."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/settings/ssh-copy-id', methods=['POST'])
+def settings_ssh_copy_id():
+    """Copy SSH public key to remote server. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    remote_ip = data.get('remote_ip', '').strip()
+    ssh_user = data.get('ssh_user', 'root').strip() or 'root'
+    password = data.get('password', '')
+
+    if not remote_ip:
+        return jsonify({"success": False, "error": "Remote IP is required."})
+    if not password:
+        return jsonify({"success": False, "error": "Password is required for ssh-copy-id."})
+
+    pub_key = os.path.expanduser('~/.ssh/id_rsa.pub')
+    if not os.path.isfile(pub_key):
+        return jsonify({"success": False, "error": "No SSH public key found. Generate one first."})
+
+    try:
+        cmd = [
+            'sshpass', '-p', password,
+            'ssh-copy-id', '-o', 'StrictHostKeyChecking=no',
+            '{}@{}'.format(ssh_user, remote_ip)
+        ]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        if result.returncode != 0:
+            err = result.stderr.decode('utf-8', errors='replace')
+            if 'command not found' in err and 'sshpass' in err:
+                return jsonify({"success": False, "error": "sshpass not installed. Run: yum install sshpass"})
+            return jsonify({"success": False, "error": err})
+        user_manager.log_activity(username, 'ssh_copy_id', 'Copied key to {}@{}'.format(ssh_user, remote_ip))
+        return jsonify({"success": True, "message": "SSH key copied successfully to {}@{}.".format(ssh_user, remote_ip)})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/settings/test-connection', methods=['POST'])
+def settings_test_connection():
+    """Test SSH connection to remote server. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    remote_ip = data.get('remote_ip', '').strip()
+    ssh_user = data.get('ssh_user', 'root').strip() or 'root'
+    if not remote_ip:
+        return jsonify({"success": False, "error": "Remote IP is required."})
+
+    try:
+        output = _run_remote(['hostname', '&&', 'uptime'], remote_ip, ssh_user)
+        return jsonify({"success": True, "output": output.strip()})
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": "Connection timed out.", "hint": "timeout"})
+    except Exception as e:
+        err = str(e)
+        hint = ''
+        if 'Permission denied' in err:
+            hint = 'permission_denied'
+        elif 'No route to host' in err or 'Connection refused' in err:
+            hint = 'unreachable'
+        elif 'Could not resolve hostname' in err:
+            hint = 'dns'
+        return jsonify({"success": False, "error": err, "hint": hint})
+
+
+@app.route('/settings/db', methods=['POST'])
+def settings_save_db():
+    """Save database connection settings. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    settings = _get_system_settings()
+    settings['db'] = {
+        'type':     data.get('db_type', 'mariadb').strip(),
+        'host':     data.get('host', '127.0.0.1').strip(),
+        'port':     int(data.get('port', 3306)),
+        'name':     data.get('name', '').strip(),
+        'user':     data.get('user', '').strip(),
+        'password': data.get('password', '')
+    }
+    _save_system_settings(settings)
+    user_manager.log_activity(username, 'db_config_saved',
+                              'Database config saved: {}@{}:{}/{}'.format(
+                                  settings['db']['user'], settings['db']['host'],
+                                  settings['db']['port'], settings['db']['name']))
+    return jsonify({"success": True})
+
+
+@app.route('/settings/db/test', methods=['POST'])
+def settings_test_db():
+    """Test database connection. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    db_host = data.get('host', '127.0.0.1').strip()
+    db_port = int(data.get('port', 3306))
+    db_name = data.get('name', '').strip()
+    db_user = data.get('user', '').strip()
+    db_pass = data.get('password', '')
+
+    if not db_host or not db_user:
+        return jsonify({"success": False, "error": "Host and username are required."})
+
+    try:
+        import pymysql
+        conn = pymysql.connect(host=db_host, port=db_port, user=db_user,
+                               password=db_pass, database=db_name or None,
+                               connect_timeout=5)
+        cur = conn.cursor()
+        cur.execute("SELECT VERSION()")
+        version = cur.fetchone()[0]
+        cur.execute("SELECT CURRENT_USER()")
+        current_user = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        output = "Server version: {}\nConnected as: {}\nDatabase: {}".format(
+            version, current_user, db_name or '(none)')
+        return jsonify({"success": True, "output": output})
+    except ImportError:
+        return jsonify({"success": False, "error": "PyMySQL is not installed. Run: pip install PyMySQL"})
+    except Exception as e:
+        err = str(e)
+        hint = ''
+        if 'Access denied' in err:
+            hint = 'auth'
+        elif 'Can\'t connect' in err or 'Connection refused' in err or 'timed out' in err:
+            hint = 'unreachable'
+        return jsonify({"success": False, "error": err, "hint": hint})
+
+
+@app.route('/settings/db/deploy', methods=['POST'])
+def settings_deploy_db():
+    """Deploy database table structure. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    settings = _get_system_settings()
+    db_cfg = settings.get('db', {})
+    if not db_cfg.get('host') or not db_cfg.get('user') or not db_cfg.get('name'):
+        return jsonify({"success": False, "error": "Database not configured. Save the connection details first."})
+
+    # Order matters: drop dependent tables first, then parent tables
+    drop_order = ['activity_log', 'user_config', 'user_projects', 'admin_projects', 'project_status', 'user_pictures', 'users']
+    create_order = ['users', 'user_pictures', 'project_status', 'admin_projects', 'user_projects', 'user_config', 'activity_log']
+
+    tables_sql = {
+        'users': """
+            CREATE TABLE users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(100) NOT NULL UNIQUE,
+                display_name VARCHAR(200) DEFAULT '',
+                is_admin TINYINT(1) DEFAULT 0,
+                password_hash VARCHAR(300) DEFAULT '',
+                bitbucket_username VARCHAR(200) DEFAULT '',
+                bitbucket_password VARCHAR(500) DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        'project_status': """
+            CREATE TABLE project_status (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(50) NOT NULL UNIQUE,
+                color VARCHAR(30) DEFAULT 'secondary',
+                icon VARCHAR(50) DEFAULT 'circle',
+                is_default TINYINT(1) DEFAULT 0,
+                sort_order INT DEFAULT 0
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        'admin_projects': """
+            CREATE TABLE admin_projects (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(200) NOT NULL UNIQUE,
+                folder VARCHAR(200) DEFAULT '',
+                assigned_to INT NULL,
+                status_id INT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT fk_ap_assigned FOREIGN KEY (assigned_to)
+                    REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE,
+                CONSTRAINT fk_ap_status FOREIGN KEY (status_id)
+                    REFERENCES project_status(id) ON DELETE SET NULL ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        'user_projects': """
+            CREATE TABLE user_projects (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                project_id INT NOT NULL,
+                status_id INT NULL,
+                notes TEXT DEFAULT NULL,
+                assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_user_project (user_id, project_id),
+                CONSTRAINT fk_up_user FOREIGN KEY (user_id)
+                    REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+                CONSTRAINT fk_up_project FOREIGN KEY (project_id)
+                    REFERENCES admin_projects(id) ON DELETE CASCADE ON UPDATE CASCADE,
+                CONSTRAINT fk_up_status FOREIGN KEY (status_id)
+                    REFERENCES project_status(id) ON DELETE SET NULL ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        'user_config': """
+            CREATE TABLE user_config (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                config_key VARCHAR(100) NOT NULL,
+                config_value TEXT DEFAULT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_user_key (user_id, config_key),
+                CONSTRAINT fk_uc_user FOREIGN KEY (user_id)
+                    REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        'activity_log': """
+            CREATE TABLE activity_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                user_id INT NULL,
+                username VARCHAR(100) DEFAULT '',
+                action VARCHAR(100) DEFAULT '',
+                details TEXT DEFAULT NULL,
+                INDEX idx_timestamp (timestamp),
+                INDEX idx_user_id (user_id),
+                CONSTRAINT fk_al_user FOREIGN KEY (user_id)
+                    REFERENCES users(id) ON DELETE SET NULL ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        'user_pictures': """
+            CREATE TABLE user_pictures (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL UNIQUE,
+                picture_data MEDIUMBLOB NOT NULL,
+                mime_type VARCHAR(50) DEFAULT 'image/jpeg',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT fk_pic_user FOREIGN KEY (user_id)
+                    REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """
+    }
+
+    # Default project statuses (cannot be deleted by users)
+    default_statuses = [
+        ('DONE', 'success', 'check-circle', 1, 1),
+        ('NOT OK', 'danger', 'x-circle', 1, 2),
+        ('IDLE', 'warning', 'pause-circle', 1, 3),
+        ('WIP', 'primary', 'loader', 1, 4),
+    ]
+
+    try:
+        import pymysql
+        conn = pymysql.connect(
+            host=db_cfg['host'], port=int(db_cfg.get('port', 3306)),
+            user=db_cfg['user'], password=db_cfg.get('password', ''),
+            database=db_cfg['name'], connect_timeout=5
+        )
+        cur = conn.cursor()
+
+        # Drop all existing tables first
+        cur.execute("SET FOREIGN_KEY_CHECKS = 0")
+        for table_name in drop_order:
+            try:
+                cur.execute("DROP TABLE IF EXISTS `%s`" % table_name)
+            except Exception:
+                pass
+        # Also drop legacy 'projects' table if it exists from older schema
+        try:
+            cur.execute("DROP TABLE IF EXISTS projects")
+        except Exception:
+            pass
+        cur.execute("SET FOREIGN_KEY_CHECKS = 1")
+
+        # Create tables in order
+        results = []
+        for table_name in create_order:
+            ddl = tables_sql[table_name]
+            try:
+                cur.execute(ddl)
+                results.append({'name': table_name, 'status': 'Created'})
+            except Exception as te:
+                results.append({'name': table_name, 'status': 'Error: ' + str(te)})
+
+        # Insert default project statuses
+        for s_name, s_color, s_icon, s_default, s_order in default_statuses:
+            try:
+                cur.execute(
+                    "INSERT INTO project_status (name, color, icon, is_default, sort_order) "
+                    "VALUES (%s, %s, %s, %s, %s)",
+                    (s_name, s_color, s_icon, s_default, s_order)
+                )
+            except Exception:
+                pass
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        user_manager.log_activity(username, 'db_deploy', 'Database structure deployed')
+        return jsonify({
+            "success": True,
+            "message": "Database structure deployed successfully.",
+            "tables": results
+        })
+    except ImportError:
+        return jsonify({"success": False, "error": "PyMySQL is not installed. Run: pip install PyMySQL"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route('/settings/db/migrate', methods=['POST'])
+def settings_migrate_db():
+    """Migrate data from JSON files to the database. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    settings = _get_system_settings()
+    db_cfg = settings.get('db', {})
+    if not db_cfg.get('host') or not db_cfg.get('user') or not db_cfg.get('name'):
+        return jsonify({"success": False, "error": "Database not configured."})
+
+    try:
+        import pymysql
+        conn = pymysql.connect(
+            host=db_cfg['host'], port=int(db_cfg.get('port', 3306)),
+            user=db_cfg['user'], password=db_cfg.get('password', ''),
+            database=db_cfg['name'], connect_timeout=10
+        )
+        cur = conn.cursor()
+        migrated = []
+
+        # Build status name mapping: old lowercase key → uppercase name in project_status
+        _status_name_map = {
+            'done': 'DONE', 'not_ok': 'NOT OK', 'idle': 'IDLE', 'wip': 'WIP'
+        }
+
+        # 1. Migrate master projects → admin_projects
+        base_dir = user_manager._get_base_dir()
+        master_path = os.path.join(base_dir, 'master_projects.json')
+        master_projects = []
+        notes_by_project = {}
+        if os.path.isfile(master_path):
+            with open(master_path, 'r') as f:
+                master_projects = json.load(f)
+            count = 0
+            for p in master_projects:
+                pname = p.get('name', '')
+                notes_by_project[pname] = p.get('notes', '')
+                try:
+                    cur.execute(
+                        "INSERT INTO admin_projects (name, folder) VALUES (%s, %s) "
+                        "ON DUPLICATE KEY UPDATE folder=VALUES(folder)",
+                        (pname, p.get('folder', ''))
+                    )
+                    count += 1
+                except Exception:
+                    pass
+            migrated.append({'name': 'admin_projects', 'count': count})
+
+        # 2. Migrate admin list + user configs → users table
+        admin_path = os.path.join(base_dir, 'admin.json')
+        admin_list = []
+        if os.path.isfile(admin_path):
+            with open(admin_path, 'r') as f:
+                admin_data = json.load(f)
+            admin_list = admin_data.get('admins', [])
+
+        # Collect all known usernames from admin list, projects, and user config files
+        all_usernames = set(admin_list)
+        projects_path = os.path.join(base_dir, 'projects.json')
+        projects_data = {}
+        if os.path.isfile(projects_path):
+            with open(projects_path, 'r') as f:
+                projects_data = json.load(f).get('assignments', {})
+            all_usernames.update(projects_data.keys())
+
+        users_dir = os.path.join(base_dir, 'users')
+        if os.path.isdir(users_dir):
+            for fname in os.listdir(users_dir):
+                if fname.endswith('.json'):
+                    all_usernames.add(fname[:-5])
+
+        user_count = 0
+        config_count = 0
+        for uname in all_usernames:
+            is_admin_flag = 1 if uname in admin_list else 0
+            display_name = ''
+            bb_user = ''
+            bb_pass = ''
+
+            # Try to read user config file
+            user_cfg_path = os.path.join(users_dir, uname + '.json')
+            if os.path.isfile(user_cfg_path):
+                try:
+                    with open(user_cfg_path, 'r') as f:
+                        ucfg = json.load(f)
+                    display_name = ucfg.get('display_name', '')
+                    bb_user = ucfg.get('bitbucket_username', '')
+                    bb_pass = ucfg.get('bitbucket_password', '')
+                except Exception:
+                    pass
+
+            # Also check display_name from projects.json assignments
+            if not display_name and uname in projects_data:
+                display_name = projects_data[uname].get('display_name', '')
+
+            try:
+                cur.execute(
+                    "INSERT INTO users (username, display_name, is_admin, bitbucket_username, bitbucket_password) "
+                    "VALUES (%s, %s, %s, %s, %s) "
+                    "ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), is_admin=VALUES(is_admin), "
+                    "bitbucket_username=VALUES(bitbucket_username), bitbucket_password=VALUES(bitbucket_password)",
+                    (uname, display_name, is_admin_flag, bb_user, bb_pass)
+                )
+                user_count += 1
+            except Exception:
+                pass
+
+            # Migrate user config to user_config table (FK: user_id)
+            if os.path.isfile(user_cfg_path):
+                try:
+                    with open(user_cfg_path, 'r') as f:
+                        ucfg = json.load(f)
+                    skip_keys = {'username', 'display_name', 'bitbucket_username', 'bitbucket_password'}
+                    for ckey, cval in ucfg.items():
+                        if ckey in skip_keys:
+                            continue
+                        cur.execute(
+                            "INSERT INTO user_config (user_id, config_key, config_value) "
+                            "SELECT id, %s, %s FROM users WHERE username=%s "
+                            "ON DUPLICATE KEY UPDATE config_value=VALUES(config_value)",
+                            (ckey, str(cval), uname)
+                        )
+                        config_count += 1
+                except Exception:
+                    pass
+
+        migrated.append({'name': 'users', 'count': user_count})
+        migrated.append({'name': 'user_config', 'count': config_count})
+
+        # 3. Migrate user-project assignments (user_id + project_id + status_id via FK)
+        assign_count = 0
+        for uname, udata in projects_data.items():
+            for proj in udata.get('projects', []):
+                proj_name = proj.get('name', '')
+                proj_notes = notes_by_project.get(proj_name, '')
+                old_status = proj.get('status', 'idle')
+                new_status_name = _status_name_map.get(old_status, 'IDLE')
+                try:
+                    cur.execute(
+                        "INSERT INTO user_projects (user_id, project_id, status_id, notes) "
+                        "SELECT u.id, ap.id, ps.id, %s "
+                        "FROM users u "
+                        "JOIN admin_projects ap ON ap.name = %s "
+                        "JOIN project_status ps ON ps.name = %s "
+                        "WHERE u.username = %s "
+                        "ON DUPLICATE KEY UPDATE status_id=VALUES(status_id), notes=VALUES(notes)",
+                        (proj_notes, proj_name, new_status_name, uname)
+                    )
+                    assign_count += 1
+                except Exception:
+                    pass
+        migrated.append({'name': 'user_projects', 'count': assign_count})
+
+        # 3b. Update admin_projects with assigned_to and status_id from user_projects
+        try:
+            cur.execute(
+                "UPDATE admin_projects ap "
+                "JOIN user_projects up ON up.project_id = ap.id "
+                "SET ap.assigned_to = up.user_id, ap.status_id = up.status_id"
+            )
+        except Exception:
+            pass
+
+        # 4. Migrate activity log
+        log_path = os.path.join(base_dir, 'activity.log')
+        log_count = 0
+        if os.path.isfile(log_path):
+            with open(log_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        entry = json.loads(line)
+                        log_user = entry.get('username', '')
+                        cur.execute(
+                            "INSERT INTO activity_log (user_id, username, action, details, timestamp) "
+                            "VALUES ((SELECT id FROM users WHERE username=%s LIMIT 1), %s, %s, %s, %s)",
+                            (log_user, log_user, entry.get('action', ''),
+                             entry.get('details', ''), entry.get('timestamp', None))
+                        )
+                        log_count += 1
+                    except Exception:
+                        pass
+        migrated.append({'name': 'activity_log', 'count': log_count})
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        user_manager.log_activity(username, 'db_migrate', 'Data migrated to database')
+        return jsonify({"success": True, "message": "Data migration completed.", "migrated": migrated})
+    except ImportError:
+        return jsonify({"success": False, "error": "PyMySQL is not installed."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+# ============================================================
+# Project Status endpoints
+# ============================================================
+
+@app.route('/settings/project-statuses', methods=['GET'])
+def settings_get_project_statuses():
+    """Get all project statuses from DB."""
+    statuses = _db_get_all_statuses()
+    return jsonify({"success": True, "statuses": statuses})
+
+
+@app.route('/settings/project-statuses/add', methods=['POST'])
+def settings_add_project_status():
+    """Add a new project status. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    name = data.get('name', '').strip().upper()
+    color = data.get('color', 'secondary').strip()
+    icon = data.get('icon', 'circle').strip()
+    if not name:
+        return jsonify({"success": False, "error": "Status name is required."})
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT COALESCE(MAX(sort_order),0)+1 AS next_order FROM project_status")
+        next_order = cur.fetchone()['next_order']
+        cur.execute(
+            "INSERT INTO project_status (name, color, icon, is_default, sort_order) "
+            "VALUES (%s, %s, %s, 0, %s)",
+            (name, color, icon, next_order)
+        )
+        _log_activity(username, 'add_status', 'Added project status: %s' % name)
+        return jsonify({"success": True})
+    except Exception as e:
+        err = str(e)
+        if 'Duplicate' in err:
+            return jsonify({"success": False, "error": "Status '%s' already exists." % name})
+        return jsonify({"success": False, "error": err})
+    finally:
+        conn.close()
+
+
+@app.route('/settings/project-statuses/update', methods=['POST'])
+def settings_update_project_status():
+    """Update a project status (name, color, icon). Cannot rename defaults. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    status_id = data.get('id')
+    new_name = data.get('name', '').strip().upper()
+    new_color = data.get('color', 'secondary').strip()
+    new_icon = data.get('icon', 'circle').strip()
+    if not status_id or not new_name:
+        return jsonify({"success": False, "error": "ID and name are required."})
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE project_status SET name=%s, color=%s, icon=%s WHERE id=%s",
+            (new_name, new_color, new_icon, status_id)
+        )
+        _log_activity(username, 'update_status', 'Updated project status id=%s to %s' % (status_id, new_name))
+        return jsonify({"success": True})
+    except Exception as e:
+        err = str(e)
+        if 'Duplicate' in err:
+            return jsonify({"success": False, "error": "Status '%s' already exists." % new_name})
+        return jsonify({"success": False, "error": err})
+    finally:
+        conn.close()
+
+
+@app.route('/settings/project-statuses/delete', methods=['POST'])
+def settings_delete_project_status():
+    """Delete a custom project status. Cannot delete default ones. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    status_id = data.get('id')
+    if not status_id:
+        return jsonify({"success": False, "error": "Status ID is required."})
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT name, is_default FROM project_status WHERE id=%s", (status_id,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({"success": False, "error": "Status not found."})
+        if row['is_default']:
+            return jsonify({"success": False, "error": "Cannot delete default status '%s'." % row['name']})
+        cur.execute("DELETE FROM project_status WHERE id=%s", (status_id,))
+        _log_activity(username, 'delete_status', 'Deleted project status: %s' % row['name'])
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/settings/auth', methods=['GET'])
+def settings_get_auth():
+    """Get authentication settings. Admin only."""
+    username = request.args.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    settings = _get_system_settings()
+    auth = settings.get('auth', {'method': 'system', 'sso': {}})
+    return jsonify({"success": True, "auth": auth})
+
+
+@app.route('/settings/auth', methods=['POST'])
+def settings_save_auth():
+    """Save authentication settings. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    method = data.get('method', 'system').strip()
+    if method not in ('system', 'database', 'sso'):
+        return jsonify({"success": False, "error": "Invalid auth method."})
+
+    settings = _get_system_settings()
+    settings['auth'] = {
+        'method': method,
+        'sso': {
+            'provider':      data.get('sso_provider', '').strip(),
+            'client_id':     data.get('sso_client_id', '').strip(),
+            'client_secret': data.get('sso_client_secret', '').strip(),
+            'issuer_url':    data.get('sso_issuer_url', '').strip(),
+            'redirect_uri':  data.get('sso_redirect_uri', '').strip()
+        }
+    }
+    _save_system_settings(settings)
+    user_manager.log_activity(username, 'auth_config_saved', 'Auth method: ' + method)
+    return jsonify({"success": True})
+
+
+# End Settings endpoints
 # ============================================================
 
 if __name__ == '__main__':

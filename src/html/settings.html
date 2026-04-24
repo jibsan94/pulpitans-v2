@@ -1,0 +1,1835 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="../assets/images/pulpitans-logo.svg">
+    <title>PULPITANS — System Settings</title>
+    <link href="../dist/css/style.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        .mode-card { cursor: pointer; border: 2px solid #dee2e6; transition: all 0.3s; }
+        .mode-card:hover { border-color: #0d6efd; }
+        .mode-card.active { border-color: #0d6efd; background: #f0f4ff; box-shadow: 0 0 0 3px rgba(13,110,253,.15); }
+        .mode-card .mode-icon { font-size: 40px; margin-bottom: 8px; }
+        .step-number { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; background: #0d6efd; color: #fff; font-size: 13px; font-weight: 700; align-items: center; justify-content: center; margin-right: 8px; flex-shrink: 0; }
+        .step-done { background: #198754 !important; }
+        .ssh-section { background: #f8f9fa; border-radius: 8px; padding: 20px; border: 1px solid #dee2e6; }
+        .conn-result { font-family: monospace; font-size: 12px; background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 6px; max-height: 100px; overflow-y: auto; white-space: pre-wrap; }
+        .settings-tab-icon { width: 18px; height: 18px; margin-right: 6px; }
+        .nav-pills .nav-link { color: #495057; border: 1px solid #dee2e6; margin-right: 8px; }
+        .nav-pills .nav-link.active { background: #0d6efd; border-color: #0d6efd; color: #fff; }
+        .nav-pills .nav-link:hover:not(.active) { background: #f0f4ff; border-color: #0d6efd; }
+        .db-type-card { cursor: pointer; border: 2px solid #dee2e6; transition: all 0.3s; padding: 16px; text-align: center; border-radius: 8px; }
+        .db-type-card:hover { border-color: #0d6efd; }
+        .db-type-card.active { border-color: #0d6efd; background: #f0f4ff; box-shadow: 0 0 0 3px rgba(13,110,253,.15); }
+        .db-type-card.disabled { opacity: 0.45; pointer-events: none; }
+    </style>
+</head>
+
+<body>
+    <div class="preloader">
+        <div class="lds-ripple"><div class="lds-pos"></div><div class="lds-pos"></div></div>
+    </div>
+
+    <div id="main-wrapper" data-theme="light" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
+        data-sidebar-position="fixed" data-header-position="fixed" data-boxed-layout="full">
+
+        <!-- Topbar -->
+        <header class="topbar" data-navbarbg="skin6">
+            <nav class="navbar top-navbar navbar-expand-lg">
+                <div class="navbar-header" data-logobg="skin6">
+                    <a class="nav-toggler waves-effect waves-light d-block d-lg-none" href="javascript:void(0)"><i class="ti-menu ti-close"></i></a>
+                    <div class="navbar-brand">
+                        <img src="../assets/images/pulpitans-name.svg" alt="" class="img-fluid">
+                    </div>
+                    <a class="topbartoggler d-block d-lg-none waves-effect waves-light" href="javascript:void(0)"
+                        data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><i class="ti-more"></i></a>
+                </div>
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left me-auto ms-3 ps-1">
+                        <li class="nav-item d-flex align-items-center ms-3">
+                            <div>
+                                <h6 class="mb-0 font-weight-medium text-dark">System Settings</h6>
+                                <small class="text-muted">Admin / Settings</small>
+                            </div>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav float-end">
+                        <li class="nav-item d-none d-md-flex align-items-center me-3">
+                            <span id="live-datetime" class="text-muted font-14" style="white-space:nowrap;">Loading...</span>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown">
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle user-profile-pic" width="40">
+                                <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down" class="svg-icon"></i></span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
+                                <a class="dropdown-item" href="my-profile.html"><i data-feather="user" class="svg-icon me-2 ms-1"></i> My Profile</a>
+                                <a class="dropdown-item" href="settings.html"><i data-feather="settings" class="svg-icon me-2 ms-1"></i> Settings</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power" class="svg-icon me-2 ms-1"></i> Logout</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Left Sidebar -->
+        <aside class="left-sidebar" data-sidebarbg="skin6">
+            <div class="scroll-sidebar" data-sidebarbg="skin6">
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="index.html" aria-expanded="false">
+                                <i data-feather="home" class="feather-icon"></i>
+                                <span class="hide-menu">Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="list-divider"></li>
+                        <li class="nav-small-cap"><span class="hide-menu">Applications</span></li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="git-controller.html" aria-expanded="false">
+                                <i data-feather="git-branch" class="feather-icon"></i>
+                                <span class="hide-menu">Git Controller</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="make-build.html" aria-expanded="false">
+                                <i data-feather="package" class="feather-icon"></i>
+                                <span class="hide-menu">Make Build</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="srn.html" aria-expanded="false">
+                                <i data-feather="file-text" class="feather-icon"></i>
+                                <span class="hide-menu">SRN</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="project-info.html" aria-expanded="false">
+                                <i data-feather="clipboard" class="feather-icon"></i>
+                                <span class="hide-menu">Project Info</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="processes.html" aria-expanded="false">
+                                <i data-feather="cpu" class="feather-icon"></i>
+                                <span class="hide-menu">Processes</span>
+                            </a>
+                        </li>
+                        <!-- Admin section -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only active" style="display:none;">
+                            <a class="sidebar-link sidebar-link active" href="settings.html" aria-expanded="false">
+                                <i data-feather="settings" class="feather-icon"></i>
+                                <span class="hide-menu">Settings</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Page wrapper -->
+        <div class="page-wrapper">
+            <div class="container-fluid">
+
+                <!-- Access denied message for non-admins -->
+                <div id="access-denied" class="d-none">
+                    <div class="row justify-content-center mt-5">
+                        <div class="col-md-6 text-center">
+                            <i data-feather="lock" style="width:64px;height:64px;color:#dc3545;"></i>
+                            <h3 class="mt-3">Access Denied</h3>
+                            <p class="text-muted">System settings are only available to administrators.</p>
+                            <a href="index.html" class="btn btn-primary mt-2">Go to Dashboard</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings content (admin only) -->
+                <div id="settings-content" style="display:none;">
+
+                    <!-- Settings Tabs -->
+                    <ul class="nav nav-pills mb-4" id="settingsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tab-execution" data-bs-toggle="pill" data-bs-target="#pane-execution" type="button" role="tab">
+                                <i data-feather="monitor" class="settings-tab-icon"></i> Execution Mode
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-database" data-bs-toggle="pill" data-bs-target="#pane-database" type="button" role="tab">
+                                <i data-feather="database" class="settings-tab-icon"></i> Database
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-storage" data-bs-toggle="pill" data-bs-target="#pane-storage" type="button" role="tab">
+                                <i data-feather="hard-drive" class="settings-tab-icon"></i> Data Storage
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-auth" data-bs-toggle="pill" data-bs-target="#pane-auth" type="button" role="tab">
+                                <i data-feather="shield" class="settings-tab-icon"></i> Authentication
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-statuses" data-bs-toggle="pill" data-bs-target="#pane-statuses" type="button" role="tab">
+                                <i data-feather="tag" class="settings-tab-icon"></i> Project Status
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="settingsTabContent">
+
+                    <!-- ====== TAB 1: Execution Mode ====== -->
+                    <div class="tab-pane fade show active" id="pane-execution" role="tabpanel">
+
+                    <!-- Step 1: Execution Mode -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title d-flex align-items-center mb-3">
+                                        <span class="step-number" id="step1-num">1</span>
+                                        Execution Mode
+                                    </h5>
+                                    <p class="text-muted mb-3" style="font-size:13px;">
+                                        Choose whether to monitor the local server or a remote node via SSH.
+                                    </p>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="card mode-card p-4 text-center h-100" id="card-local" onclick="selectMode('local')">
+                                                <div><i data-feather="monitor" style="width:40px;height:40px;color:#0d6efd;"></i></div>
+                                                <h5 class="mt-2 mb-1">Local</h5>
+                                                <p class="text-muted mb-0" style="font-size:13px;">
+                                                    Monitor processes, memory and disk on this server directly.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card mode-card p-4 text-center h-100" id="card-remote" onclick="selectMode('remote')">
+                                                <div><i data-feather="globe" style="width:40px;height:40px;color:#6f42c1;"></i></div>
+                                                <h5 class="mt-2 mb-1">Remote</h5>
+                                                <p class="text-muted mb-0" style="font-size:13px;">
+                                                    Connect to a remote node via SSH and fetch data from there.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Remote Configuration (visible only in remote mode) -->
+                    <div class="row mb-4" id="remote-config" style="display:none;">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title d-flex align-items-center mb-3">
+                                        <span class="step-number" id="step2-num">2</span>
+                                        Remote Node Configuration
+                                    </h5>
+
+                                    <div class="row g-3">
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-medium">IP Address / Hostname</label>
+                                            <input type="text" id="remote-ip" class="form-control" placeholder="192.168.1.100">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-medium">SSH User</label>
+                                            <input type="text" id="ssh-user" class="form-control" placeholder="root" value="root">
+                                        </div>
+                                        <div class="col-md-4 d-flex align-items-end gap-2">
+                                            <button class="btn btn-outline-primary" onclick="testConnection()" id="btn-test">
+                                                <i data-feather="zap" class="feather-sm me-1"></i> Test Connection
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Connection test result -->
+                                    <div id="conn-result" class="mt-3" style="display:none;">
+                                        <div id="conn-result-inner"></div>
+                                    </div>
+
+                                    <!-- SSH Key Section -->
+                                    <div class="ssh-section mt-4">
+                                        <h6 class="d-flex align-items-center mb-3">
+                                            <span class="step-number" id="step3-num">3</span>
+                                            SSH Key Management
+                                        </h6>
+
+                                        <div class="d-flex align-items-center gap-3 mb-3">
+                                            <div>
+                                                <span class="text-muted" style="font-size:13px;">SSH Public Key Status:</span>
+                                                <span id="key-status" class="ms-2 badge bg-secondary">Checking...</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Generate Key (shown if no key exists) -->
+                                        <div id="keygen-section">
+                                            <div class="alert alert-info py-2 mb-3" style="font-size:13px;">
+                                                <i data-feather="info" class="feather-sm me-1"></i>
+                                                No SSH key found. Generate one to enable passwordless SSH to remote nodes.
+                                            </div>
+                                            <button class="btn btn-primary btn-sm" onclick="showKeygenModal()">
+                                                <i data-feather="key" class="feather-sm me-1"></i> Generate SSH Key
+                                            </button>
+                                        </div>
+
+                                        <!-- Copy Key (shown if key exists) -->
+                                        <div id="copyid-section" style="display:none;">
+                                            <div class="alert alert-success py-2 mb-3" style="font-size:13px;">
+                                                <i data-feather="check-circle" class="feather-sm me-1"></i>
+                                                SSH key exists. Copy it to the remote server for passwordless access.
+                                            </div>
+                                            <button class="btn btn-outline-primary btn-sm" onclick="showCopyIdModal()">
+                                                <i data-feather="send" class="feather-sm me-1"></i> Copy Key to Remote Server
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Apply button -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <h6 class="mb-1">Current Mode: <span id="current-mode-label" class="badge bg-primary">—</span></h6>
+                                        <small class="text-muted" id="current-mode-detail"></small>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-success px-4" onclick="applySettings()" id="btn-apply">
+                                            <i data-feather="check" class="feather-sm me-1"></i> Apply Changes
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="apply-result" class="px-3 pb-3"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    </div><!-- end pane-execution -->
+
+                    <!-- ====== TAB 2: Database ====== -->
+                    <div class="tab-pane fade" id="pane-database" role="tabpanel">
+
+                        <!-- DB Type Selection -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">1</span>
+                                            Database Type
+                                        </h5>
+                                        <p class="text-muted mb-3" style="font-size:13px;">
+                                            Select the database engine. Data storage will be migrated from local JSON files to the selected database.
+                                        </p>
+                                        <div class="row g-3">
+                                            <div class="col-6 col-md-3">
+                                                <div class="db-type-card active" id="dbcard-mariadb" onclick="selectDbType('mariadb')">
+                                                    <i data-feather="database" style="width:32px;height:32px;color:#003545;"></i>
+                                                    <div class="fw-bold mt-2">MariaDB</div>
+                                                    <small class="text-muted">Available</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <div class="db-type-card disabled" id="dbcard-mysql">
+                                                    <i data-feather="database" style="width:32px;height:32px;color:#00758f;"></i>
+                                                    <div class="fw-bold mt-2">MySQL</div>
+                                                    <small class="text-muted">Coming soon</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <div class="db-type-card disabled" id="dbcard-postgresql">
+                                                    <i data-feather="database" style="width:32px;height:32px;color:#336791;"></i>
+                                                    <div class="fw-bold mt-2">PostgreSQL</div>
+                                                    <small class="text-muted">Coming soon</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <div class="db-type-card disabled" id="dbcard-oracle">
+                                                    <i data-feather="database" style="width:32px;height:32px;color:#f80000;"></i>
+                                                    <div class="fw-bold mt-2">Oracle</div>
+                                                    <small class="text-muted">Coming soon</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DB Connection Details -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">2</span>
+                                            Connection Details
+                                        </h5>
+                                        <div class="row g-3">
+                                            <div class="col-md-5">
+                                                <label class="form-label fw-medium">Host</label>
+                                                <input type="text" id="db-host" class="form-control" placeholder="127.0.0.1" value="127.0.0.1">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label fw-medium">Port</label>
+                                                <input type="number" id="db-port" class="form-control" placeholder="3306" value="3306">
+                                            </div>
+                                            <div class="col-md-5">
+                                                <label class="form-label fw-medium">Database Name</label>
+                                                <input type="text" id="db-name" class="form-control" placeholder="pulpitans">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">Username</label>
+                                                <input type="text" id="db-user" class="form-control" placeholder="root">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">Password</label>
+                                                <input type="password" id="db-password" class="form-control" placeholder="Database password">
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex gap-2 mt-4">
+                                            <button class="btn btn-outline-primary" onclick="testDbConnection()" id="btn-db-test">
+                                                <i data-feather="zap" class="feather-sm me-1"></i> Test Connection
+                                            </button>
+                                            <button class="btn btn-primary" onclick="saveDbSettings()" id="btn-db-save">
+                                                <i data-feather="save" class="feather-sm me-1"></i> Save Configuration
+                                            </button>
+                                        </div>
+
+                                        <div id="db-conn-result" class="mt-3"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Deploy DB Structure -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">3</span>
+                                            Deploy Database Structure
+                                        </h5>
+                                        <p class="text-muted mb-3" style="font-size:13px;">
+                                            Create or update all required tables in the database. This will create tables for:
+                                            <strong>Users</strong>, <strong>User Config</strong>, <strong>Projects</strong>, <strong>User–Project Assignments</strong>, and <strong>Activity Log</strong>.
+                                            Existing tables will not be dropped or overwritten.
+                                        </p>
+                                        <div class="alert alert-info py-2 mb-3" style="font-size:13px;">
+                                            <i data-feather="info" class="feather-sm me-1"></i>
+                                            Save and test the connection above before deploying the structure.
+                                        </div>
+
+                                        <button class="btn btn-warning" onclick="deployDbStructure()" id="btn-db-deploy">
+                                            <i data-feather="upload-cloud" class="feather-sm me-1"></i> Deploy DB Structure
+                                        </button>
+
+                                        <div id="db-deploy-result" class="mt-3"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Migrate Data -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">4</span>
+                                            Migrate Data
+                                        </h5>
+                                        <p class="text-muted mb-3" style="font-size:13px;">
+                                            Migrate all current data from local JSON files to the database. This includes:
+                                        </p>
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-md-6">
+                                                <div class="border rounded p-3 h-100">
+                                                    <h6 class="mb-2"><i data-feather="users" class="feather-sm me-1"></i> Users &amp; Config</h6>
+                                                    <ul class="mb-0 ps-3" style="font-size:13px;">
+                                                        <li>User accounts (username, display name, admin status)</li>
+                                                        <li>BitBucket credentials</li>
+                                                        <li>Per-user configuration settings</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="border rounded p-3 h-100">
+                                                    <h6 class="mb-2"><i data-feather="briefcase" class="feather-sm me-1"></i> Projects &amp; Assignments</h6>
+                                                    <ul class="mb-0 ps-3" style="font-size:13px;">
+                                                        <li>Master project list (name, folder, notes)</li>
+                                                        <li>User–project assignments with status</li>
+                                                        <li>Activity log history</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="alert alert-warning py-2 mb-3" style="font-size:13px;">
+                                            <i data-feather="alert-triangle" class="feather-sm me-1"></i>
+                                            Deploy the DB structure first. Existing records will be updated (not duplicated) using <code>ON DUPLICATE KEY UPDATE</code>.
+                                        </div>
+
+                                        <button class="btn btn-info text-white" onclick="migrateData()" id="btn-db-migrate">
+                                            <i data-feather="download-cloud" class="feather-sm me-1"></i> Migrate Data to Database
+                                        </button>
+
+                                        <div id="db-migrate-result" class="mt-3"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- end pane-database -->
+
+                    <!-- ====== TAB 3: Data Storage ====== -->
+                    <div class="tab-pane fade" id="pane-storage" role="tabpanel">
+
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">1</span>
+                                            Data Storage Backend
+                                        </h5>
+                                        <p class="text-muted mb-3" style="font-size:13px;">
+                                            Choose where all application data is stored and read from. When <strong>Database</strong> is active,
+                                            all reads and writes (users, projects, assignments, activity log) go to the configured MariaDB database.
+                                        </p>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <div class="card mode-card p-4 text-center h-100" id="card-storage-local" onclick="selectStorageMode('local')">
+                                                    <div><i data-feather="file-text" style="width:40px;height:40px;color:#198754;"></i></div>
+                                                    <h5 class="mt-2 mb-1">Local (JSON Files)</h5>
+                                                    <p class="text-muted mb-0" style="font-size:13px;">
+                                                        Data stored in <code>/opt/pulpitans/</code> JSON files. Default behaviour, no DB required.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="card mode-card p-4 text-center h-100" id="card-storage-database" onclick="selectStorageMode('database')">
+                                                    <div><i data-feather="database" style="width:40px;height:40px;color:#0d6efd;"></i></div>
+                                                    <h5 class="mt-2 mb-1">Database</h5>
+                                                    <p class="text-muted mb-0" style="font-size:13px;">
+                                                        All data stored in the configured MariaDB database. Requires DB connection to be set up.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="alert alert-info py-2 mt-4 mb-0" style="font-size:13px;" id="storage-db-note" style="display:none;">
+                                            <i data-feather="info" class="feather-sm me-1"></i>
+                                            Switching to <strong>Database</strong> mode requires the DB to be configured and the structure deployed.
+                                            <a href="#" onclick="document.getElementById('tab-database').click(); return false;">Go to Database tab</a>.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- What gets stored in DB info card -->
+                        <div class="row mb-4" id="storage-db-details" style="display:none;">
+                            <div class="col-12">
+                                <div class="card border-primary">
+                                    <div class="card-header bg-primary text-white py-2">
+                                        <strong><i data-feather="info" class="feather-sm me-1"></i> What is stored in the database</strong>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-3">
+                                                <h6><i data-feather="users" class="feather-sm me-1"></i> Users</h6>
+                                                <ul class="mb-0 ps-3" style="font-size:13px;">
+                                                    <li>Username, display name</li>
+                                                    <li>Admin status</li>
+                                                    <li>BitBucket credentials</li>
+                                                    <li>Per-user config</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <h6><i data-feather="briefcase" class="feather-sm me-1"></i> Projects</h6>
+                                                <ul class="mb-0 ps-3" style="font-size:13px;">
+                                                    <li>Project name, folder</li>
+                                                    <li>Notes</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <h6><i data-feather="link" class="feather-sm me-1"></i> Assignments</h6>
+                                                <ul class="mb-0 ps-3" style="font-size:13px;">
+                                                    <li>User → Project</li>
+                                                    <li>Status (done, wip, etc.)</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <h6><i data-feather="activity" class="feather-sm me-1"></i> Activity Log</h6>
+                                                <ul class="mb-0 ps-3" style="font-size:13px;">
+                                                    <li>All user actions</li>
+                                                    <li>Timestamps</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Apply storage mode -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <h6 class="mb-1">Current Storage: <span id="current-storage-label" class="badge bg-success">Local</span></h6>
+                                            <small class="text-muted" id="current-storage-detail">Using JSON files in /opt/pulpitans/</small>
+                                        </div>
+                                        <button class="btn btn-success px-4" onclick="saveStorageSettings()" id="btn-storage-save">
+                                            <i data-feather="check" class="feather-sm me-1"></i> Apply Storage Mode
+                                        </button>
+                                    </div>
+                                    <div id="storage-save-result" class="px-3 pb-3"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- end pane-storage -->
+
+                    <!-- ====== TAB 4: Authentication ====== -->
+                    <div class="tab-pane fade" id="pane-auth" role="tabpanel">
+
+                        <!-- Auth Method Selection -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">1</span>
+                                            Authentication Method
+                                        </h5>
+                                        <p class="text-muted mb-3" style="font-size:13px;">
+                                            Select how users authenticate to Pulpitans.
+                                        </p>
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <div class="card mode-card p-3 text-center h-100" id="card-auth-system" onclick="selectAuthMethod('system')">
+                                                    <div><i data-feather="terminal" style="width:36px;height:36px;color:#198754;"></i></div>
+                                                    <h6 class="mt-2 mb-1">System (PAM)</h6>
+                                                    <p class="text-muted mb-0" style="font-size:12px;">
+                                                        Authenticate using OS/PAM credentials. Current method.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card mode-card p-3 text-center h-100" id="card-auth-database" onclick="selectAuthMethod('database')">
+                                                    <div><i data-feather="database" style="width:36px;height:36px;color:#0d6efd;"></i></div>
+                                                    <h6 class="mt-2 mb-1">Database</h6>
+                                                    <p class="text-muted mb-0" style="font-size:12px;">
+                                                        Authenticate against the users table in the configured database.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <div class="card mode-card p-3 text-center h-100" id="card-auth-sso" onclick="selectAuthMethod('sso')">
+                                                    <div><i data-feather="shield" style="width:36px;height:36px;color:#6f42c1;"></i></div>
+                                                    <h6 class="mt-2 mb-1">SSO (Enterprise)</h6>
+                                                    <p class="text-muted mb-0" style="font-size:12px;">
+                                                        Single Sign-On via OIDC / SAML corporate identity provider.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SSO Configuration (visible only when SSO selected) -->
+                        <div class="row mb-4" id="sso-config" style="display:none;">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">2</span>
+                                            SSO Configuration
+                                        </h5>
+                                        <div id="sso-status-banner" class="alert alert-warning py-2 mb-3" style="font-size:13px;">
+                                            <i data-feather="alert-triangle" class="feather-sm me-1"></i>
+                                            SSO is not configured. Fill in the details below.
+                                        </div>
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">Provider Name</label>
+                                                <input type="text" id="sso-provider" class="form-control" placeholder="e.g. Azure AD, Okta, Keycloak">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">Issuer URL</label>
+                                                <input type="text" id="sso-issuer-url" class="form-control" placeholder="https://login.microsoftonline.com/tenant-id/v2.0">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">Client ID</label>
+                                                <input type="text" id="sso-client-id" class="form-control" placeholder="Application / Client ID">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-medium">Client Secret</label>
+                                                <input type="password" id="sso-client-secret" class="form-control" placeholder="Client secret">
+                                            </div>
+                                            <div class="col-md-12">
+                                                <label class="form-label fw-medium">Redirect URI</label>
+                                                <input type="text" id="sso-redirect-uri" class="form-control" placeholder="https://your-server/api/auth/sso/callback">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Auth Apply -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <h6 class="mb-1">Current Auth: <span id="current-auth-label" class="badge bg-success">System</span></h6>
+                                            <small class="text-muted" id="current-auth-detail">PAM authentication</small>
+                                        </div>
+                                        <button class="btn btn-success px-4" onclick="saveAuthSettings()" id="btn-auth-save">
+                                            <i data-feather="check" class="feather-sm me-1"></i> Apply Auth Settings
+                                        </button>
+                                    </div>
+                                    <div id="auth-save-result" class="px-3 pb-3"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- end pane-auth -->
+
+                    <!-- ====== TAB 5: Project Status ====== -->
+                    <div class="tab-pane fade" id="pane-statuses" role="tabpanel">
+
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">1</span>
+                                            Project Statuses
+                                        </h5>
+                                        <p class="text-muted mb-3" style="font-size:13px;">
+                                            Manage the statuses used for projects across the system. Default statuses cannot be deleted.
+                                            All names are stored in <strong>UPPERCASE</strong>.
+                                        </p>
+
+                                        <!-- Status table -->
+                                        <div class="table-responsive">
+                                            <table class="table table-hover table-sm align-middle" id="statuses-table">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th style="width:40px;">#</th>
+                                                        <th>Name</th>
+                                                        <th style="width:180px;">Color</th>
+                                                        <th style="width:180px;">Icon</th>
+                                                        <th style="width:120px;">Preview</th>
+                                                        <th style="width:80px;">Default</th>
+                                                        <th style="width:140px;">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="statuses-tbody"></tbody>
+                                            </table>
+                                        </div>
+                                        <div id="statuses-load-result"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Add new status -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">2</span>
+                                            Add New Status
+                                        </h5>
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-3">
+                                                <label class="form-label">Name</label>
+                                                <input type="text" class="form-control" id="new-status-name" placeholder="e.g. REVIEW" style="text-transform:uppercase;">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Color (Bootstrap)</label>
+                                                <select class="form-select" id="new-status-color">
+                                                    <option value="primary">Primary (Blue)</option>
+                                                    <option value="success">Success (Green)</option>
+                                                    <option value="danger">Danger (Red)</option>
+                                                    <option value="warning">Warning (Yellow)</option>
+                                                    <option value="info">Info (Cyan)</option>
+                                                    <option value="secondary" selected>Secondary (Gray)</option>
+                                                    <option value="dark">Dark</option>
+                                                    <option value="light">Light</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label">Icon (Feather)</label>
+                                                <select class="form-select" id="new-status-icon">
+                                                    <option value="circle">circle</option>
+                                                    <option value="check-circle">check-circle</option>
+                                                    <option value="x-circle">x-circle</option>
+                                                    <option value="pause-circle">pause-circle</option>
+                                                    <option value="loader">loader</option>
+                                                    <option value="alert-circle">alert-circle</option>
+                                                    <option value="clock">clock</option>
+                                                    <option value="eye">eye</option>
+                                                    <option value="star">star</option>
+                                                    <option value="flag">flag</option>
+                                                    <option value="zap">zap</option>
+                                                    <option value="send">send</option>
+                                                    <option value="refresh-cw">refresh-cw</option>
+                                                    <option value="shield">shield</option>
+                                                    <option value="thumbs-up">thumbs-up</option>
+                                                    <option value="thumbs-down">thumbs-down</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <button class="btn btn-success w-100" onclick="addProjectStatus()">
+                                                    <i data-feather="plus-circle" class="feather-sm me-1"></i> Add Status
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="add-status-result" class="mt-3"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- end pane-statuses -->
+
+                    </div><!-- end tab-content -->
+                </div>
+            </div>
+
+            <footer class="footer text-center text-muted">
+                All Rights Reserved by Freedash. Designed and Developed by <a href="#">Jibsan the ruler of the Outlands</a>.
+            </footer>
+        </div>
+    </div>
+
+    <!-- SSH Keygen Modal -->
+    <div class="modal fade" id="keygenModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i data-feather="key" class="feather-sm me-1"></i> Generate SSH Key</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted" style="font-size:13px;">
+                        This will generate an SSH key pair on the server. Leave fields empty for defaults.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">Key Type</label>
+                        <select class="form-select" id="keygen-type">
+                            <option value="rsa" selected>RSA</option>
+                            <option value="ed25519">Ed25519</option>
+                            <option value="ecdsa">ECDSA</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="keygen-bits-group">
+                        <label class="form-label">Key Size (bits)</label>
+                        <input type="text" class="form-control" id="keygen-bits" value="4096" placeholder="4096">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Passphrase <small class="text-muted">(leave empty for no passphrase)</small></label>
+                        <input type="password" class="form-control" id="keygen-passphrase" placeholder="Optional">
+                    </div>
+                    <div id="keygen-result"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="generateKey()" id="btn-keygen">
+                        <i data-feather="key" class="feather-sm me-1"></i> Generate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SSH Copy-ID Modal -->
+    <div class="modal fade" id="copyIdModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i data-feather="send" class="feather-sm me-1"></i> Copy SSH Key</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted" style="font-size:13px;">
+                        This will copy the SSH public key to the remote server using <code>ssh-copy-id</code>.
+                        You need the remote user's password.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">Remote IP / Hostname</label>
+                        <input type="text" class="form-control" id="copyid-ip" placeholder="192.168.1.100">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">SSH User</label>
+                        <input type="text" class="form-control" id="copyid-user" value="root">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" id="copyid-password" placeholder="Remote user password">
+                    </div>
+                    <div id="copyid-result"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="copyKey()" id="btn-copyid">
+                        <i data-feather="send" class="feather-sm me-1"></i> Copy Key
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="profileModalLabel">My Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <input type="text" class="form-control" id="profile-username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Display Name <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="profile-display-name" placeholder="Leave empty to use username">
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i data-feather="git-branch" class="feather-sm me-1"></i> BitBucket Credentials</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Username</label>
+                        <input type="text" class="form-control" id="profile-bb-username" placeholder="Your BitBucket username">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Password / Token</label>
+                        <input type="password" class="form-control" id="profile-bb-password" placeholder="Your password or token">
+                    </div>
+                    <div id="profile-save-msg" class="d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-profile">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="../assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../dist/js/app-style-switcher.js"></script>
+    <script src="../dist/js/feather.min.js"></script>
+    <script src="../assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="../assets/extra-libs/sparkline/sparkline.js"></script>
+    <script src="../dist/js/sidebarmenu.js"></script>
+    <script src="../dist/js/custom.min.js"></script>
+
+    <script>
+    const API_BASE = '/api';
+    let _isAdmin = false;
+    let _selectedMode = 'local';
+    let _sshKeyExists = false;
+    let _selectedDbType = 'mariadb';
+    let _selectedAuthMethod = 'system';
+    let _selectedStorageMode = 'local';
+
+    function selectMode(mode) {
+        _selectedMode = mode;
+        document.getElementById('card-local').classList.toggle('active', mode === 'local');
+        document.getElementById('card-remote').classList.toggle('active', mode === 'remote');
+        document.getElementById('remote-config').style.display = mode === 'remote' ? '' : 'none';
+    }
+
+    async function loadSettings() {
+        try {
+            const username = PulpitansAuth.getUsername();
+            const res  = await fetch(`${API_BASE}/settings/system?username=${encodeURIComponent(username)}`);
+            const data = await res.json();
+            if (!data.success) return;
+
+            const s = data.settings;
+            _selectedMode = s.mode;
+            _sshKeyExists = s.ssh_key_exists;
+
+            selectMode(s.mode);
+            document.getElementById('remote-ip').value   = s.remote_ip || '';
+            document.getElementById('ssh-user').value     = s.ssh_user || 'root';
+
+            updateKeyStatus(s.ssh_key_exists);
+            updateModeLabel(s.mode, s.remote_ip);
+        } catch (e) {}
+    }
+
+    function updateKeyStatus(exists) {
+        _sshKeyExists = exists;
+        const badge = document.getElementById('key-status');
+        if (exists) {
+            badge.className = 'ms-2 badge bg-success';
+            badge.textContent = 'Key Found';
+            document.getElementById('step3-num').classList.add('step-done');
+            document.getElementById('keygen-section').style.display = 'none';
+            document.getElementById('copyid-section').style.display = '';
+        } else {
+            badge.className = 'ms-2 badge bg-warning text-dark';
+            badge.textContent = 'No Key';
+            document.getElementById('step3-num').classList.remove('step-done');
+            document.getElementById('keygen-section').style.display = '';
+            document.getElementById('copyid-section').style.display = 'none';
+        }
+    }
+
+    function updateModeLabel(mode, ip) {
+        const label = document.getElementById('current-mode-label');
+        const detail = document.getElementById('current-mode-detail');
+        if (mode === 'remote') {
+            label.className = 'badge bg-info';
+            label.textContent = 'Remote';
+            detail.textContent = ip ? 'Connected to ' + ip : 'No IP configured';
+        } else {
+            label.className = 'badge bg-primary';
+            label.textContent = 'Local';
+            detail.textContent = 'Monitoring this server directly';
+        }
+    }
+
+    async function testConnection() {
+        const ip   = document.getElementById('remote-ip').value.trim();
+        const user = document.getElementById('ssh-user').value.trim() || 'root';
+        const btn  = document.getElementById('btn-test');
+        const resEl = document.getElementById('conn-result');
+        const inner = document.getElementById('conn-result-inner');
+
+        if (!ip) { alert('Enter an IP address first.'); return; }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Testing...';
+        resEl.style.display = '';
+
+        try {
+            const res  = await fetch(`${API_BASE}/settings/test-connection`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: PulpitansAuth.getUsername(), remote_ip: ip, ssh_user: user })
+            });
+            const data = await res.json();
+            if (data.success) {
+                inner.innerHTML = `<div class="alert alert-success py-2 mb-2">
+                    <i data-feather="check-circle" class="feather-sm me-1"></i> Connection successful!
+                </div><div class="conn-result">${escHtml(data.output)}</div>`;
+            } else {
+                let hintHtml = '';
+                if (data.hint === 'permission_denied') {
+                    hintHtml = `<div class="alert alert-warning py-2 mt-2 mb-0" style="font-size:13px;">
+                        <strong><i data-feather="alert-triangle" class="feather-sm me-1"></i> How to fix this:</strong>
+                        <ol class="mb-0 mt-1 ps-3">
+                            <li>Make sure you have an SSH key generated (Step 3 below).</li>
+                            <li>Use <strong>Copy Key to Remote Server</strong> to send your public key to <code>${escHtml(ip)}</code>.</li>
+                            <li>If Copy Key fails, manually run on this server:<br>
+                                <code class="text-dark">ssh-copy-id ${escHtml(user)}@${escHtml(ip)}</code></li>
+                            <li>Verify the remote server allows key auth:<br>
+                                <code class="text-dark">PubkeyAuthentication yes</code> in <code>/etc/ssh/sshd_config</code></li>
+                            <li>Check remote <code>~/.ssh/authorized_keys</code> permissions: <code>600</code>, and <code>~/.ssh</code>: <code>700</code>.</li>
+                        </ol>
+                    </div>`;
+                } else if (data.hint === 'timeout') {
+                    hintHtml = `<div class="alert alert-warning py-2 mt-2 mb-0" style="font-size:13px;">
+                        <strong><i data-feather="alert-triangle" class="feather-sm me-1"></i> Possible causes:</strong>
+                        <ul class="mb-0 mt-1 ps-3">
+                            <li>The remote host <code>${escHtml(ip)}</code> is not reachable (check network/firewall).</li>
+                            <li>SSH service (port 22) is not running on the remote host.</li>
+                        </ul>
+                    </div>`;
+                } else if (data.hint === 'unreachable') {
+                    hintHtml = `<div class="alert alert-warning py-2 mt-2 mb-0" style="font-size:13px;">
+                        <strong><i data-feather="alert-triangle" class="feather-sm me-1"></i> Possible causes:</strong>
+                        <ul class="mb-0 mt-1 ps-3">
+                            <li>The remote host <code>${escHtml(ip)}</code> is down or unreachable.</li>
+                            <li>SSH service is not running or is listening on a different port.</li>
+                            <li>A firewall is blocking port 22.</li>
+                        </ul>
+                    </div>`;
+                } else if (data.hint === 'dns') {
+                    hintHtml = `<div class="alert alert-warning py-2 mt-2 mb-0" style="font-size:13px;">
+                        <strong><i data-feather="alert-triangle" class="feather-sm me-1"></i> DNS error:</strong>
+                        <span>Could not resolve hostname <code>${escHtml(ip)}</code>. Check the address.</span>
+                    </div>`;
+                }
+                inner.innerHTML = `<div class="alert alert-danger py-2 mb-0">
+                    <i data-feather="x-circle" class="feather-sm me-1"></i> ${escHtml(data.error)}
+                </div>${hintHtml}`;
+            }
+        } catch (e) {
+            inner.innerHTML = '<div class="alert alert-danger py-2 mb-0">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="zap" class="feather-sm me-1"></i> Test Connection';
+        feather.replace();
+    }
+
+    async function applySettings() {
+        const mode = _selectedMode;
+        const ip   = document.getElementById('remote-ip').value.trim();
+        const user = document.getElementById('ssh-user').value.trim() || 'root';
+        const btn  = document.getElementById('btn-apply');
+        const resEl = document.getElementById('apply-result');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Applying...';
+
+        try {
+            const res  = await fetch(`${API_BASE}/settings/system`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: PulpitansAuth.getUsername(), mode, remote_ip: ip, ssh_user: user })
+            });
+            const data = await res.json();
+            if (data.success) {
+                resEl.innerHTML = '<div class="alert alert-success py-2"><i data-feather="check-circle" class="feather-sm me-1"></i> Settings saved successfully.</div>';
+                updateModeLabel(mode, ip);
+            } else {
+                resEl.innerHTML = `<div class="alert alert-danger py-2">${escHtml(data.error)}</div>`;
+            }
+        } catch (e) {
+            resEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="check" class="feather-sm me-1"></i> Apply Changes';
+        feather.replace();
+        setTimeout(() => { resEl.innerHTML = ''; }, 4000);
+    }
+
+    function showKeygenModal() {
+        document.getElementById('keygen-result').innerHTML = '';
+        new bootstrap.Modal(document.getElementById('keygenModal')).show();
+        feather.replace();
+    }
+
+    document.getElementById('keygen-type').addEventListener('change', function() {
+        document.getElementById('keygen-bits-group').style.display = this.value === 'rsa' ? '' : 'none';
+    });
+
+    async function generateKey() {
+        const btn = document.getElementById('btn-keygen');
+        const resEl = document.getElementById('keygen-result');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Generating...';
+
+        try {
+            const res = await fetch(`${API_BASE}/settings/ssh-keygen`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: PulpitansAuth.getUsername(),
+                    key_type: document.getElementById('keygen-type').value,
+                    bits: document.getElementById('keygen-bits').value,
+                    passphrase: document.getElementById('keygen-passphrase').value
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                resEl.innerHTML = '<div class="alert alert-success py-2">' + escHtml(data.message) + '</div>';
+                updateKeyStatus(true);
+                setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('keygenModal')).hide(), 2000);
+            } else {
+                resEl.innerHTML = '<div class="alert alert-danger py-2">' + escHtml(data.error) + '</div>';
+            }
+        } catch (e) {
+            resEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="key" class="feather-sm me-1"></i> Generate';
+        feather.replace();
+    }
+
+    function showCopyIdModal() {
+        document.getElementById('copyid-result').innerHTML = '';
+        document.getElementById('copyid-ip').value = document.getElementById('remote-ip').value;
+        document.getElementById('copyid-user').value = document.getElementById('ssh-user').value || 'root';
+        document.getElementById('copyid-password').value = '';
+        new bootstrap.Modal(document.getElementById('copyIdModal')).show();
+        feather.replace();
+    }
+
+    async function copyKey() {
+        const btn = document.getElementById('btn-copyid');
+        const resEl = document.getElementById('copyid-result');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Copying...';
+
+        try {
+            const res = await fetch(`${API_BASE}/settings/ssh-copy-id`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: PulpitansAuth.getUsername(),
+                    remote_ip: document.getElementById('copyid-ip').value.trim(),
+                    ssh_user: document.getElementById('copyid-user').value.trim(),
+                    password: document.getElementById('copyid-password').value
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                resEl.innerHTML = '<div class="alert alert-success py-2">' + escHtml(data.message) + '</div>';
+                setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('copyIdModal')).hide(), 2000);
+            } else {
+                resEl.innerHTML = '<div class="alert alert-danger py-2">' + escHtml(data.error) + '</div>';
+            }
+        } catch (e) {
+            resEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="send" class="feather-sm me-1"></i> Copy Key';
+        feather.replace();
+    }
+
+    function selectDbType(type) {
+        _selectedDbType = type;
+        document.querySelectorAll('.db-type-card').forEach(el => el.classList.remove('active'));
+        const card = document.getElementById('dbcard-' + type);
+        if (card) card.classList.add('active');
+    }
+
+    async function loadDbSettings() {
+        try {
+            const res = await fetch(`${API_BASE}/settings/system?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data = await res.json();
+            if (data.success && data.settings.db) {
+                const db = data.settings.db;
+                document.getElementById('db-host').value = db.host || '127.0.0.1';
+                document.getElementById('db-port').value = db.port || 3306;
+                document.getElementById('db-name').value = db.name || '';
+                document.getElementById('db-user').value = db.user || '';
+                document.getElementById('db-password').value = db.password || '';
+                if (db.type) selectDbType(db.type);
+            }
+        } catch (e) {}
+    }
+
+    async function saveDbSettings() {
+        const btn = document.getElementById('btn-db-save');
+        const resEl = document.getElementById('db-conn-result');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+        try {
+            const res = await fetch(`${API_BASE}/settings/db`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: PulpitansAuth.getUsername(),
+                    db_type: _selectedDbType,
+                    host: document.getElementById('db-host').value.trim(),
+                    port: parseInt(document.getElementById('db-port').value) || 3306,
+                    name: document.getElementById('db-name').value.trim(),
+                    user: document.getElementById('db-user').value.trim(),
+                    password: document.getElementById('db-password').value
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                resEl.innerHTML = '<div class="alert alert-success py-2"><i data-feather="check-circle" class="feather-sm me-1"></i> Database configuration saved.</div>';
+            } else {
+                resEl.innerHTML = `<div class="alert alert-danger py-2">${escHtml(data.error)}</div>`;
+            }
+        } catch (e) {
+            resEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="save" class="feather-sm me-1"></i> Save Configuration';
+        feather.replace();
+        setTimeout(() => { resEl.innerHTML = ''; }, 4000);
+    }
+
+    async function testDbConnection() {
+        const btn = document.getElementById('btn-db-test');
+        const resEl = document.getElementById('db-conn-result');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Testing...';
+
+        try {
+            const res = await fetch(`${API_BASE}/settings/db/test`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: PulpitansAuth.getUsername(),
+                    db_type: _selectedDbType,
+                    host: document.getElementById('db-host').value.trim(),
+                    port: parseInt(document.getElementById('db-port').value) || 3306,
+                    name: document.getElementById('db-name').value.trim(),
+                    user: document.getElementById('db-user').value.trim(),
+                    password: document.getElementById('db-password').value
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                resEl.innerHTML = `<div class="alert alert-success py-2 mb-2">
+                    <i data-feather="check-circle" class="feather-sm me-1"></i> Connection successful!
+                </div><div class="conn-result">${escHtml(data.output)}</div>`;
+            } else {
+                let hintHtml = '';
+                if (data.hint === 'auth') {
+                    hintHtml = `<div class="alert alert-warning py-2 mt-2 mb-0" style="font-size:13px;">
+                        <strong><i data-feather="alert-triangle" class="feather-sm me-1"></i> Check:</strong>
+                        <ul class="mb-0 mt-1 ps-3">
+                            <li>Verify the username and password are correct.</li>
+                            <li>Make sure the user has access from this host.</li>
+                        </ul>
+                    </div>`;
+                } else if (data.hint === 'unreachable') {
+                    hintHtml = `<div class="alert alert-warning py-2 mt-2 mb-0" style="font-size:13px;">
+                        <strong><i data-feather="alert-triangle" class="feather-sm me-1"></i> Check:</strong>
+                        <ul class="mb-0 mt-1 ps-3">
+                            <li>Is MariaDB running on the target host?</li>
+                            <li>Check that port <code>${document.getElementById('db-port').value}</code> is open.</li>
+                            <li>Verify the host address is correct.</li>
+                        </ul>
+                    </div>`;
+                }
+                resEl.innerHTML = `<div class="alert alert-danger py-2 mb-0">
+                    <i data-feather="x-circle" class="feather-sm me-1"></i> ${escHtml(data.error)}
+                </div>${hintHtml}`;
+            }
+        } catch (e) {
+            resEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="zap" class="feather-sm me-1"></i> Test Connection';
+        feather.replace();
+    }
+
+    async function deployDbStructure() {
+        const btn = document.getElementById('btn-db-deploy');
+        const resEl = document.getElementById('db-deploy-result');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deploying...';
+
+        try {
+            const res = await fetch(`${API_BASE}/settings/db/deploy`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: PulpitansAuth.getUsername() })
+            });
+            const data = await res.json();
+            if (data.success) {
+                let tablesHtml = '';
+                if (data.tables && data.tables.length > 0) {
+                    tablesHtml = '<ul class="mb-0 mt-2">' + data.tables.map(t =>
+                        `<li><code>${escHtml(t.name)}</code> — ${escHtml(t.status)}</li>`
+                    ).join('') + '</ul>';
+                }
+                resEl.innerHTML = `<div class="alert alert-success py-2">
+                    <i data-feather="check-circle" class="feather-sm me-1"></i> ${escHtml(data.message)}
+                    ${tablesHtml}
+                </div>`;
+            } else {
+                resEl.innerHTML = `<div class="alert alert-danger py-2">
+                    <i data-feather="x-circle" class="feather-sm me-1"></i> ${escHtml(data.error)}
+                </div>`;
+            }
+        } catch (e) {
+            resEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="upload-cloud" class="feather-sm me-1"></i> Deploy DB Structure';
+        feather.replace();
+    }
+
+    async function migrateData() {
+        const btn = document.getElementById('btn-db-migrate');
+        const resEl = document.getElementById('db-migrate-result');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Migrating...';
+
+        try {
+            const res = await fetch(`${API_BASE}/settings/db/migrate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: PulpitansAuth.getUsername() })
+            });
+            const data = await res.json();
+            if (data.success) {
+                let itemsHtml = '';
+                if (data.migrated && data.migrated.length > 0) {
+                    itemsHtml = '<ul class="mb-0 mt-2">' + data.migrated.map(m =>
+                        `<li><code>${escHtml(m.name)}</code> — ${m.count} record(s) migrated</li>`
+                    ).join('') + '</ul>';
+                }
+                resEl.innerHTML = `<div class="alert alert-success py-2">
+                    <i data-feather="check-circle" class="feather-sm me-1"></i> ${escHtml(data.message)}
+                    ${itemsHtml}
+                </div>`;
+            } else {
+                resEl.innerHTML = `<div class="alert alert-danger py-2">
+                    <i data-feather="x-circle" class="feather-sm me-1"></i> ${escHtml(data.error)}
+                </div>`;
+            }
+        } catch (e) {
+            resEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="download-cloud" class="feather-sm me-1"></i> Migrate Data to Database';
+        feather.replace();
+    }
+
+    // Storage settings
+    function selectStorageMode(mode) {
+        _selectedStorageMode = mode;
+        document.getElementById('card-storage-local').classList.toggle('active', mode === 'local');
+        document.getElementById('card-storage-database').classList.toggle('active', mode === 'database');
+        document.getElementById('storage-db-note').style.display = mode === 'database' ? '' : 'none';
+        document.getElementById('storage-db-details').style.display = mode === 'database' ? '' : 'none';
+    }
+
+    function updateStorageLabel(mode) {
+        const label = document.getElementById('current-storage-label');
+        const detail = document.getElementById('current-storage-detail');
+        if (mode === 'database') {
+            label.className = 'badge bg-primary';
+            label.textContent = 'Database';
+            detail.textContent = 'Data read/written from MariaDB';
+        } else {
+            label.className = 'badge bg-success';
+            label.textContent = 'Local';
+            detail.textContent = 'Using JSON files in /opt/pulpitans/';
+        }
+    }
+
+    async function loadStorageSettings() {
+        try {
+            const res = await fetch(`${API_BASE}/settings/storage?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data = await res.json();
+            if (data.success) {
+                _selectedStorageMode = data.storage_mode || 'local';
+                selectStorageMode(_selectedStorageMode);
+                updateStorageLabel(_selectedStorageMode);
+            }
+        } catch (e) {}
+    }
+
+    async function saveStorageSettings() {
+        const btn = document.getElementById('btn-storage-save');
+        const resEl = document.getElementById('storage-save-result');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Applying...';
+
+        try {
+            const res = await fetch(`${API_BASE}/settings/storage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: PulpitansAuth.getUsername(), storage_mode: _selectedStorageMode })
+            });
+            const data = await res.json();
+            if (data.success) {
+                updateStorageLabel(_selectedStorageMode);
+                resEl.innerHTML = `<div class="alert alert-success py-2"><i data-feather="check-circle" class="feather-sm me-1"></i>
+                    Storage mode set to <strong>${_selectedStorageMode === 'database' ? 'Database' : 'Local'}</strong>.</div>`;
+            } else {
+                resEl.innerHTML = `<div class="alert alert-danger py-2">${escHtml(data.error)}</div>`;
+            }
+        } catch (e) {
+            resEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="check" class="feather-sm me-1"></i> Apply Storage Mode';
+        feather.replace();
+        setTimeout(() => { resEl.innerHTML = ''; }, 4000);
+    }
+
+    // Auth settings
+    function selectAuthMethod(method) {
+        _selectedAuthMethod = method;
+        document.getElementById('card-auth-system').classList.toggle('active', method === 'system');
+        document.getElementById('card-auth-database').classList.toggle('active', method === 'database');
+        document.getElementById('card-auth-sso').classList.toggle('active', method === 'sso');
+        document.getElementById('sso-config').style.display = method === 'sso' ? '' : 'none';
+    }
+
+    function updateAuthLabel(method, sso) {
+        const label = document.getElementById('current-auth-label');
+        const detail = document.getElementById('current-auth-detail');
+        if (method === 'sso') {
+            label.className = 'badge bg-info';
+            label.textContent = 'SSO';
+            const provider = (sso && sso.provider) ? sso.provider : 'Not configured';
+            detail.textContent = 'Provider: ' + provider;
+            // Update SSO status banner
+            const banner = document.getElementById('sso-status-banner');
+            if (sso && sso.client_id && sso.issuer_url) {
+                banner.className = 'alert alert-success py-2 mb-3';
+                banner.style.fontSize = '13px';
+                banner.innerHTML = '<i data-feather="check-circle" class="feather-sm me-1"></i> SSO is configured — Provider: <strong>' + escHtml(sso.provider || 'Custom') + '</strong>';
+            } else {
+                banner.className = 'alert alert-warning py-2 mb-3';
+                banner.style.fontSize = '13px';
+                banner.innerHTML = '<i data-feather="alert-triangle" class="feather-sm me-1"></i> SSO is not configured. Fill in the details below.';
+            }
+        } else if (method === 'database') {
+            label.className = 'badge bg-primary';
+            label.textContent = 'Database';
+            detail.textContent = 'Users table authentication';
+        } else {
+            label.className = 'badge bg-success';
+            label.textContent = 'System';
+            detail.textContent = 'PAM authentication';
+        }
+    }
+
+    async function loadAuthSettings() {
+        try {
+            const res = await fetch(`${API_BASE}/settings/auth?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data = await res.json();
+            if (data.success) {
+                const auth = data.auth;
+                _selectedAuthMethod = auth.method || 'system';
+                selectAuthMethod(_selectedAuthMethod);
+                updateAuthLabel(_selectedAuthMethod, auth.sso);
+                if (auth.sso) {
+                    document.getElementById('sso-provider').value = auth.sso.provider || '';
+                    document.getElementById('sso-issuer-url').value = auth.sso.issuer_url || '';
+                    document.getElementById('sso-client-id').value = auth.sso.client_id || '';
+                    document.getElementById('sso-client-secret').value = auth.sso.client_secret || '';
+                    document.getElementById('sso-redirect-uri').value = auth.sso.redirect_uri || '';
+                }
+            }
+        } catch (e) {}
+    }
+
+    async function saveAuthSettings() {
+        const btn = document.getElementById('btn-auth-save');
+        const resEl = document.getElementById('auth-save-result');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+        const payload = {
+            username: PulpitansAuth.getUsername(),
+            method: _selectedAuthMethod,
+            sso_provider: document.getElementById('sso-provider').value.trim(),
+            sso_client_id: document.getElementById('sso-client-id').value.trim(),
+            sso_client_secret: document.getElementById('sso-client-secret').value,
+            sso_issuer_url: document.getElementById('sso-issuer-url').value.trim(),
+            sso_redirect_uri: document.getElementById('sso-redirect-uri').value.trim()
+        };
+
+        try {
+            const res = await fetch(`${API_BASE}/settings/auth`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                resEl.innerHTML = '<div class="alert alert-success py-2"><i data-feather="check-circle" class="feather-sm me-1"></i> Authentication settings saved.</div>';
+                updateAuthLabel(_selectedAuthMethod, {
+                    provider: payload.sso_provider,
+                    client_id: payload.sso_client_id,
+                    issuer_url: payload.sso_issuer_url
+                });
+            } else {
+                resEl.innerHTML = `<div class="alert alert-danger py-2">${escHtml(data.error)}</div>`;
+            }
+        } catch (e) {
+            resEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="check" class="feather-sm me-1"></i> Apply Auth Settings';
+        feather.replace();
+        setTimeout(() => { resEl.innerHTML = ''; }, 4000);
+    }
+
+    function escHtml(t) {
+        const d = document.createElement('div');
+        d.textContent = t;
+        return d.innerHTML;
+    }
+
+    // ============================================================
+    // Project Status tab
+    // ============================================================
+    const BOOTSTRAP_COLORS = ['primary','success','danger','warning','info','secondary','dark','light'];
+    const FEATHER_ICONS = ['circle','check-circle','x-circle','pause-circle','loader','alert-circle','clock','eye','star','flag','zap','send','refresh-cw','shield','thumbs-up','thumbs-down'];
+
+    let _allStatuses = [];
+
+    async function loadProjectStatuses() {
+        const user = PulpitansAuth.getUsername();
+        const tbody = document.getElementById('statuses-tbody');
+        const resultEl = document.getElementById('statuses-load-result');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Loading...</td></tr>';
+        try {
+            const res = await fetch(`${API_BASE}/settings/project-statuses?username=${encodeURIComponent(user)}`);
+            const data = await res.json();
+            if (!data.success) { resultEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`; return; }
+            _allStatuses = data.statuses;
+            renderStatusesTable();
+        } catch(e) {
+            resultEl.innerHTML = '<div class="alert alert-danger">Could not load project statuses.</div>';
+        }
+    }
+
+    function renderStatusesTable() {
+        const tbody = document.getElementById('statuses-tbody');
+        if (!_allStatuses.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No statuses found. Deploy database first.</td></tr>';
+            feather.replace();
+            return;
+        }
+        tbody.innerHTML = _allStatuses.map((s, i) => `
+            <tr data-id="${s.id}">
+                <td>${i + 1}</td>
+                <td>
+                    <input type="text" class="form-control form-control-sm status-name-input" value="${escapeHtml(s.name)}" style="text-transform:uppercase;" data-id="${s.id}">
+                </td>
+                <td>
+                    <select class="form-select form-select-sm status-color-select" data-id="${s.id}">
+                        ${BOOTSTRAP_COLORS.map(c => `<option value="${c}" ${c === s.color ? 'selected' : ''}>${c}</option>`).join('')}
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm status-icon-select" data-id="${s.id}">
+                        ${FEATHER_ICONS.map(ic => `<option value="${ic}" ${ic === s.icon ? 'selected' : ''}>${ic}</option>`).join('')}
+                    </select>
+                </td>
+                <td>
+                    <span class="badge bg-${s.color}"><i data-feather="${s.icon}" style="width:14px;height:14px;"></i> ${escapeHtml(s.name)}</span>
+                </td>
+                <td class="text-center">${s.is_default ? '<i data-feather="lock" style="width:14px;height:14px;" class="text-muted"></i>' : '<i data-feather="unlock" style="width:14px;height:14px;" class="text-muted"></i>'}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary me-1" onclick="saveStatus(${s.id})" title="Save changes">
+                        <i data-feather="save" style="width:14px;height:14px;"></i>
+                    </button>
+                    ${s.is_default ? '' : `<button class="btn btn-sm btn-danger" onclick="deleteStatus(${s.id}, '${escapeHtml(s.name)}')" title="Delete status"><i data-feather="trash-2" style="width:14px;height:14px;"></i></button>`}
+                </td>
+            </tr>
+        `).join('');
+        // live preview
+        tbody.querySelectorAll('.status-color-select, .status-icon-select, .status-name-input').forEach(el => {
+            el.addEventListener('change', function() {
+                const id = this.dataset.id;
+                const row = tbody.querySelector(`tr[data-id="${id}"]`);
+                const name = row.querySelector('.status-name-input').value.toUpperCase();
+                const color = row.querySelector('.status-color-select').value;
+                const icon = row.querySelector('.status-icon-select').value;
+                const previewTd = row.querySelectorAll('td')[4];
+                previewTd.innerHTML = `<span class="badge bg-${color}"><i data-feather="${icon}" style="width:14px;height:14px;"></i> ${escapeHtml(name)}</span>`;
+                feather.replace();
+            });
+            if (el.classList.contains('status-name-input')) {
+                el.addEventListener('input', function() {
+                    const e = new Event('change'); this.dispatchEvent(e);
+                });
+            }
+        });
+        feather.replace();
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+    }
+
+    async function saveStatus(id) {
+        const user = PulpitansAuth.getUsername();
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        const name = row.querySelector('.status-name-input').value.trim().toUpperCase();
+        const color = row.querySelector('.status-color-select').value;
+        const icon = row.querySelector('.status-icon-select').value;
+        if (!name) { alert('Status name cannot be empty.'); return; }
+        try {
+            const res = await fetch(`${API_BASE}/settings/project-statuses/update`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: user, id, name, color, icon })
+            });
+            const data = await res.json();
+            if (data.success) {
+                loadProjectStatuses();
+            } else {
+                alert(data.error || 'Error updating status.');
+            }
+        } catch(e) { alert('Connection error.'); }
+    }
+
+    async function deleteStatus(id, name) {
+        if (!confirm(`Delete status "${name}"? Any projects using it will lose their status.`)) return;
+        const user = PulpitansAuth.getUsername();
+        try {
+            const res = await fetch(`${API_BASE}/settings/project-statuses/delete`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: user, id })
+            });
+            const data = await res.json();
+            if (data.success) {
+                loadProjectStatuses();
+            } else {
+                alert(data.error || 'Error deleting status.');
+            }
+        } catch(e) { alert('Connection error.'); }
+    }
+
+    async function addProjectStatus() {
+        const user = PulpitansAuth.getUsername();
+        const name = document.getElementById('new-status-name').value.trim().toUpperCase();
+        const color = document.getElementById('new-status-color').value;
+        const icon = document.getElementById('new-status-icon').value;
+        const resultEl = document.getElementById('add-status-result');
+        if (!name) { resultEl.innerHTML = '<div class="alert alert-warning">Name is required.</div>'; return; }
+        try {
+            const res = await fetch(`${API_BASE}/settings/project-statuses/add`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: user, name, color, icon })
+            });
+            const data = await res.json();
+            if (data.success) {
+                resultEl.innerHTML = '<div class="alert alert-success">Status added successfully.</div>';
+                document.getElementById('new-status-name').value = '';
+                loadProjectStatuses();
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            }
+        } catch(e) { resultEl.innerHTML = '<div class="alert alert-danger">Connection error.</div>'; }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function () {
+        const user = PulpitansAuth.getUsername();
+        if (user) {
+            try {
+                const res  = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(user)}`);
+                const data = await res.json();
+                _isAdmin = data.success && data.profile.is_admin;
+                if (_isAdmin) {
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+                    document.getElementById('settings-content').style.display = '';
+                    loadSettings();
+                    loadDbSettings();
+                    loadStorageSettings();
+                    loadAuthSettings();
+                    loadProjectStatuses();
+                } else {
+                    document.getElementById('access-denied').classList.remove('d-none');
+                }
+            } catch (e) {
+                document.getElementById('access-denied').classList.remove('d-none');
+            }
+        }
+        feather.replace();
+    });
+
+    // Live clock
+    (async function initClock() {
+        const el = document.getElementById('live-datetime');
+        let serverOffset = 0;
+        try {
+            const res  = await fetch('https://worldtimeapi.org/api/ip');
+            const json = await res.json();
+            serverOffset = new Date(json.datetime).getTime() - Date.now();
+        } catch (e) {}
+        function tick() {
+            const now = new Date(Date.now() + serverOffset);
+            const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            el.textContent = `${days[now.getDay()]}, ${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}  ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
+    </script>
+
+    <script src="../dist/js/auth.js?v=2"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+
+        document.getElementById('profileModal').addEventListener('show.bs.modal', async function () {
+            const username = PulpitansAuth.getUsername();
+            document.getElementById('profile-username').value = username;
+            document.getElementById('profile-save-msg').classList.add('d-none');
+            try {
+                const res  = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                document.getElementById('profile-display-name').value = (data.success && data.profile.display_name) || '';
+                document.getElementById('profile-bb-username').value  = (data.success && data.profile.bitbucket_username) || '';
+                document.getElementById('profile-bb-password').value  = (data.success && data.profile.bitbucket_password) || '';
+            } catch (e) {}
+        });
+
+        document.getElementById('btn-save-profile').addEventListener('click', async function () {
+            const username    = PulpitansAuth.getUsername();
+            const displayName = document.getElementById('profile-display-name').value.trim();
+            const msgEl       = document.getElementById('profile-save-msg');
+            try {
+                const res  = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        display_name: displayName,
+                        bitbucket_username: document.getElementById('profile-bb-username').value.trim(),
+                        bitbucket_password: document.getElementById('profile-bb-password').value
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('header-user-display-name').textContent = data.display_name;
+                    msgEl.className = 'alert alert-success';
+                    msgEl.textContent = 'Profile saved.';
+                } else {
+                    msgEl.className = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error saving profile.';
+                }
+            } catch (e) {
+                msgEl.className = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
+        });
+    </script>
+</body>
+
+</html>

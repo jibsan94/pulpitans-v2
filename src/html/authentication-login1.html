@@ -58,7 +58,7 @@
     <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
     <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
     <script src="../assets/libs/bootstrap/dist/js/bootstrap.min.js"></script>
-    <script src="../dist/js/auth.js"></script>
+    <script src="../dist/js/auth.js?v=2"></script>
     <script>
         const API_BASE = window.PULPITANS_API_BASE || '/api';
 
@@ -83,11 +83,6 @@
                 errBox.classList.remove('d-none');
                 return;
             }
-            if (!password) {
-                errBox.textContent = 'Please enter your password.';
-                errBox.classList.remove('d-none');
-                return;
-            }
 
             const btn = document.getElementById('btn-login');
             btn.disabled = true;
@@ -104,6 +99,9 @@
                 if (data.success) {
                     PulpitansAuth.login(username);
                     window.location.href = 'index.html';
+                } else if (data.needs_password) {
+                    // New DB user with no password set — redirect to initial password page
+                    window.location.href = `set-password.html?u=${encodeURIComponent(data.username || username)}`;
                 } else {
                     errBox.textContent = data.error || 'Login failed.';
                     errBox.classList.remove('d-none');

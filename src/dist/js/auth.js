@@ -67,8 +67,13 @@ const PulpitansAuth = (function () {
      * Fetches display name from backend and updates the header user dropdown.
      */
     async function _loadHeaderProfile(username) {
+        const API_BASE = window.PULPITANS_API_BASE || window.API_BASE || '/api';
+        // Always set profile picture (even if profile fetch fails)
+        const picUrl = `${API_BASE}/auth/profile-picture/${encodeURIComponent(username)}?t=${Date.now()}`;
+        document.querySelectorAll('.user-profile-pic').forEach(img => {
+            img.src = picUrl;
+        });
         try {
-            const API_BASE = window.PULPITANS_API_BASE || window.API_BASE || '/api';
             const res = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`);
             const data = await res.json();
             const displayName = (data.success && data.profile.display_name) ? data.profile.display_name : username;
@@ -86,7 +91,7 @@ const PulpitansAuth = (function () {
                 if (typeof feather !== 'undefined') feather.replace();
             }
         } catch (e) {
-            // Silently fall back to username
+            console.warn('[auth.js] _loadHeaderProfile error:', e);
             const nameEl = document.getElementById('header-user-display-name');
             if (nameEl) nameEl.textContent = username;
         }

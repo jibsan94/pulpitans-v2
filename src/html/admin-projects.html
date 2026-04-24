@@ -49,11 +49,12 @@
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle" width="40">
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle user-profile-pic" width="40">
                                 <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down" class="svg-icon"></i></span>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
-                                <a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#profileModal"><i data-feather="user" class="svg-icon me-2 ms-1"></i> My Profile</a>
+                                <a class="dropdown-item" href="my-profile.html"><i data-feather="user" class="svg-icon me-2 ms-1"></i> My Profile</a>
+                                <a class="dropdown-item admin-only" style="display:none;" href="settings.html"><i data-feather="settings" class="svg-icon me-2 ms-1"></i> Settings</a>
                                 <div class="dropdown-divider"></div>
                                 <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power" class="svg-icon me-2 ms-1"></i> Logout</a>
                             </div>
@@ -126,8 +127,12 @@
                                 <i data-feather="briefcase" class="feather-icon"></i>
                                 <span class="hide-menu">Projects</span>
                             </a>
-                        </li>
-                    </ul>
+                        </li>                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="settings.html" aria-expanded="false">
+                                <i data-feather="settings" class="feather-icon"></i>
+                                <span class="hide-menu">Settings</span>
+                            </a>
+                        </li>                    </ul>
                 </nav>
             </div>
         </aside>
@@ -240,8 +245,23 @@
 
     <script>
     const API_BASE = '/api';
-    const STATUS_COLORS = { done: 'success', not_ok: 'danger', idle: 'warning', wip: 'primary' };
-    const STATUS_LABELS = { done: 'Done', not_ok: 'Not OK', idle: 'Idle', wip: 'WIP' };
+    let STATUS_COLORS = { done: 'success', not_ok: 'danger', idle: 'warning', wip: 'primary' };
+    let STATUS_LABELS = { done: 'Done', not_ok: 'Not OK', idle: 'Idle', wip: 'WIP' };
+    async function _loadDynamicStatuses() {
+        try {
+            const res = await fetch(`${API_BASE}/settings/project-statuses`);
+            const data = await res.json();
+            if (data.success && data.statuses && data.statuses.length) {
+                STATUS_COLORS = {}; STATUS_LABELS = {};
+                data.statuses.forEach(s => {
+                    const key = s.name.toLowerCase().replace(/\s+/g, '_');
+                    STATUS_COLORS[key] = s.color;
+                    STATUS_LABELS[key] = s.name;
+                });
+            }
+        } catch(e) {}
+    }
+    _loadDynamicStatuses();
 
     let _managedUsers = [];
 
@@ -493,7 +513,7 @@
         </div>
     </div>
 
-    <script src="../dist/js/auth.js"></script>
+    <script src="../dist/js/auth.js?v=2"></script>
     <script>
         PulpitansAuth.requireLogin();
 
