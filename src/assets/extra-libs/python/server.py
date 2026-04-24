@@ -1646,5 +1646,128 @@ def report_download():
 # End Report endpoints
 # ============================================================
 
+# ============================================================
+# Processes endpoints
+# ============================================================
+
+@app.route('/system/processes')
+def system_processes():
+    """Returns the current list of running processes, sorted by CPU%."""
+    try:
+        result = subprocess.run(
+            ['ps', 'aux', '--sort=-%cpu'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        lines = result.stdout.decode('utf-8', errors='replace').splitlines()
+        processes = []
+        for line in lines[1:]:  # skip header
+            parts = line.split(None, 10)
+            if len(parts) < 11:
+                continue
+            try:
+                processes.append({
+                    'user':    parts[0],
+                    'pid':     int(parts[1]),
+                    'cpu':     float(parts[2]),
+                    'mem':     float(parts[3]),
+                    'vsz':     int(parts[4]),
+                    'rss':     int(parts[5]),
+                    'stat':    parts[7],
+                    'command': parts[10][:120],
+                })
+            except (ValueError, IndexError):
+                continue
+        return jsonify({"success": True, "processes": processes})
+    except Exception as e:
+        return jsonify({"success": False, "processes": [], "error": str(e)})
+
+
+@app.route('/system/kill-process', methods=['POST'])
+def system_kill_process():
+    """Kill a process by PID. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    pid = data.get('pid')
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "Invalid PID."})
+
+    # Safety: refuse to kill PID 1 or own process
+    if pid <= 1:
+        return jsonify({"success": False, "error": "Cannot kill this process."})
+
+    try:
+        os.kill(pid, 15)  # SIGTERM
+        user_manager.log_activity(admin_user, 'kill_process', f'Killed PID {pid}')
+        return jsonify({"success": True})
+    except ProcessLookupError:
+        return jsonify({"success": False, "error": "Process not found (may have already exited)."})
+    except PermissionError:
+        return jsonify({"success": False, "error": "Permission denied. Cannot kill this process."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/system/process/<int:pid>')
+def system_process_detail(pid):
+    """Returns detailed info for a single process by reading /proc/<pid>."""
+    if pid <= 0:
+        return jsonify({"success": False, "error": "Invalid PID."})
+
+    detail = {"pid": pid}
+
+    # /proc/<pid>/status
+    try:
+        with open('/proc/{}/status'.format(pid), 'r') as f:
+            for line in f:
+                parts = line.strip().split(':', 1)
+                if len(parts) == 2:
+                    detail[parts[0].strip()] = parts[1].strip()
+    except IOError:
+        return jsonify({"success": False, "error": "Process not found."})
+
+    # /proc/<pid>/cmdline (full command with args)
+    try:
+        with open('/proc/{}/cmdline'.format(pid), 'rb') as f:
+            raw = f.read().replace(b'\x00', b' ').decode('utf-8', errors='replace').strip()
+            detail['cmdline_full'] = raw
+    except IOError:
+        detail['cmdline_full'] = ''
+
+    # /proc/<pid>/io (I/O stats)
+    try:
+        with open('/proc/{}/io'.format(pid), 'r') as f:
+            io = {}
+            for line in f:
+                parts = line.strip().split(':', 1)
+                if len(parts) == 2:
+                    io[parts[0].strip()] = parts[1].strip()
+            detail['io'] = io
+    except IOError:
+        detail['io'] = {}
+
+    # /proc/<pid>/wchan (what the process is waiting on)
+    try:
+        with open('/proc/{}/wchan'.format(pid), 'r') as f:
+            detail['wchan'] = f.read().strip()
+    except IOError:
+        detail['wchan'] = ''
+
+    # /proc/<pid>/environ - count only (don't leak env vars)
+    try:
+        with open('/proc/{}/environ'.format(pid), 'rb') as f:
+            count = len(f.read().split(b'\x00'))
+        detail['env_var_count'] = count
+    except IOError:
+        detail['env_var_count'] = None
+
+    return jsonify({"success": True, "detail": detail})
+
+# End Processes endpoints
+# ============================================================
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

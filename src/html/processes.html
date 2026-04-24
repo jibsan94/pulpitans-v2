@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="../assets/images/pulpitans-logo.svg">
+    <title>PULPITANS — System Processes</title>
+    <link href="../dist/css/style.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        .process-row-high-cpu  { background-color: #fff3cd !important; }
+        .process-row-very-high { background-color: #f8d7da !important; }
+        .cpu-bar, .mem-bar { height: 6px; border-radius: 3px; background: #e9ecef; min-width: 60px; }
+        .cpu-bar-fill  { height: 100%; border-radius: 3px; background: #0d6efd; transition: width 0.4s; }
+        .mem-bar-fill  { height: 100%; border-radius: 3px; background: #198754; transition: width 0.4s; }
+        .cpu-bar-fill.warn  { background: #ffc107; }
+        .cpu-bar-fill.danger { background: #dc3545; }
+        .stat-badge { font-size: 11px; padding: 2px 6px; }
+        #process-table tbody tr { font-size: 13px; }
+        .cmd-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; }
+        .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #198754; margin-right: 6px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .proc-row-flash { animation: rowflash 0.6s ease; }
+        @keyframes rowflash { 0%,100% { opacity: 1; } 40% { opacity: 0.4; } }
+        .detail-key { font-size: 12px; color: #6c757d; white-space: nowrap; }
+        .detail-val { font-size: 12px; font-family: monospace; word-break: break-all; }
+        .detail-section { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #0d6efd; border-bottom: 1px solid #dee2e6; padding-bottom: 4px; margin-bottom: 8px; margin-top: 12px; }
+        #detail-cmdline { font-size: 11px; word-break: break-all; background: #f8f9fa; padding: 8px; border-radius: 4px; border: 1px solid #dee2e6; max-height: 80px; overflow-y: auto; }
+    </style>
+</head>
+
+<body>
+    <div class="preloader">
+        <div class="lds-ripple"><div class="lds-pos"></div><div class="lds-pos"></div></div>
+    </div>
+
+    <div id="main-wrapper" data-theme="light" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
+        data-sidebar-position="fixed" data-header-position="fixed" data-boxed-layout="full">
+
+        <!-- Topbar -->
+        <header class="topbar" data-navbarbg="skin6">
+            <nav class="navbar top-navbar navbar-expand-lg">
+                <div class="navbar-header" data-logobg="skin6">
+                    <a class="nav-toggler waves-effect waves-light d-block d-lg-none" href="javascript:void(0)"><i class="ti-menu ti-close"></i></a>
+                    <div class="navbar-brand">
+                        <img src="../assets/images/pulpitans-name.svg" alt="" class="img-fluid">
+                    </div>
+                    <a class="topbartoggler d-block d-lg-none waves-effect waves-light" href="javascript:void(0)"
+                        data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><i class="ti-more"></i></a>
+                </div>
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left me-auto ms-3 ps-1">
+                        <li class="nav-item d-flex align-items-center ms-3">
+                            <div>
+                                <h6 class="mb-0 font-weight-medium text-dark">System Processes</h6>
+                                <small class="text-muted">Applications / Processes</small>
+                            </div>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav float-end">
+                        <li class="nav-item d-none d-md-flex align-items-center me-3">
+                            <span id="live-datetime" class="text-muted font-14" style="white-space:nowrap;">Loading...</span>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown">
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle" width="40">
+                                <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down" class="svg-icon"></i></span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
+                                <a class="dropdown-item" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#profileModal"><i data-feather="user" class="svg-icon me-2 ms-1"></i> My Profile</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power" class="svg-icon me-2 ms-1"></i> Logout</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Left Sidebar -->
+        <aside class="left-sidebar" data-sidebarbg="skin6">
+            <div class="scroll-sidebar" data-sidebarbg="skin6">
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="index.html" aria-expanded="false">
+                                <i data-feather="home" class="feather-icon"></i>
+                                <span class="hide-menu">Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="list-divider"></li>
+                        <li class="nav-small-cap"><span class="hide-menu">Applications</span></li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="git-controller.html" aria-expanded="false">
+                                <i data-feather="git-branch" class="feather-icon"></i>
+                                <span class="hide-menu">Git Controller</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="make-build.html" aria-expanded="false">
+                                <i data-feather="package" class="feather-icon"></i>
+                                <span class="hide-menu">Make Build</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="srn.html" aria-expanded="false">
+                                <i data-feather="file-text" class="feather-icon"></i>
+                                <span class="hide-menu">SRN</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="project-info.html" aria-expanded="false">
+                                <i data-feather="clipboard" class="feather-icon"></i>
+                                <span class="hide-menu">Project Info</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item active">
+                            <a class="sidebar-link sidebar-link active" href="processes.html" aria-expanded="false">
+                                <i data-feather="cpu" class="feather-icon"></i>
+                                <span class="hide-menu">Processes</span>
+                            </a>
+                        </li>
+                        <!-- Admin section -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Page wrapper -->
+        <div class="page-wrapper">
+            <div class="container-fluid">
+
+                <!-- Summary cards -->
+                <div class="row mb-3" id="summary-cards">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #0d6efd !important;">
+                            <div class="card-body p-3 d-flex align-items-center">
+                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width:42px;height:42px;">
+                                    <i data-feather="layers" style="color:#0d6efd;"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h3 class="mb-0 fw-bold" id="card-total">—</h3>
+                                    <small class="text-muted">Total Processes</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #dc3545 !important;">
+                            <div class="card-body p-3 d-flex align-items-center">
+                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width:42px;height:42px;">
+                                    <i data-feather="zap" style="color:#dc3545;"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h3 class="mb-0 fw-bold" id="card-top-cpu">—</h3>
+                                    <small class="text-muted">Top CPU%</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #198754 !important;">
+                            <div class="card-body p-3 d-flex align-items-center">
+                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width:42px;height:42px;">
+                                    <i data-feather="database" style="color:#198754;"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h3 class="mb-0 fw-bold" id="card-top-mem">—</h3>
+                                    <small class="text-muted">Top MEM%</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6c757d !important;">
+                            <div class="card-body p-3 d-flex align-items-center">
+                                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center flex-shrink-0" style="width:42px;height:42px;">
+                                    <i data-feather="clock" style="color:#6c757d;"></i>
+                                </div>
+                                <div class="ms-3">
+                                    <h6 class="mb-0 fw-bold" id="card-updated" style="font-size:13px;">—</h6>
+                                    <small class="text-muted">Last Update</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Process Table -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+                                    <h4 class="card-title mb-0">
+                                        <span class="live-dot"></span>Running Processes
+                                    </h4>
+                                    <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+                                        <input type="text" id="search-input" class="form-control form-control-sm"
+                                            placeholder="Filter by name, user, PID..." style="width:220px;"
+                                            oninput="filterTable()">
+                                        <select class="form-select form-select-sm" id="sort-select" style="width:150px;" onchange="applySortAndRender()">
+                                            <option value="cpu">Sort: CPU%</option>
+                                            <option value="mem">Sort: MEM%</option>
+                                            <option value="pid">Sort: PID</option>
+                                            <option value="user">Sort: User</option>
+                                        </select>
+                                        <select class="form-select form-select-sm" id="limit-select" style="width:110px;" onchange="applySortAndRender()">
+                                            <option value="50">Show 50</option>
+                                            <option value="100" selected>Show 100</option>
+                                            <option value="200">Show 200</option>
+                                            <option value="0">Show All</option>
+                                        </select>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="loadProcesses()">
+                                            <i data-feather="refresh-cw" class="feather-sm"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive" style="max-height:600px; overflow-y:auto;">
+                                    <table class="table table-hover mb-0" id="process-table">
+                                        <thead class="bg-dark text-white" style="position:sticky;top:0;z-index:1;">
+                                            <tr>
+                                                <th style="width:6%">PID</th>
+                                                <th style="width:9%">User</th>
+                                                <th style="width:12%">CPU%</th>
+                                                <th style="width:12%">MEM%</th>
+                                                <th style="width:7%">RSS</th>
+                                                <th style="width:6%">Stat</th>
+                                                <th>Command</th>
+                                                <th style="width:5%" class="text-center"></th>
+                                                <th class="admin-only text-center" style="display:none;width:6%">Kill</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="proc-tbody">
+                                            <tr><td colspan="8" class="text-center text-muted py-3">
+                                                <span class="spinner-border spinner-border-sm me-1"></span> Loading processes...
+                                            </td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="mt-2 text-muted" style="font-size:12px;" id="proc-count"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <footer class="footer text-center text-muted">
+                All Rights Reserved by Freedash. Designed and Developed by <a href="#">Jibsan the ruler of the Outlands</a>.
+            </footer>
+        </div>
+    </div>
+
+    <!-- Process Detail Modal -->
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background:#0d6efd;color:#fff;">
+                    <h5 class="modal-title">
+                        <i data-feather="info" class="feather-sm me-1"></i>
+                        Process Details &mdash; PID <span id="detail-pid-title"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="detail-body" style="max-height:70vh;overflow-y:auto;">
+                    <div class="text-center py-4"><span class="spinner-border spinner-border-sm"></span></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="detail-kill-btn" style="display:none;">
+                        <i data-feather="x-octagon" class="feather-sm me-1"></i> Kill this Process
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kill Confirm Modal -->
+    <div class="modal fade" id="killModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i data-feather="x-octagon" class="feather-sm me-1"></i> Kill Process</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1">You are about to send <strong>SIGTERM</strong> to:</p>
+                    <div class="p-2 rounded mt-2 mb-3" style="background:#f8f9fa;">
+                        <div><span class="text-muted">PID:</span> <strong id="kill-pid"></strong></div>
+                        <div><span class="text-muted">User:</span> <span id="kill-user"></span></div>
+                        <div><span class="text-muted">Command:</span> <code id="kill-cmd" style="font-size:12px; word-break:break-all;"></code></div>
+                    </div>
+                    <div class="alert alert-warning py-2 mb-0">
+                        <i data-feather="alert-triangle" class="feather-sm me-1"></i>
+                        This will attempt to terminate the process gracefully.
+                    </div>
+                    <div id="kill-result" class="mt-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="btn-confirm-kill" onclick="executeKill()">
+                        <i data-feather="x-octagon" class="feather-sm me-1"></i> Kill Process
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="profileModalLabel">My Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <input type="text" class="form-control" id="profile-username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Display Name <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="profile-display-name" placeholder="Leave empty to use username">
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i data-feather="git-branch" class="feather-sm me-1"></i> BitBucket Credentials</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Username</label>
+                        <input type="text" class="form-control" id="profile-bb-username" placeholder="Your BitBucket username">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Password / Token</label>
+                        <input type="password" class="form-control" id="profile-bb-password" placeholder="Your password or token">
+                    </div>
+                    <div id="profile-save-msg" class="d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-profile">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="../assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../dist/js/app-style-switcher.js"></script>
+    <script src="../dist/js/feather.min.js"></script>
+    <script src="../assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="../assets/extra-libs/sparkline/sparkline.js"></script>
+    <script src="../dist/js/sidebarmenu.js"></script>
+    <script src="../dist/js/custom.min.js"></script>
+
+    <script>
+    const API_BASE = '/api';
+    let _allProcesses = [];
+    let _isAdmin = false;
+    let _refreshInterval = null;
+
+    function _fmtRss(kb) {
+        if (kb >= 1048576) return (kb / 1048576).toFixed(1) + ' GB';
+        if (kb >= 1024)    return (kb / 1024).toFixed(0) + ' MB';
+        return kb + ' KB';
+    }
+
+    function _statBadge(stat) {
+        const s = (stat || '').toUpperCase()[0];
+        const map = { R: ['bg-success', 'Running'], S: ['bg-secondary', 'Sleep'],
+                      D: ['bg-warning text-dark', 'Wait'], Z: ['bg-danger', 'Zombie'],
+                      T: ['bg-info', 'Stopped'], I: ['bg-light text-dark border', 'Idle'] };
+        const [cls, label] = map[s] || ['bg-light text-dark border', stat];
+        return `<span class="badge ${cls} stat-badge">${label}</span>`;
+    }
+
+    async function loadProcesses() {
+        try {
+            const res  = await fetch(`${API_BASE}/system/processes`);
+            const data = await res.json();
+            if (!data.success) return;
+            _allProcesses = data.processes;
+            applySortAndRender();
+            // Update summary cards
+            const now = new Date();
+            document.getElementById('card-total').textContent = _allProcesses.length;
+            const topCpu = Math.max(..._allProcesses.map(p => p.cpu));
+            const topMem = Math.max(..._allProcesses.map(p => p.mem));
+            document.getElementById('card-top-cpu').textContent = topCpu.toFixed(1) + '%';
+            document.getElementById('card-top-mem').textContent = topMem.toFixed(1) + '%';
+            document.getElementById('card-updated').textContent =
+                String(now.getHours()).padStart(2,'0') + ':' +
+                String(now.getMinutes()).padStart(2,'0') + ':' +
+                String(now.getSeconds()).padStart(2,'0');
+        } catch (e) {
+            document.getElementById('proc-tbody').innerHTML =
+                '<tr><td colspan="8" class="text-center text-danger py-3">Error loading processes.</td></tr>';
+        }
+    }
+
+    function applySortAndRender() {
+        const sortKey  = document.getElementById('sort-select').value;
+        const limit    = parseInt(document.getElementById('limit-select').value) || Infinity;
+        const filter   = (document.getElementById('search-input').value || '').toLowerCase();
+
+        let procs = _allProcesses.filter(p =>
+            !filter ||
+            String(p.pid).includes(filter) ||
+            p.user.toLowerCase().includes(filter) ||
+            p.command.toLowerCase().includes(filter)
+        );
+
+        procs.sort((a, b) => {
+            if (sortKey === 'cpu')  return b.cpu  - a.cpu;
+            if (sortKey === 'mem')  return b.mem  - a.mem;
+            if (sortKey === 'pid')  return a.pid  - b.pid;
+            if (sortKey === 'user') return a.user.localeCompare(b.user);
+            return 0;
+        });
+
+        const shown = limit === Infinity ? procs : procs.slice(0, limit);
+        document.getElementById('proc-count').textContent =
+            `Showing ${shown.length} of ${procs.length} processes (${_allProcesses.length} total)`;
+
+        const tbody = document.getElementById('proc-tbody');
+        const existingRows = {};
+        tbody.querySelectorAll('tr[data-pid]').forEach(r => existingRows[r.dataset.pid] = r);
+        const seenPids = new Set();
+
+        shown.forEach((p, idx) => {
+            seenPids.add(String(p.pid));
+            const rowCls = p.cpu >= 50 ? 'process-row-very-high' : p.cpu >= 15 ? 'process-row-high-cpu' : '';
+            const cpuFill = p.cpu >= 50 ? 'danger' : p.cpu >= 15 ? 'warn' : '';
+            const cpuW = Math.min(p.cpu, 100).toFixed(1);
+            const memW = Math.min(p.mem, 100).toFixed(1);
+            const killBtn = _isAdmin
+                ? `<td class="text-center admin-only">
+                    <button class="btn btn-sm btn-outline-danger px-2 py-0" style="font-size:12px;"
+                        onclick="confirmKill(${p.pid},'${_escAttr(p.user)}','${_escAttr(p.command.substring(0,80))}')">
+                        <i data-feather="x" class="feather-sm"></i>
+                    </button></td>`
+                : `<td class="admin-only" style="display:none;"></td>`;
+
+            const newHtml = `
+                <td><span class="text-muted">${p.pid}</span></td>
+                <td><small class="fw-medium">${_escHtml(p.user)}</small></td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="min-width:36px;font-size:12px;">${p.cpu.toFixed(1)}%</span>
+                        <div class="cpu-bar flex-grow-1"><div class="cpu-bar-fill ${cpuFill}" style="width:${cpuW}%"></div></div>
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <span style="min-width:36px;font-size:12px;">${p.mem.toFixed(1)}%</span>
+                        <div class="mem-bar flex-grow-1"><div class="mem-bar-fill" style="width:${memW}%"></div></div>
+                    </div>
+                </td>
+                <td><small class="text-muted">${_fmtRss(p.rss)}</small></td>
+                <td>${_statBadge(p.stat)}</td>
+                <td class="cmd-cell" title="${_escAttr(p.command)}">${_escHtml(p.command)}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-info px-2 py-0" style="font-size:12px;"
+                        onclick="showDetail(${p.pid})" title="View details">
+                        <i data-feather="eye" class="feather-sm"></i>
+                    </button>
+                </td>
+                ${killBtn}`;
+
+            if (existingRows[String(p.pid)]) {
+                const row = existingRows[String(p.pid)];
+                row.className = rowCls;
+                row.innerHTML = newHtml;
+                // Move to correct position if needed
+                const rows = tbody.children;
+                if (rows[idx] !== row) tbody.insertBefore(row, rows[idx] || null);
+            } else {
+                const tr = document.createElement('tr');
+                tr.className = rowCls;
+                tr.dataset.pid = p.pid;
+                tr.innerHTML = newHtml;
+                const rows = tbody.children;
+                tbody.insertBefore(tr, rows[idx] || null);
+            }
+        });
+
+        // Remove rows for processes no longer in list
+        tbody.querySelectorAll('tr[data-pid]').forEach(r => {
+            if (!seenPids.has(r.dataset.pid)) r.remove();
+        });
+
+        // If first load (no rows with pids existed), clear the loading placeholder
+        const placeholder = tbody.querySelector('tr:not([data-pid])');
+        if (placeholder) placeholder.remove();
+
+        feather.replace();
+    }
+
+    function filterTable() {
+        applySortAndRender();
+    }
+
+    function _escHtml(t) {
+        const d = document.createElement('div');
+        d.textContent = t;
+        return d.innerHTML;
+    }
+
+    function _escAttr(t) {
+        return String(t).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+    }
+
+    function confirmKill(pid, user, cmd) {
+        document.getElementById('kill-pid').textContent  = pid;
+        document.getElementById('kill-user').textContent = user;
+        document.getElementById('kill-cmd').textContent  = cmd;
+        document.getElementById('kill-result').innerHTML = '';
+        document.getElementById('btn-confirm-kill').dataset.pid = pid;
+        const modal = new bootstrap.Modal(document.getElementById('killModal'));
+        modal.show();
+        feather.replace();
+    }
+
+    async function executeKill() {
+        const pid     = parseInt(document.getElementById('btn-confirm-kill').dataset.pid);
+        const btnEl   = document.getElementById('btn-confirm-kill');
+        const resultEl = document.getElementById('kill-result');
+        btnEl.disabled = true;
+        btnEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Killing...';
+
+        try {
+            const res  = await fetch(`${API_BASE}/system/kill-process`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: PulpitansAuth.getUsername(), pid })
+            });
+            const data = await res.json();
+            if (data.success) {
+                resultEl.innerHTML = `<div class="alert alert-success py-1 mb-0">Process ${pid} terminated.</div>`;
+                setTimeout(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('killModal')).hide();
+                    loadProcesses();
+                }, 1200);
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-danger py-1 mb-0">${data.error}</div>`;
+            }
+        } catch (e) {
+            resultEl.innerHTML = '<div class="alert alert-danger py-1 mb-0">Connection error.</div>';
+        }
+        btnEl.disabled = false;
+        btnEl.innerHTML = '<i data-feather="x-octagon" class="feather-sm me-1"></i> Kill Process';
+        feather.replace();
+    }
+
+    async function showDetail(pid) {
+        const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+        document.getElementById('detail-pid-title').textContent = pid;
+        document.getElementById('detail-body').innerHTML =
+            '<div class="text-center py-4"><span class="spinner-border spinner-border-sm me-1"></span> Loading...</div>';
+        document.getElementById('detail-kill-btn').style.display = _isAdmin ? '' : 'none';
+        document.getElementById('detail-kill-btn').onclick = () => {
+            modal.hide();
+            const p = _allProcesses.find(x => x.pid === pid);
+            confirmKill(pid, p ? p.user : '?', p ? p.command.substring(0,80) : '');
+        };
+        modal.show();
+        try {
+            const res  = await fetch(`${API_BASE}/system/process/${pid}`);
+            const data = await res.json();
+            if (!data.success) {
+                document.getElementById('detail-body').innerHTML =
+                    `<div class="alert alert-danger">${data.error}</div>`;
+                return;
+            }
+            const d = data.detail;
+            const proc = _allProcesses.find(x => x.pid === pid);
+
+            function row(k, v) {
+                if (v === undefined || v === null || v === '') return '';
+                return `<tr><td class="detail-key pe-3">${k}</td><td class="detail-val">${_escHtml(String(v))}</td></tr>`;
+            }
+            function section(title) {
+                return `<tr><td colspan="2"><div class="detail-section">${title}</div></td></tr>`;
+            }
+            function fmtKb(str) {
+                if (!str) return str;
+                const n = parseInt(str);
+                if (isNaN(n)) return str;
+                return _fmtRss(n);
+            }
+            function fmtBytes(str) {
+                if (!str) return str;
+                const n = parseInt(str);
+                if (isNaN(n)) return str;
+                if (n >= 1073741824) return (n/1073741824).toFixed(2) + ' GB';
+                if (n >= 1048576)    return (n/1048576).toFixed(1) + ' MB';
+                if (n >= 1024)       return (n/1024).toFixed(0) + ' KB';
+                return n + ' B';
+            }
+
+            let html = `<table class="table table-sm mb-0">`;
+
+            // Identity
+            html += section('Identity');
+            html += row('PID',        d.Pid);
+            html += row('Name',       d.Name);
+            html += row('State',      d.State);
+            html += row('User',       proc ? proc.user : '');
+            html += row('PPid',       d.PPid);
+            html += row('Threads',    d.Threads);
+            html += row('Groups',     d.Groups);
+
+            // CPU & Memory
+            html += section('CPU & Memory');
+            html += row('CPU%',       proc ? proc.cpu.toFixed(1) + '%' : '');
+            html += row('MEM%',       proc ? proc.mem.toFixed(1) + '%' : '');
+            html += row('VmPeak',     fmtKb(d.VmPeak));
+            html += row('VmSize',     fmtKb(d.VmSize));
+            html += row('VmRSS',      fmtKb(d.VmRSS));
+            html += row('VmSwap',     fmtKb(d.VmSwap));
+            html += row('VmData',     fmtKb(d.VmData));
+            html += row('VmStk',      fmtKb(d.VmStk));
+            html += row('VmExe',      fmtKb(d.VmExe));
+            html += row('VmLib',      fmtKb(d.VmLib));
+            html += row('RssAnon',    fmtKb(d.RssAnon));
+            html += row('RssFile',    fmtKb(d.RssFile));
+
+            // I/O
+            if (d.io && Object.keys(d.io).length) {
+                html += section('I/O');
+                html += row('Read bytes',   fmtBytes(d.io['read_bytes']));
+                html += row('Write bytes',  fmtBytes(d.io['write_bytes']));
+                html += row('Read calls',   d.io['syscr']);
+                html += row('Write calls',  d.io['syscw']);
+            }
+
+            // File Descriptors
+            html += section('File Descriptors & Misc');
+            html += row('FDSize',     d.FDSize);
+            html += row('Env vars',   d.env_var_count);
+            html += row('Waiting on', d.wchan);
+            html += row('UID',        d.Uid);
+            html += row('GID',        d.Gid);
+            html += row('SigPnd',     d.SigPnd);
+            html += row('SigBlk',     d.SigBlk);
+            html += row('SigIgn',     d.SigIgn);
+            html += row('SigCgt',     d.SigCgt);
+
+            html += '</table>';
+
+            // Full cmdline
+            if (d.cmdline_full) {
+                html += `<div class="detail-section mt-3">Full Command Line</div>
+                    <div id="detail-cmdline">${_escHtml(d.cmdline_full)}</div>`;
+            }
+
+            document.getElementById('detail-body').innerHTML = html;
+        } catch (e) {
+            document.getElementById('detail-body').innerHTML =
+                '<div class="alert alert-danger">Error loading process details.</div>';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function () {
+        // Check admin
+        const user = PulpitansAuth.getUsername();
+        if (user) {
+            try {
+                const res  = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(user)}`);
+                const data = await res.json();
+                _isAdmin = data.success && data.profile.is_admin;
+                if (_isAdmin) {
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+                    feather.replace();
+                }
+            } catch (e) {}
+        }
+
+        loadProcesses();
+        _refreshInterval = setInterval(loadProcesses, 3000);
+    });
+
+    // Live clock
+    (async function initClock() {
+        const el = document.getElementById('live-datetime');
+        let serverOffset = 0;
+        try {
+            const res  = await fetch('https://worldtimeapi.org/api/ip');
+            const json = await res.json();
+            serverOffset = new Date(json.datetime).getTime() - Date.now();
+        } catch (e) {}
+        function tick() {
+            const now = new Date(Date.now() + serverOffset);
+            const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            el.textContent = `${days[now.getDay()]}, ${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}  ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
+    </script>
+
+    <script src="../dist/js/auth.js"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+
+        document.getElementById('profileModal').addEventListener('show.bs.modal', async function () {
+            const username = PulpitansAuth.getUsername();
+            document.getElementById('profile-username').value = username;
+            document.getElementById('profile-save-msg').classList.add('d-none');
+            try {
+                const res  = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                document.getElementById('profile-display-name').value = (data.success && data.profile.display_name) || '';
+                document.getElementById('profile-bb-username').value  = (data.success && data.profile.bitbucket_username) || '';
+                document.getElementById('profile-bb-password').value  = (data.success && data.profile.bitbucket_password) || '';
+            } catch (e) {}
+        });
+
+        document.getElementById('btn-save-profile').addEventListener('click', async function () {
+            const username    = PulpitansAuth.getUsername();
+            const displayName = document.getElementById('profile-display-name').value.trim();
+            const msgEl       = document.getElementById('profile-save-msg');
+            try {
+                const res  = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        display_name: displayName,
+                        bitbucket_username: document.getElementById('profile-bb-username').value.trim(),
+                        bitbucket_password: document.getElementById('profile-bb-password').value
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('header-user-display-name').textContent = data.display_name;
+                    msgEl.className = 'alert alert-success';
+                    msgEl.textContent = 'Profile saved.';
+                } else {
+                    msgEl.className = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error saving profile.';
+                }
+            } catch (e) {
+                msgEl.className = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
+        });
+    </script>
+</body>
+
+</html>
