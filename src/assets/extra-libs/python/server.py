@@ -178,11 +178,22 @@ def auth_login():
             is_admin = user_manager.is_admin(username)
         user_manager.log_activity(username, 'login', 'User logged in')
 
+        # Check if password works with PAM (local server auth)
+        pam_valid = False
+        if password and user_manager.validate_username(username):
+            try:
+                import pam
+                p = pam.pam()
+                pam_valid = p.authenticate(username, password)
+            except Exception:
+                pam_valid = False
+
         return jsonify({
             "success": True,
             "username": username,
             "display_name": cfg.get('display_name', '') or username,
-            "is_admin": is_admin
+            "is_admin": is_admin,
+            "pam_valid": pam_valid
         })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -1055,6 +1066,77 @@ def dashboard_builds():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+@app.route('/dashboard/builds/download')
+def dashboard_build_download():
+    """Download a build file. Any authenticated user."""
+    from flask import send_file
+    project = request.args.get('project', '').strip()
+    filename = request.args.get('file', '').strip()
+    username = request.args.get('username', '').strip()
+
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+    if not project or not filename:
+        return jsonify({"success": False, "error": "Project and file are required."})
+
+    # Sanitise: no path traversal
+    if '/' in project or '\\' in project or '..' in project:
+        return jsonify({"success": False, "error": "Invalid project name."}), 400
+    if '/' in filename or '\\' in filename or '..' in filename:
+        return jsonify({"success": False, "error": "Invalid filename."}), 400
+
+    config = config_loader.load_config()
+    projects_path = config['scanner']['projects_path'].rstrip('/')
+    build_subdir = config['scanner']['build_subdir']
+    filepath = os.path.join(projects_path, project, build_subdir, filename)
+
+    if not os.path.isfile(filepath):
+        return jsonify({"success": False, "error": "File not found."}), 404
+
+    return send_file(filepath, as_attachment=True, attachment_filename=filename)
+
+@app.route('/dashboard/builds/delete', methods=['POST'])
+def dashboard_build_delete():
+    """Delete a build artifact file. Admin only. Uses sudo -u to delete as the OS user."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    project = data.get('project', '').strip()
+    filename = data.get('file', '').strip()
+
+    if not project or not filename:
+        return jsonify({"success": False, "error": "Project and file are required."})
+
+    # Sanitise: no path traversal
+    if '/' in project or '\\' in project or '..' in project:
+        return jsonify({"success": False, "error": "Invalid project name."}), 400
+    if '/' in filename or '\\' in filename or '..' in filename:
+        return jsonify({"success": False, "error": "Invalid filename."}), 400
+
+    config = config_loader.load_config()
+    projects_path = config['scanner']['projects_path'].rstrip('/')
+    build_subdir = config['scanner']['build_subdir']
+    filepath = os.path.join(projects_path, project, build_subdir, filename)
+
+    if not os.path.isfile(filepath):
+        return jsonify({"success": False, "error": "File not found."}), 404
+
+    # Delete file via sudo (service user has NOPASSWD sudo)
+    try:
+        proc = subprocess.run(
+            ['sudo', '-n', 'rm', '--', filepath],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        if proc.returncode != 0:
+            stderr = proc.stderr.decode('utf-8', errors='replace').strip()
+            return jsonify({"success": False, "error": stderr or "Permission denied."})
+        _log_activity(admin_user, 'delete_build', 'Deleted build %s/%s' % (project, filename))
+        return jsonify({"success": True, "message": "Build deleted."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route('/dashboard/system')
 def dashboard_system():
     """Returns real-time memory and /iDASREPO disk usage."""
@@ -1816,16 +1898,16 @@ def admin_master_projects():
         for p in master:
             assigned_to, status = _db_get_project_assignment(p['name'])
             result.append({
-                "name": p['name'], "folder": p['folder'],
+                "id": p['id'], "name": p['name'], "folder": p['folder'],
                 "assigned_to": assigned_to or '', "status": status or ''
             })
     else:
         master = user_manager.get_master_projects()
         result = []
-        for p in master:
+        for i, p in enumerate(master):
             assigned_to, status = user_manager.get_project_assignment(p['name'])
             result.append({
-                "name": p['name'], "folder": p['folder'],
+                "id": i + 1, "name": p['name'], "folder": p['folder'],
                 "assigned_to": assigned_to or '', "status": status or ''
             })
     return jsonify({"success": True, "projects": result})
@@ -3263,8 +3345,8 @@ def settings_deploy_db():
         return jsonify({"success": False, "error": "Database not configured. Save the connection details first."})
 
     # Order matters: drop dependent tables first, then parent tables
-    drop_order = ['activity_log', 'user_config', 'user_projects', 'admin_projects', 'project_status', 'user_pictures', 'delivery_servers', 'users']
-    create_order = ['users', 'user_pictures', 'project_status', 'admin_projects', 'user_projects', 'user_config', 'activity_log', 'delivery_servers']
+    drop_order = ['activity_log', 'user_config', 'user_projects', 'admin_projects', 'project_status', 'user_pictures', 'delivery_servers', 'delivery_routes', 'users']
+    create_order = ['users', 'user_pictures', 'project_status', 'admin_projects', 'user_projects', 'user_config', 'activity_log', 'delivery_servers', 'delivery_routes']
 
     tables_sql = {
         'users': """
@@ -3368,6 +3450,19 @@ def settings_deploy_db():
                 ssh_password VARCHAR(500) DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        'delivery_routes': """
+            CREATE TABLE delivery_routes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                project_id INT NOT NULL,
+                path VARCHAR(500) NOT NULL,
+                description VARCHAR(200) DEFAULT '',
+                created_by VARCHAR(100) DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT fk_dr_project FOREIGN KEY (project_id)
+                    REFERENCES admin_projects(id) ON DELETE CASCADE ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     }
@@ -3787,6 +3882,168 @@ def settings_save_auth():
     _save_system_settings(settings)
     user_manager.log_activity(username, 'auth_config_saved', 'Auth method: ' + method)
     return jsonify({"success": True})
+
+
+# ============================================================
+# Delivery Routes endpoints
+# ============================================================
+
+def _db_get_all_delivery_routes():
+    """Return all delivery routes joined with project name."""
+    conn = _db_connect()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT dr.id, dr.project_id, ap.name AS project_name, "
+            "dr.path, dr.description, dr.created_by, dr.created_at "
+            "FROM delivery_routes dr "
+            "JOIN admin_projects ap ON ap.id = dr.project_id "
+            "ORDER BY ap.name, dr.path"
+        )
+        return [{
+            'id': r['id'],
+            'project_id': r['project_id'],
+            'project_name': r['project_name'],
+            'path': r['path'],
+            'description': r['description'] or '',
+            'created_by': r['created_by'] or '',
+            'created_at': str(r['created_at'])
+        } for r in cur.fetchall()]
+    except Exception:
+        return []
+    finally:
+        conn.close()
+
+
+@app.route('/delivery-routes', methods=['GET'])
+def get_delivery_routes():
+    """List all delivery routes. Visible to all authenticated users."""
+    username = request.args.get('username', '').strip()
+    if not username:
+        return jsonify({"success": False, "error": "Username required."}), 401
+    routes = _db_get_all_delivery_routes()
+    return jsonify({"success": True, "routes": routes})
+
+
+@app.route('/delivery-routes/add', methods=['POST'])
+def add_delivery_route():
+    """Add a delivery route for a project. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    project_id  = data.get('project_id')
+    path        = data.get('path', '').strip()
+    description = data.get('description', '').strip()
+
+    if not project_id:
+        return jsonify({"success": False, "error": "Project is required."})
+    if not path:
+        return jsonify({"success": False, "error": "Path is required."})
+    if not path.startswith('/'):
+        return jsonify({"success": False, "error": "Path must be an absolute path (start with /)."})
+
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM admin_projects WHERE id=%s", (project_id,))
+        if not cur.fetchone():
+            return jsonify({"success": False, "error": "Project not found."})
+        cur.execute(
+            "INSERT INTO delivery_routes (project_id, path, description, created_by) "
+            "VALUES (%s, %s, %s, %s)",
+            (project_id, path, description, admin_user)
+        )
+        conn.commit()
+        _log_activity(admin_user, 'add_delivery_route', 'Added route for project_id=%s: %s' % (project_id, path))
+        return jsonify({"success": True, "id": cur.lastrowid})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/delivery-routes/update', methods=['POST'])
+def update_delivery_route():
+    """Update a delivery route. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    route_id    = data.get('id')
+    project_id  = data.get('project_id')
+    path        = data.get('path', '').strip()
+    description = data.get('description', '').strip()
+
+    if not route_id:
+        return jsonify({"success": False, "error": "Route ID is required."})
+    if not path:
+        return jsonify({"success": False, "error": "Path is required."})
+    if not path.startswith('/'):
+        return jsonify({"success": False, "error": "Path must be an absolute path (start with /)."})
+
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM delivery_routes WHERE id=%s", (route_id,))
+        if not cur.fetchone():
+            return jsonify({"success": False, "error": "Route not found."})
+        if project_id:
+            cur.execute(
+                "UPDATE delivery_routes SET project_id=%s, path=%s, description=%s WHERE id=%s",
+                (project_id, path, description, route_id)
+            )
+        else:
+            cur.execute(
+                "UPDATE delivery_routes SET path=%s, description=%s WHERE id=%s",
+                (path, description, route_id)
+            )
+        conn.commit()
+        _log_activity(admin_user, 'update_delivery_route', 'Updated route id=%s: %s' % (route_id, path))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/delivery-routes/delete', methods=['POST'])
+def delete_delivery_route():
+    """Delete a delivery route. Admin only."""
+    data = request.get_json()
+    admin_user = data.get('admin_username', '').strip()
+    if not user_manager.is_admin(admin_user):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    route_id = data.get('id')
+    if not route_id:
+        return jsonify({"success": False, "error": "Route ID is required."})
+
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT path, project_id FROM delivery_routes WHERE id=%s", (route_id,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({"success": False, "error": "Route not found."})
+        cur.execute("DELETE FROM delivery_routes WHERE id=%s", (route_id,))
+        conn.commit()
+        _log_activity(admin_user, 'delete_delivery_route', 'Deleted route id=%s: %s' % (route_id, row['path']))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
 
 
 # ============================================================

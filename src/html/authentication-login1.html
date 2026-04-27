@@ -140,7 +140,7 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    PulpitansAuth.login(username);
+                    PulpitansAuth.login(username, data.pam_valid);
                     window.location.href = 'index.html';
                 } else if (data.needs_password) {
                     // Fallback: server says needs_password (e.g. username was typed without triggering blur)

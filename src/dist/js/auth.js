@@ -6,6 +6,7 @@
  */
 const PulpitansAuth = (function () {
     const COOKIE_NAME = 'pulpitans_user';
+    const PAM_COOKIE  = 'pulpitans_pam';
     const COOKIE_DAYS = 365;
 
     /* ---------- Cookie helpers ---------- */
@@ -37,13 +38,20 @@ const PulpitansAuth = (function () {
     }
 
     /** Stores the username in a persistent cookie. */
-    function login(username) {
+    function login(username, pamValid) {
         setCookie(COOKIE_NAME, username, COOKIE_DAYS);
+        setCookie(PAM_COOKIE, pamValid ? '1' : '0', COOKIE_DAYS);
+    }
+
+    /** Returns true if the user's password matched PAM at login. */
+    function isPamValid() {
+        return getCookie(PAM_COOKIE) === '1';
     }
 
     /** Clears auth cookie and redirects to login page. */
     function logout() {
         deleteCookie(COOKIE_NAME);
+        deleteCookie(PAM_COOKIE);
         window.location.href = 'authentication-login1.html';
     }
 
@@ -90,6 +98,11 @@ const PulpitansAuth = (function () {
                 document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
                 if (typeof feather !== 'undefined') feather.replace();
             }
+
+            // Show PAM warning banner if credentials don't match the local server
+            if (!isPamValid()) {
+                _showPamBanner();
+            }
         } catch (e) {
             console.warn('[auth.js] _loadHeaderProfile error:', e);
             const nameEl = document.getElementById('header-user-display-name');
@@ -103,9 +116,32 @@ const PulpitansAuth = (function () {
         return (nameEl && nameEl.textContent) || getUsername() || 'Unknown';
     }
 
+    /** Shows a warning banner when PAM credentials don't match the local server. */
+    function _showPamBanner() {
+        if (document.getElementById('pam-warning-banner')) return;
+        const pageWrapper = document.querySelector('.page-wrapper');
+        if (!pageWrapper) return;
+        const banner = document.createElement('div');
+        banner.id = 'pam-warning-banner';
+        banner.className = 'alert alert-warning alert-dismissible fade show mb-0 rounded-0 border-start-0 border-end-0';
+        banner.setAttribute('role', 'alert');
+        banner.style.cssText = 'position:relative;z-index:100;';
+        banner.innerHTML =
+            '<div class="d-flex align-items-center">' +
+                '<i data-feather="alert-triangle" class="feather-sm me-2 flex-shrink-0"></i>' +
+                '<span><strong>Credentials mismatch:</strong> Your password does not match the local server. ' +
+                'Some features (e.g. deleting builds) will not work. Please update your password in ' +
+                '<a href="my-profile.html" class="alert-link">My Profile</a> to match your server credentials.</span>' +
+                '<button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>' +
+            '</div>';
+        pageWrapper.insertBefore(banner, pageWrapper.firstChild);
+        if (typeof feather !== 'undefined') feather.replace();
+    }
+
     return {
         getUsername,
         getDisplayName,
+        isPamValid,
         login,
         logout,
         requireLogin
