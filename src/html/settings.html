@@ -2211,12 +2211,21 @@
                 tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">${escHtml(data.error)}</td></tr>`;
                 return;
             }
-            if (data.paths.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No search paths configured. The default <code>/home/' + escHtml(user) + '</code> will be used.</td></tr>';
-                return;
-            }
             let html = '';
             data.paths.forEach((p, i) => {
+                if (p.is_default) {
+                    html += `<tr class="table-secondary">
+                        <td>${i + 1}</td>
+                        <td class="font-monospace" style="user-select:all;">${escHtml(p.path)}
+                            <span class="badge bg-secondary ms-1"><i data-feather="lock" class="feather-sm"></i> default</span>
+                        </td>
+                        <td><span class="text-muted">${escHtml(p.description || '')}</span></td>
+                        <td class="text-center"><button class="btn btn-outline-info btn-sm" onclick="_scanExistingPath(null,'${escHtml(p.path).replace(/'/g, "\\'")}',this)">
+                            <i data-feather="search" class="feather-sm"></i></button></td>
+                        <td class="text-nowrap text-muted" style="font-size:12px;">System default</td>
+                    </tr>`;
+                    return;
+                }
                 html += `<tr>
                     <td>${i + 1}</td>
                     <td class="font-monospace" style="user-select:all;">${escHtml(p.path)}</td>

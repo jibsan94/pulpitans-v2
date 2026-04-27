@@ -482,6 +482,8 @@ def auth_upload_profile_picture():
     return jsonify({"success": True})
 
 
+DEFAULT_MKBUILD_PATH = '/usr/share/ansible/roles'
+
 @app.route('/search-roles')
 def search_roles():
     try:
@@ -494,17 +496,14 @@ def search_roles():
         if username and re.match(r'^[a-zA-Z0-9_.\-]+$', username) and _storage_is_db():
             user_paths = _db_get_user_mkbuild_paths(username)
 
-        search_dirs = []
+        # Build search dirs: always start with system default
+        search_dirs = [DEFAULT_MKBUILD_PATH] if os.path.isdir(DEFAULT_MKBUILD_PATH) else []
+
+        # Add user-configured paths (skip any that duplicate the default)
         if user_paths:
-            search_dirs = [p['path'] for p in user_paths if os.path.isdir(p['path'])]
-        else:
-            # Fallback to config.conf default
-            base_route = config['search']['base_route']
-            if username:
-                user_home = os.path.join(base_route, username)
-                if os.path.isdir(user_home):
-                    base_route = user_home
-            search_dirs = [base_route]
+            for p in user_paths:
+                if os.path.isdir(p['path']) and p['path'] not in search_dirs:
+                    search_dirs.append(p['path'])
 
         # Run search as the OS user so permissions are respected
         routes = []
@@ -560,12 +559,20 @@ def _db_get_user_mkbuild_paths(username):
 
 @app.route('/settings/mkbuild-paths')
 def get_mkbuild_paths():
-    """Get mkbuild search paths for the current user."""
+    """Get mkbuild search paths for the current user.
+    Always prepends the system default path as a non-deletable virtual entry."""
     username = request.args.get('username', '').strip()
     if not username:
         return jsonify({"success": False, "error": "Not authenticated."}), 401
     paths = _db_get_user_mkbuild_paths(username)
-    return jsonify({"success": True, "paths": paths})
+    # Prepend the system default as a virtual entry (id=None, is_default=True)
+    default_entry = {
+        'id': None,
+        'path': DEFAULT_MKBUILD_PATH,
+        'description': 'Default system path',
+        'is_default': True
+    }
+    return jsonify({"success": True, "paths": [default_entry] + list(paths)})
 
 
 @app.route('/settings/mkbuild-paths/add', methods=['POST'])

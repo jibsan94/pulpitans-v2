@@ -85,8 +85,8 @@
         </header>
 
         <!-- Left Sidebar -->
-        <aside class="left-sidebar" data-sidebarbg="skin6">
-            <div class="scroll-sidebar" data-sidebarbg="skin6">
+        <aside class="left-sidebar" data-sidebarbg="skin6" style="overflow-y:auto!important;">
+            <div class="scroll-sidebar" data-sidebarbg="skin6" style="overflow-y:auto!important;height:auto!important;">
                 <nav class="sidebar-nav">
                     <ul id="sidebarnav">
                         <li class="sidebar-item">
@@ -791,6 +791,22 @@
             } catch (e) {
                 msgEl.className = 'alert alert-danger';
                 msgEl.textContent = 'Could not connect to the server.';
+            }
+        });
+    </script>
+    <script>
+        // Fix: perfect-scrollbar sets overflow:hidden on .scroll-sidebar,
+        // hiding items that don't fit. Destroy it and use native scroll.
+        $(function(){
+            var sb = document.querySelector('.scroll-sidebar');
+            if (sb && $.fn.perfectScrollbar) {
+                $(sb).perfectScrollbar('destroy');
+            }
+            if (sb) {
+                sb.style.overflow = 'visible';
+                sb.style.overflowY = 'auto';
+                sb.style.height = 'calc(100vh - 80px)';
+                sb.style.position = 'relative';
             }
         });
     </script>
