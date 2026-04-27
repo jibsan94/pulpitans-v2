@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="../assets/images/pulpitans-logo.svg">
+    <title>PULPITANS — Deliver Builds</title>
+    <link href="../dist/css/style.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        .build-project-header td { background: #f8f9fa; font-weight: 600; }
+        .srv-check-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .route-radio-label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+        .delivery-result-item { border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; font-size: 13px; }
+        #deliver-progress { display: none; }
+    </style>
+</head>
+
+<body>
+    <div class="preloader">
+        <div class="lds-ripple"><div class="lds-pos"></div><div class="lds-pos"></div></div>
+    </div>
+
+    <div id="main-wrapper" data-theme="light" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
+        data-sidebar-position="fixed" data-header-position="fixed" data-boxed-layout="full">
+
+        <!-- Topbar -->
+        <header class="topbar" data-navbarbg="skin6">
+            <nav class="navbar top-navbar navbar-expand-lg">
+                <div class="navbar-header" data-logobg="skin6">
+                    <a class="nav-toggler waves-effect waves-light d-block d-lg-none" href="javascript:void(0)"><i class="ti-menu ti-close"></i></a>
+                    <div class="navbar-brand">
+                        <img src="../assets/images/pulpitans-name.svg" alt="" class="img-fluid">
+                    </div>
+                    <a class="topbartoggler d-block d-lg-none waves-effect waves-light" href="javascript:void(0)"
+                        data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><i class="ti-more"></i></a>
+                </div>
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left me-auto ms-3 ps-1">
+                        <li class="nav-item d-flex align-items-center ms-3">
+                            <div>
+                                <h6 class="mb-0 font-weight-medium text-dark">Deliver Builds</h6>
+                                <small class="text-muted">Applications / Deliver Builds</small>
+                            </div>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav float-end">
+                        <li class="nav-item d-none d-md-flex align-items-center me-3">
+                            <span id="live-datetime" class="text-muted font-14" style="white-space:nowrap;">Loading...</span>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle user-profile-pic" width="40">
+                                <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down" class="svg-icon"></i></span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
+                                <a class="dropdown-item" href="my-profile.html"><i data-feather="user" class="svg-icon me-2 ms-1"></i> My Profile</a>
+                                <a class="dropdown-item admin-only" style="display:none;" href="settings.html"><i data-feather="settings" class="svg-icon me-2 ms-1"></i> Settings</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power" class="svg-icon me-2 ms-1"></i> Logout</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Left Sidebar -->
+        <aside class="left-sidebar" data-sidebarbg="skin6">
+            <div class="scroll-sidebar" data-sidebarbg="skin6">
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="index.html" aria-expanded="false">
+                                <i data-feather="home" class="feather-icon"></i>
+                                <span class="hide-menu">Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="list-divider"></li>
+                        <li class="nav-small-cap"><span class="hide-menu">Applications</span></li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="git-controller.html" aria-expanded="false">
+                                <i data-feather="git-branch" class="feather-icon"></i>
+                                <span class="hide-menu">Git Controller</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="make-build.html" aria-expanded="false">
+                                <i data-feather="package" class="feather-icon"></i>
+                                <span class="hide-menu">Make Build</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="srn.html" aria-expanded="false">
+                                <i data-feather="file-text" class="feather-icon"></i>
+                                <span class="hide-menu">SRN</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="project-info.html" aria-expanded="false">
+                                <i data-feather="clipboard" class="feather-icon"></i>
+                                <span class="hide-menu">Project Info</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="processes.html" aria-expanded="false">
+                                <i data-feather="cpu" class="feather-icon"></i>
+                                <span class="hide-menu">Processes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="delivery-routes.html" aria-expanded="false">
+                                <i data-feather="truck" class="feather-icon"></i>
+                                <span class="hide-menu">Delivery Routes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item active">
+                            <a class="sidebar-link active" href="deliver.html" aria-expanded="false">
+                                <i data-feather="send" class="feather-icon"></i>
+                                <span class="hide-menu">Deliver Builds</span>
+                            </a>
+                        </li>
+                        <!-- Admin section -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link" href="settings.html" aria-expanded="false">
+                                <i data-feather="settings" class="feather-icon"></i>
+                                <span class="hide-menu">Settings</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Page wrapper -->
+        <div class="page-wrapper">
+            <div class="container-fluid">
+
+                <!-- Page header -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div>
+                                    <h5 class="card-title mb-0">
+                                        <i data-feather="send" class="feather-sm me-1"></i> Deliver Builds
+                                    </h5>
+                                    <small class="text-muted">Select a build and copy it to a configured delivery server</small>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="loadBuilds()">
+                                        <i data-feather="refresh-cw" class="feather-sm me-1"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter bar -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <input type="text" class="form-control form-control-sm" id="filter-input"
+                                placeholder="Filter by project or build name..." style="max-width:340px;"
+                                oninput="filterBuilds()">
+                            <select class="form-select form-select-sm" id="filter-project" style="max-width:240px;"
+                                onchange="filterBuilds()">
+                                <option value="">All Projects</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Builds table -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th style="width:40%;">Build Name</th>
+                                                <th style="width:12%;">Size</th>
+                                                <th style="width:18%;">Date</th>
+                                                <th style="width:30%;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="builds-tbody">
+                                            <tr><td colspan="4" class="text-center text-muted py-4">
+                                                <span class="spinner-border spinner-border-sm me-2"></span>Loading builds...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="builds-result" class="p-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- container-fluid -->
+
+            <footer class="footer text-center text-muted">
+                All Rights Reserved by Freedash.
+            </footer>
+        </div><!-- page-wrapper -->
+    </div><!-- main-wrapper -->
+
+    <!-- ===================== Deliver Modal ===================== -->
+    <div class="modal fade" id="deliverModal" tabindex="-1" aria-labelledby="deliverModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header text-white" style="background: linear-gradient(135deg,#1976d2,#42a5f5);">
+                    <h5 class="modal-title" id="deliverModalLabel">
+                        <i data-feather="send" class="feather-sm me-1"></i> Deliver Build
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+
+                    <!-- Build info -->
+                    <div class="alert alert-light border mb-3 py-2 px-3" id="deliver-build-info">
+                        <div class="d-flex align-items-center gap-2">
+                            <i data-feather="archive" class="feather-sm text-primary"></i>
+                            <div>
+                                <div class="fw-medium font-monospace" id="deliver-filename" style="font-size:13px;"></div>
+                                <small class="text-muted">Project: <span id="deliver-project-name" class="fw-medium"></span>
+                                    &nbsp;|&nbsp; Size: <span id="deliver-filesize"></span></small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 1: Servers -->
+                    <div class="mb-4" id="deliver-servers-section">
+                        <h6 class="fw-semibold mb-2">
+                            <span class="badge bg-primary me-1">1</span> Select Destination Server(s)
+                        </h6>
+                        <div id="deliver-servers-list">
+                            <div class="text-center text-muted py-3">
+                                <span class="spinner-border spinner-border-sm me-2"></span>Loading servers...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Routes -->
+                    <div class="mb-3" id="deliver-routes-section">
+                        <h6 class="fw-semibold mb-2">
+                            <span class="badge bg-primary me-1">2</span> Select Delivery Path
+                        </h6>
+                        <div id="deliver-routes-list">
+                            <div class="text-center text-muted py-3">
+                                <span class="spinner-border spinner-border-sm me-2"></span>Loading paths...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress / Results -->
+                    <div id="deliver-progress">
+                        <hr>
+                        <h6 class="fw-semibold mb-2"><i data-feather="activity" class="feather-sm me-1"></i> Delivery Results</h6>
+                        <div id="deliver-results-list"></div>
+                    </div>
+
+                    <div id="deliver-modal-error" class="alert alert-danger py-2 mt-2" style="display:none;"></div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="btn-deliver-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmDeliver()" id="btn-deliver-confirm">
+                        <i data-feather="send" class="feather-sm me-1"></i> Deliver
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="deliverModal.hide()" id="btn-deliver-done" style="display:none;">
+                        <i data-feather="check" class="feather-sm me-1"></i> Done
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="../assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../dist/js/app-style-switcher.js"></script>
+    <script src="../dist/js/feather.min.js"></script>
+    <script src="../assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="../assets/extra-libs/sparkline/sparkline.js"></script>
+    <script src="../dist/js/sidebarmenu.js"></script>
+    <script src="../dist/js/custom.min.js"></script>
+
+    <script>
+    const API_BASE = '/api';
+    let _allBuilds = [];      // flat list: [{project, filename, size, size_bytes, date}]
+    let _deliverData = {};    // current build being delivered
+    let deliverModal;
+
+    function escHtml(t) {
+        const d = document.createElement('div');
+        d.textContent = String(t || '');
+        return d.innerHTML;
+    }
+
+    // ── Live clock ──────────────────────────────────────────────
+    function _startClock() {
+        const el = document.getElementById('live-datetime');
+        if (!el) return;
+        const tick = () => { el.textContent = new Date().toLocaleString(); };
+        tick();
+        setInterval(tick, 1000);
+    }
+
+    // ── Load builds ─────────────────────────────────────────────
+    async function loadBuilds() {
+        const tbody = document.getElementById('builds-tbody');
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">
+            <span class="spinner-border spinner-border-sm me-2"></span>Loading builds...</td></tr>`;
+        try {
+            const res = await fetch(`${API_BASE}/dashboard/builds?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data = await res.json();
+            if (!data.success) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">${escHtml(data.error || 'Failed to load builds.')}</td></tr>`;
+                return;
+            }
+            _allBuilds = [];
+            const projects = data.projects || {};
+            const filterSel = document.getElementById('filter-project');
+            // Populate project filter
+            const existingProjects = new Set(Array.from(filterSel.options).map(o => o.value).filter(v => v));
+            Object.keys(projects).sort().forEach(folder => {
+                if (!existingProjects.has(folder)) {
+                    const opt = document.createElement('option');
+                    opt.value = folder;
+                    opt.textContent = folder;
+                    filterSel.appendChild(opt);
+                }
+                const proj = projects[folder];
+                (proj.builds || []).forEach(b => {
+                    _allBuilds.push({
+                        project: folder,
+                        filename: b.filename,
+                        size: b.size,
+                        size_bytes: b.size_bytes || 0,
+                        date: b.date || ''
+                    });
+                });
+            });
+            renderBuilds(_allBuilds);
+        } catch(e) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Could not load builds.</td></tr>`;
+        }
+    }
+
+    function renderBuilds(builds) {
+        const tbody = document.getElementById('builds-tbody');
+        if (!builds.length) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No builds found.</td></tr>`;
+            feather.replace();
+            return;
+        }
+        // Group by project
+        const byProject = {};
+        builds.forEach(b => {
+            if (!byProject[b.project]) byProject[b.project] = [];
+            byProject[b.project].push(b);
+        });
+        let html = '';
+        Object.keys(byProject).sort().forEach(folder => {
+            html += `<tr class="build-project-header">
+                <td colspan="4" class="ps-3">
+                    <i data-feather="folder" class="feather-sm me-1 text-warning"></i>
+                    <strong>${escHtml(folder)}</strong>
+                    <span class="badge bg-secondary ms-2">${byProject[folder].length}</span>
+                </td>
+            </tr>`;
+            byProject[folder].forEach(b => {
+                html += `<tr>
+                    <td class="ps-4">
+                        <i data-feather="archive" class="feather-sm me-1 text-muted"></i>
+                        <span class="font-monospace" style="font-size:12px;">${escHtml(b.filename)}</span>
+                    </td>
+                    <td><small class="text-muted">${escHtml(b.size)}</small></td>
+                    <td><small class="text-muted">${escHtml(b.date)}</small></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" style="min-width:90px;"
+                            onclick="openDeliverModal(${JSON.stringify(escHtml(b.project))}, ${JSON.stringify(escHtml(b.filename))}, ${JSON.stringify(escHtml(b.size))})">
+                            <i data-feather="send" class="feather-sm me-1"></i> Deliver
+                        </button>
+                    </td>
+                </tr>`;
+            });
+        });
+        tbody.innerHTML = html;
+        feather.replace();
+    }
+
+    function filterBuilds() {
+        const text  = document.getElementById('filter-input').value.toLowerCase();
+        const proj  = document.getElementById('filter-project').value;
+        const filtered = _allBuilds.filter(b => {
+            const matchProject = !proj || b.project === proj;
+            const matchText    = !text || b.project.toLowerCase().includes(text) || b.filename.toLowerCase().includes(text);
+            return matchProject && matchText;
+        });
+        renderBuilds(filtered);
+    }
+
+    // ── Deliver modal ────────────────────────────────────────────
+    async function openDeliverModal(project, filename, size) {
+        _deliverData = { project, filename, size };
+
+        // Reset modal state
+        document.getElementById('deliver-filename').textContent = filename;
+        document.getElementById('deliver-project-name').textContent = project;
+        document.getElementById('deliver-filesize').textContent = size;
+        document.getElementById('deliver-progress').style.display = 'none';
+        document.getElementById('deliver-results-list').innerHTML = '';
+        document.getElementById('deliver-modal-error').style.display = 'none';
+        document.getElementById('deliver-modal-error').textContent = '';
+        document.getElementById('btn-deliver-confirm').style.display = '';
+        document.getElementById('btn-deliver-cancel').textContent = 'Cancel';
+        document.getElementById('btn-deliver-done').style.display = 'none';
+        document.getElementById('btn-deliver-confirm').disabled = false;
+
+        document.getElementById('deliver-servers-list').innerHTML =
+            `<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>Loading...</div>`;
+        document.getElementById('deliver-routes-list').innerHTML =
+            `<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-2"></span>Loading...</div>`;
+
+        deliverModal.show();
+        feather.replace();
+
+        // Load options
+        try {
+            const res = await fetch(`${API_BASE}/dashboard/builds/deliver-options?project=${encodeURIComponent(project)}&username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data = await res.json();
+            if (!data.success) {
+                _deliverSetError(data.error || 'Failed to load options.');
+                return;
+            }
+            _renderServers(data.servers || []);
+            _renderRoutes(data.routes || []);
+        } catch(e) {
+            _deliverSetError('Could not load delivery options.');
+        }
+        feather.replace();
+    }
+
+    function _renderServers(servers) {
+        const el = document.getElementById('deliver-servers-list');
+        if (!servers.length) {
+            el.innerHTML = `<div class="alert alert-warning py-2 mb-0">
+                <i data-feather="alert-triangle" class="feather-sm me-1"></i>
+                No delivery servers configured. Ask an admin to add servers in Settings.
+            </div>`;
+            feather.replace();
+            return;
+        }
+        el.innerHTML = servers.map(s => `
+            <div class="form-check mb-2">
+                <input class="form-check-input deliver-server-check" type="checkbox"
+                    id="srv-${s.id}" value="${s.id}" style="cursor:pointer;">
+                <label class="form-check-label srv-check-label" for="srv-${s.id}">
+                    <span class="fw-medium">${escHtml(s.label)}</span>
+                    <code class="text-muted" style="font-size:12px;">${escHtml(s.ssh_user)}@${escHtml(s.ip)}</code>
+                </label>
+            </div>
+        `).join('');
+        // Auto-select if only one server
+        if (servers.length === 1) {
+            document.getElementById('srv-' + servers[0].id).checked = true;
+        }
+    }
+
+    function _renderRoutes(routes) {
+        const el = document.getElementById('deliver-routes-list');
+        if (!routes.length) {
+            el.innerHTML = `<div class="alert alert-warning py-2 mb-0">
+                <i data-feather="alert-triangle" class="feather-sm me-1"></i>
+                No delivery paths configured for this project. Ask an admin to add routes in
+                <a href="delivery-routes.html" target="_blank">Delivery Routes</a>.
+            </div>`;
+            feather.replace();
+            return;
+        }
+        el.innerHTML = routes.map((r, i) => `
+            <div class="form-check mb-2">
+                <input class="form-check-input deliver-route-radio" type="radio"
+                    name="deliver-route" id="route-${r.id}" value="${r.id}" style="cursor:pointer;"
+                    ${i === 0 ? 'checked' : ''}>
+                <label class="form-check-label route-radio-label" for="route-${r.id}">
+                    <div>
+                        <code class="text-dark" style="font-size:13px;">${escHtml(r.path)}</code>
+                        ${r.description ? `<br><small class="text-muted">${escHtml(r.description)}</small>` : ''}
+                    </div>
+                </label>
+            </div>
+        `).join('');
+    }
+
+    async function confirmDeliver() {
+        // Gather selections
+        const serverChecks = document.querySelectorAll('.deliver-server-check:checked');
+        const routeRadio   = document.querySelector('.deliver-route-radio:checked');
+
+        if (!serverChecks.length) {
+            _deliverSetError('Please select at least one server.');
+            return;
+        }
+        if (!routeRadio) {
+            _deliverSetError('Please select a delivery path.');
+            return;
+        }
+
+        const serverIds = Array.from(serverChecks).map(c => parseInt(c.value, 10));
+        const routeId   = parseInt(routeRadio.value, 10);
+
+        document.getElementById('deliver-modal-error').style.display = 'none';
+        document.getElementById('btn-deliver-confirm').disabled = true;
+        document.getElementById('btn-deliver-confirm').innerHTML =
+            '<span class="spinner-border spinner-border-sm me-1"></span> Delivering...';
+
+        document.getElementById('deliver-progress').style.display = '';
+        document.getElementById('deliver-results-list').innerHTML =
+            `<div class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Copying file to ${serverIds.length} server(s)...</div>`;
+        feather.replace();
+
+        try {
+            const res = await fetch(`${API_BASE}/dashboard/builds/deliver`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username:   PulpitansAuth.getUsername(),
+                    project:    _deliverData.project,
+                    file:       _deliverData.filename,
+                    server_ids: serverIds,
+                    route_id:   routeId
+                })
+            });
+            const data = await res.json();
+
+            // Show per-server results
+            if (data.results && data.results.length) {
+                document.getElementById('deliver-results-list').innerHTML = data.results.map(r => `
+                    <div class="delivery-result-item ${r.success ? 'alert alert-success' : 'alert alert-danger'} py-2">
+                        <i data-feather="${r.success ? 'check-circle' : 'x-circle'}" class="feather-sm me-1"></i>
+                        <strong>${escHtml(r.server)}</strong>
+                        <code class="ms-1 text-muted" style="font-size:12px;">${escHtml(r.ip)}</code>
+                        ${r.success ? '' : `<br><small class="ms-4 text-danger">${escHtml(r.error || '')}</small>`}
+                    </div>
+                `).join('');
+            } else if (!data.success) {
+                document.getElementById('deliver-results-list').innerHTML =
+                    `<div class="alert alert-danger py-2">${escHtml(data.error || 'Delivery failed.')}</div>`;
+            }
+
+            document.getElementById('btn-deliver-confirm').style.display = 'none';
+            document.getElementById('btn-deliver-cancel').textContent = 'Close';
+            document.getElementById('btn-deliver-done').style.display = '';
+            feather.replace();
+        } catch(e) {
+            _deliverSetError('Request failed: ' + e.message);
+            document.getElementById('btn-deliver-confirm').disabled = false;
+            document.getElementById('btn-deliver-confirm').innerHTML =
+                '<i data-feather="send" class="feather-sm me-1"></i> Deliver';
+            feather.replace();
+        }
+    }
+
+    function _deliverSetError(msg) {
+        const el = document.getElementById('deliver-modal-error');
+        el.textContent = msg;
+        el.style.display = '';
+    }
+
+    // ── Init ────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', async function () {
+        $(".preloader").fadeOut();
+        deliverModal = new bootstrap.Modal(document.getElementById('deliverModal'));
+        _startClock();
+        loadBuilds();
+
+        // Feather icons replacement after modal shown
+        document.getElementById('deliverModal').addEventListener('shown.bs.modal', () => {
+            feather.replace();
+        });
+    });
+    </script>
+
+    <script src="../dist/js/auth.js?v=2"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+    </script>
+</body>
+</html>

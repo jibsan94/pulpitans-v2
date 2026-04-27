@@ -128,6 +128,12 @@
                                 <span class="hide-menu">Delivery Routes</span>
                             </a>
                         </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="deliver.html" aria-expanded="false">
+                                <i data-feather="send" class="feather-icon"></i>
+                                <span class="hide-menu">Deliver Builds</span>
+                            </a>
+                        </li>
                         <!-- Admin section -->
                         <li class="list-divider admin-only" style="display:none;"></li>
                         <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
@@ -209,6 +215,11 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="tab-delivery" data-bs-toggle="pill" data-bs-target="#pane-delivery" type="button" role="tab">
                                 <i data-feather="server" class="settings-tab-icon"></i> Delivery Servers
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-mkbuild" data-bs-toggle="pill" data-bs-target="#pane-mkbuild" type="button" role="tab">
+                                <i data-feather="search" class="settings-tab-icon"></i> MkBuild Paths
                             </button>
                         </li>
                     </ul>
@@ -924,6 +935,81 @@
                         </div>
 
                     </div><!-- end pane-delivery -->
+
+                    <!-- ====== TAB 7: MkBuild Paths ====== -->
+                    <div class="tab-pane fade" id="pane-mkbuild" role="tabpanel">
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">1</span>
+                                            My MkBuild Search Paths
+                                        </h5>
+                                        <p class="text-muted mb-3" style="font-size:13px;">
+                                            Configure directories where the system will search for <code>idas_tool_mkbuild</code> roles.
+                                            Each path is scanned recursively. If no paths are configured, the default
+                                            <code>/home/&lt;username&gt;</code> is used.
+                                        </p>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover align-middle mb-0">
+                                                <thead class="table-dark">
+                                                    <tr>
+                                                        <th style="width:5%">#</th>
+                                                        <th style="width:45%">Path</th>
+                                                        <th style="width:25%">Description</th>
+                                                        <th style="width:15%">Roles Found</th>
+                                                        <th style="width:10%">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="mkbuild-paths-tbody">
+                                                    <tr><td colspan="5" class="text-center text-muted py-3">
+                                                        <span class="spinner-border spinner-border-sm me-1"></span> Loading...
+                                                    </td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div id="mkbuild-list-result" class="mt-2"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title d-flex align-items-center mb-3">
+                                            <span class="step-number">2</span>
+                                            Add Search Path
+                                        </h5>
+                                        <div class="row g-3 align-items-end">
+                                            <div class="col-md-5">
+                                                <label class="form-label fw-medium">Path <span class="text-danger">*</span></label>
+                                                <input type="text" class="form-control font-monospace" id="add-mkpath-path"
+                                                    placeholder="/home/myuser or /iDASREPO/PROJECTS/...">
+                                                <div class="form-text">Absolute path where <code>idas_tool_mkbuild</code> folders will be searched</div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-medium">Description <small class="text-muted">(optional)</small></label>
+                                                <input type="text" class="form-control" id="add-mkpath-desc"
+                                                    placeholder="e.g. My home, AVINOR project...">
+                                            </div>
+                                            <div class="col-md-3 d-flex gap-2">
+                                                <button class="btn btn-success flex-fill" onclick="_addMkPath()">
+                                                    <i data-feather="plus" class="feather-sm me-1"></i> Add
+                                                </button>
+                                                <button class="btn btn-outline-info flex-fill" onclick="_scanMkPath()" title="Test scan this path">
+                                                    <i data-feather="search" class="feather-sm me-1"></i> Scan
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="add-mkpath-result" class="mt-3"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div><!-- end pane-mkbuild -->
 
                     </div><!-- end tab-content -->
                 </div>
@@ -2111,6 +2197,149 @@
         }
     }
 
+    // ============================================================
+    // MkBuild Paths
+    // ============================================================
+    async function loadMkBuildPaths() {
+        const tbody = document.getElementById('mkbuild-paths-tbody');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span> Loading...</td></tr>';
+        try {
+            const user = PulpitansAuth.getUsername();
+            const res = await fetch(`${API_BASE}/settings/mkbuild-paths?username=${encodeURIComponent(user)}`);
+            const data = await res.json();
+            if (!data.success) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">${escHtml(data.error)}</td></tr>`;
+                return;
+            }
+            if (data.paths.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No search paths configured. The default <code>/home/' + escHtml(user) + '</code> will be used.</td></tr>';
+                return;
+            }
+            let html = '';
+            data.paths.forEach((p, i) => {
+                html += `<tr>
+                    <td>${i + 1}</td>
+                    <td class="font-monospace" style="user-select:all;">${escHtml(p.path)}</td>
+                    <td>${escHtml(p.description || '')}</td>
+                    <td class="text-center"><button class="btn btn-outline-info btn-sm" onclick="_scanExistingPath(${p.id},'${escHtml(p.path).replace(/'/g, "\\'")}',this)">
+                        <i data-feather="search" class="feather-sm"></i></button></td>
+                    <td class="text-nowrap">
+                        <button class="btn btn-outline-primary btn-sm me-1" onclick="_editMkPath(${p.id},'${escHtml(p.path).replace(/'/g, "\\'")}','${escHtml(p.description || '').replace(/'/g, "\\'")}')">
+                            <i data-feather="edit-2" class="feather-sm"></i></button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="_deleteMkPath(${p.id})">
+                            <i data-feather="trash-2" class="feather-sm"></i></button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+            feather.replace();
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Network error.</td></tr>';
+        }
+    }
+
+    async function _addMkPath() {
+        const path = document.getElementById('add-mkpath-path').value.trim();
+        const desc = document.getElementById('add-mkpath-desc').value.trim();
+        const resultEl = document.getElementById('add-mkpath-result');
+        if (!path) { resultEl.innerHTML = '<div class="alert alert-warning py-2">Path is required.</div>'; return; }
+        if (!path.startsWith('/')) { resultEl.innerHTML = '<div class="alert alert-warning py-2">Path must start with /</div>'; return; }
+        try {
+            const res = await fetch(`${API_BASE}/settings/mkbuild-paths/add`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: PulpitansAuth.getUsername(), path, description: desc })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('add-mkpath-path').value = '';
+                document.getElementById('add-mkpath-desc').value = '';
+                resultEl.innerHTML = '<div class="alert alert-success py-2">Path added.</div>';
+                loadMkBuildPaths();
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-danger py-2">${escHtml(data.error)}</div>`;
+            }
+        } catch (e) {
+            resultEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+    }
+
+    async function _deleteMkPath(id) {
+        if (!confirm('Delete this search path?')) return;
+        try {
+            const res = await fetch(`${API_BASE}/settings/mkbuild-paths/delete`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: PulpitansAuth.getUsername(), id })
+            });
+            const data = await res.json();
+            if (data.success) loadMkBuildPaths();
+            else alert(data.error || 'Error');
+        } catch (e) { alert('Network error.'); }
+    }
+
+    function _editMkPath(id, path, desc) {
+        const newPath = prompt('Edit path:', path);
+        if (newPath === null) return;
+        if (!newPath.trim() || !newPath.startsWith('/')) { alert('Path must be an absolute path.'); return; }
+        const newDesc = prompt('Edit description:', desc);
+        if (newDesc === null) return;
+        fetch(`${API_BASE}/settings/mkbuild-paths/update`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username: PulpitansAuth.getUsername(), id, path: newPath.trim(), description: newDesc.trim() })
+        }).then(r => r.json()).then(data => {
+            if (data.success) loadMkBuildPaths();
+            else alert(data.error || 'Error');
+        }).catch(() => alert('Network error.'));
+    }
+
+    async function _scanMkPath() {
+        const path = document.getElementById('add-mkpath-path').value.trim();
+        const resultEl = document.getElementById('add-mkpath-result');
+        if (!path || !path.startsWith('/')) { resultEl.innerHTML = '<div class="alert alert-warning py-2">Enter a valid absolute path first.</div>'; return; }
+        resultEl.innerHTML = '<div class="alert alert-info py-2"><span class="spinner-border spinner-border-sm me-1"></span> Scanning...</div>';
+        try {
+            const res = await fetch(`${API_BASE}/settings/mkbuild-paths/scan`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: PulpitansAuth.getUsername(), path })
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (data.roles && data.roles.length > 0) {
+                    const list = data.roles.map(r => `<li class="font-monospace" style="font-size:13px;">${escHtml(r)}</li>`).join('');
+                    resultEl.innerHTML = `<div class="alert alert-success py-2"><strong>${data.roles.length} role(s) found:</strong><ul class="mb-0 mt-1">${list}</ul></div>`;
+                } else {
+                    resultEl.innerHTML = `<div class="alert alert-warning py-2">No <code>idas_tool_mkbuild</code> roles found in this path.${data.message ? ' ' + escHtml(data.message) : ''}</div>`;
+                }
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-danger py-2">${escHtml(data.error)}</div>`;
+            }
+        } catch (e) {
+            resultEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+    }
+
+    async function _scanExistingPath(id, path, btn) {
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        try {
+            const res = await fetch(`${API_BASE}/settings/mkbuild-paths/scan`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: PulpitansAuth.getUsername(), path })
+            });
+            const data = await res.json();
+            const cell = btn.closest('td');
+            if (data.success && data.roles && data.roles.length > 0) {
+                cell.innerHTML = `<span class="badge bg-success">${data.roles.length} role(s)</span>`;
+            } else {
+                cell.innerHTML = '<span class="badge bg-warning text-dark">0 roles</span>';
+            }
+        } catch (e) {
+            btn.innerHTML = origHtml;
+            feather.replace();
+        }
+        btn.disabled = false;
+    }
+
     document.addEventListener('DOMContentLoaded', async function () {
         const user = PulpitansAuth.getUsername();
         if (user) {
@@ -2127,6 +2356,7 @@
                     loadAuthSettings();
                     loadProjectStatuses();
                     loadDeliveryServers();
+                    loadMkBuildPaths();
                 } else {
                     document.getElementById('access-denied').classList.remove('d-none');
                 }

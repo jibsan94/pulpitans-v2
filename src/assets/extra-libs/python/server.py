@@ -179,12 +179,18 @@ def auth_login():
         user_manager.log_activity(username, 'login', 'User logged in')
 
         # Check if password works with PAM (local server auth)
+        # Must run via sudo because the Flask process (jjrosat) cannot
+        # verify other users' passwords through unix_chkpwd.
         pam_valid = False
         if password and user_manager.validate_username(username):
             try:
-                import pam
-                p = pam.pam()
-                pam_valid = p.authenticate(username, password)
+                proc = subprocess.run(
+                    ['sudo', '-n', 'python3', '-c',
+                     'import pam,sys;p=pam.pam();r=p.authenticate(sys.argv[1],sys.argv[2]);sys.exit(0 if r else 1)',
+                     username, password],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10
+                )
+                pam_valid = (proc.returncode == 0)
             except Exception:
                 pam_valid = False
 
@@ -480,17 +486,47 @@ def auth_upload_profile_picture():
 def search_roles():
     try:
         config = config_loader.load_config()
-        base_route  = config['search']['base_route']
         folder_name = config['search']['folder_name']
-
-        # Scope search to the logged-in user's home directory
         username = request.args.get('username', '').strip()
-        if username and re.match(r'^[a-zA-Z0-9_.\-]+$', username):
-            user_home = os.path.join(base_route, username)
-            if os.path.isdir(user_home):
-                base_route = user_home
 
-        routes = path_finder.search_folder(folder_name, base_route)
+        # Try user-configured paths from DB first
+        user_paths = []
+        if username and re.match(r'^[a-zA-Z0-9_.\-]+$', username) and _storage_is_db():
+            user_paths = _db_get_user_mkbuild_paths(username)
+
+        search_dirs = []
+        if user_paths:
+            search_dirs = [p['path'] for p in user_paths if os.path.isdir(p['path'])]
+        else:
+            # Fallback to config.conf default
+            base_route = config['search']['base_route']
+            if username:
+                user_home = os.path.join(base_route, username)
+                if os.path.isdir(user_home):
+                    base_route = user_home
+            search_dirs = [base_route]
+
+        # Run search as the OS user so permissions are respected
+        routes = []
+        for search_dir in search_dirs:
+            if username and user_manager.validate_username(username):
+                try:
+                    proc = subprocess.run(
+                        ['sudo', '-n', '-u', username, 'find', search_dir,
+                         '-type', 'd', '-name', folder_name],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                        timeout=30
+                    )
+                    found = [l for l in proc.stdout.decode('utf-8', errors='replace').strip().split('\n') if l]
+                    routes.extend(found)
+                except Exception:
+                    # Fallback to direct search if sudo fails
+                    routes.extend(path_finder.search_folder(folder_name, search_dir))
+            else:
+                routes.extend(path_finder.search_folder(folder_name, search_dir))
+
+        # Deduplicate
+        routes = list(dict.fromkeys(routes))
         return jsonify({
             "routes": routes,
             "error": ""
@@ -500,6 +536,167 @@ def search_roles():
             "routes": [],
             "error": str(e)
         })
+
+
+def _db_get_user_mkbuild_paths(username):
+    """Get mkbuild search paths for a user."""
+    conn = _db_connect()
+    if not conn: return []
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT ump.id, ump.path, ump.description "
+            "FROM user_mkbuild_paths ump "
+            "JOIN users u ON u.id = ump.user_id "
+            "WHERE u.username = %s ORDER BY ump.id",
+            (username,)
+        )
+        return cur.fetchall()
+    except Exception:
+        return []
+    finally:
+        conn.close()
+
+
+@app.route('/settings/mkbuild-paths')
+def get_mkbuild_paths():
+    """Get mkbuild search paths for the current user."""
+    username = request.args.get('username', '').strip()
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+    paths = _db_get_user_mkbuild_paths(username)
+    return jsonify({"success": True, "paths": paths})
+
+
+@app.route('/settings/mkbuild-paths/add', methods=['POST'])
+def add_mkbuild_path():
+    """Add a mkbuild search path for the current user."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    path = data.get('path', '').strip()
+    description = data.get('description', '').strip()
+
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+    if not path:
+        return jsonify({"success": False, "error": "Path is required."})
+    if not path.startswith('/'):
+        return jsonify({"success": False, "error": "Path must be an absolute path (start with /)."})
+
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE username=%s", (username,))
+        user = cur.fetchone()
+        if not user:
+            return jsonify({"success": False, "error": "User not found."})
+        cur.execute(
+            "INSERT INTO user_mkbuild_paths (user_id, path, description) VALUES (%s, %s, %s)",
+            (user['id'], path, description)
+        )
+        conn.commit()
+        return jsonify({"success": True, "id": cur.lastrowid})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/settings/mkbuild-paths/update', methods=['POST'])
+def update_mkbuild_path():
+    """Update a mkbuild search path. User can only update their own paths."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    path_id = data.get('id')
+    path = data.get('path', '').strip()
+    description = data.get('description', '').strip()
+
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+    if not path_id:
+        return jsonify({"success": False, "error": "ID is required."})
+    if not path:
+        return jsonify({"success": False, "error": "Path is required."})
+    if not path.startswith('/'):
+        return jsonify({"success": False, "error": "Path must be an absolute path."})
+
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE user_mkbuild_paths ump JOIN users u ON u.id = ump.user_id "
+            "SET ump.path=%s, ump.description=%s "
+            "WHERE ump.id=%s AND u.username=%s",
+            (path, description, path_id, username)
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"success": False, "error": "Path not found or unauthorized."})
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/settings/mkbuild-paths/delete', methods=['POST'])
+def delete_mkbuild_path():
+    """Delete a mkbuild search path. User can only delete their own paths."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    path_id = data.get('id')
+
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+    if not path_id:
+        return jsonify({"success": False, "error": "ID is required."})
+
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE ump FROM user_mkbuild_paths ump "
+            "JOIN users u ON u.id = ump.user_id "
+            "WHERE ump.id=%s AND u.username=%s",
+            (path_id, username)
+        )
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"success": False, "error": "Path not found or unauthorized."})
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/settings/mkbuild-paths/scan', methods=['POST'])
+def scan_mkbuild_path():
+    """Scan a path for idas_tool_mkbuild folders. Returns found roles."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    path = data.get('path', '').strip()
+
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+    if not path or not path.startswith('/'):
+        return jsonify({"success": False, "error": "Valid absolute path is required."})
+
+    config = config_loader.load_config()
+    folder_name = config['search']['folder_name']
+
+    if not os.path.isdir(path):
+        return jsonify({"success": True, "roles": [], "message": "Directory does not exist."})
+
+    roles = path_finder.search_folder(folder_name, path)
+    return jsonify({"success": True, "roles": roles})
+
 
 @app.route('/generate-playbook', methods=['POST'])
 def generate_playbook():
@@ -3345,8 +3542,8 @@ def settings_deploy_db():
         return jsonify({"success": False, "error": "Database not configured. Save the connection details first."})
 
     # Order matters: drop dependent tables first, then parent tables
-    drop_order = ['activity_log', 'user_config', 'user_projects', 'admin_projects', 'project_status', 'user_pictures', 'delivery_servers', 'delivery_routes', 'users']
-    create_order = ['users', 'user_pictures', 'project_status', 'admin_projects', 'user_projects', 'user_config', 'activity_log', 'delivery_servers', 'delivery_routes']
+    drop_order = ['activity_log', 'user_config', 'user_projects', 'admin_projects', 'project_status', 'user_pictures', 'delivery_servers', 'delivery_routes', 'user_mkbuild_paths', 'users']
+    create_order = ['users', 'user_pictures', 'project_status', 'admin_projects', 'user_projects', 'user_config', 'activity_log', 'delivery_servers', 'delivery_routes', 'user_mkbuild_paths']
 
     tables_sql = {
         'users': """
@@ -3463,6 +3660,18 @@ def settings_deploy_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 CONSTRAINT fk_dr_project FOREIGN KEY (project_id)
                     REFERENCES admin_projects(id) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        'user_mkbuild_paths': """
+            CREATE TABLE user_mkbuild_paths (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                path VARCHAR(500) NOT NULL,
+                description VARCHAR(200) DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT fk_ump_user FOREIGN KEY (user_id)
+                    REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     }
@@ -4286,6 +4495,165 @@ def settings_test_delivery_server():
 
 
 # End Settings endpoints
+# ============================================================
+
+# ============================================================
+# Deliver Builds endpoints
+# ============================================================
+
+@app.route('/dashboard/builds/deliver-options')
+def dashboard_deliver_options():
+    """Return delivery servers and routes for a given project folder. Any authenticated user."""
+    username = request.args.get('username', '').strip()
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+
+    project_folder = request.args.get('project', '').strip()
+    if not project_folder or '/' in project_folder or '\\' in project_folder or '..' in project_folder:
+        return jsonify({"success": False, "error": "Invalid project."}), 400
+
+    servers = _db_get_delivery_servers()  # no passwords exposed
+
+    conn = _db_connect()
+    routes = []
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT dr.id, dr.path, dr.description, ap.name AS project_name "
+                "FROM delivery_routes dr "
+                "JOIN admin_projects ap ON ap.id = dr.project_id "
+                "WHERE ap.folder = %s "
+                "ORDER BY dr.path",
+                (project_folder,)
+            )
+            routes = [{
+                'id': r['id'],
+                'path': r['path'],
+                'description': r['description'] or '',
+                'project_name': r['project_name']
+            } for r in cur.fetchall()]
+        except Exception:
+            pass
+        finally:
+            conn.close()
+
+    return jsonify({"success": True, "servers": servers, "routes": routes})
+
+
+@app.route('/dashboard/builds/deliver', methods=['POST'])
+def dashboard_deliver_build():
+    """Copy a build file to one or more delivery servers via SCP."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+
+    project   = data.get('project', '').strip()
+    filename  = data.get('file', '').strip()
+    server_ids = data.get('server_ids', [])
+    route_id  = data.get('route_id')
+
+    if not project or not filename:
+        return jsonify({"success": False, "error": "Project and file are required."})
+    if not server_ids or not route_id:
+        return jsonify({"success": False, "error": "Select at least one server and a delivery path."})
+
+    # Path traversal protection
+    if '/' in project or '\\' in project or '..' in project:
+        return jsonify({"success": False, "error": "Invalid project name."}), 400
+    if '/' in filename or '\\' in filename or '..' in filename:
+        return jsonify({"success": False, "error": "Invalid file name."}), 400
+
+    config = config_loader.load_config()
+    projects_path = config['scanner']['projects_path'].rstrip('/')
+    build_subdir  = config['scanner']['build_subdir']
+    local_path    = os.path.join(projects_path, project, build_subdir, filename)
+
+    if not os.path.isfile(local_path):
+        return jsonify({"success": False, "error": "Build file not found: %s" % filename})
+
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "Database unavailable."})
+
+    try:
+        cur = conn.cursor()
+        # Validate route and belongs to project
+        cur.execute(
+            "SELECT dr.path FROM delivery_routes dr "
+            "JOIN admin_projects ap ON ap.id = dr.project_id "
+            "WHERE dr.id = %s AND ap.folder = %s",
+            (route_id, project)
+        )
+        route_row = cur.fetchone()
+        if not route_row:
+            return jsonify({"success": False, "error": "Delivery route not found or does not match project."})
+        dest_path = route_row['path']
+
+        # Fetch server credentials
+        if not server_ids:
+            return jsonify({"success": False, "error": "No servers selected."})
+        placeholders = ','.join(['%s'] * len(server_ids))
+        cur.execute(
+            "SELECT id, label, ip, ssh_user, ssh_password "
+            "FROM delivery_servers WHERE id IN (%s)" % placeholders,
+            list(server_ids)
+        )
+        servers = cur.fetchall()
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+    if not servers:
+        return jsonify({"success": False, "error": "No valid servers found."})
+
+    results = []
+    for srv in servers:
+        ip       = srv['ip']
+        ssh_user = srv['ssh_user']
+        ssh_pass = srv['ssh_password'] or ''
+        dest     = '%s@%s:%s/' % (ssh_user, ip, dest_path.rstrip('/'))
+        scp_base = [
+            '-o', 'StrictHostKeyChecking=no',
+            '-o', 'ConnectTimeout=15',
+        ]
+        try:
+            if ssh_pass:
+                try:
+                    proc = subprocess.run(
+                        ['sshpass', '-p', ssh_pass, 'scp'] + scp_base + [local_path, dest],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300
+                    )
+                except FileNotFoundError:
+                    # sshpass not installed — try key-based
+                    proc = subprocess.run(
+                        ['scp', '-o', 'BatchMode=yes'] + scp_base + [local_path, dest],
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300
+                    )
+            else:
+                proc = subprocess.run(
+                    ['scp', '-o', 'BatchMode=yes'] + scp_base + [local_path, dest],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300
+                )
+
+            if proc.returncode == 0:
+                results.append({"server": srv['label'], "ip": ip, "success": True})
+                _log_activity(username, 'deliver_build',
+                              '%s → %s (%s:%s)' % (filename, srv['label'], ip, dest_path))
+            else:
+                err = proc.stderr.decode('utf-8', errors='replace').strip()
+                results.append({"server": srv['label'], "ip": ip, "success": False, "error": err or "Copy failed."})
+        except subprocess.TimeoutExpired:
+            results.append({"server": srv['label'], "ip": ip, "success": False, "error": "Timed out after 300s."})
+        except Exception as e:
+            results.append({"server": srv['label'], "ip": ip, "success": False, "error": str(e)})
+
+    overall = all(r['success'] for r in results)
+    return jsonify({"success": overall, "results": results})
+
+# End Deliver Builds endpoints
 # ============================================================
 
 if __name__ == '__main__':

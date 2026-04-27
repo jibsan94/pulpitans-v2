@@ -282,6 +282,11 @@
                                     class="hide-menu">Delivery Routes
                                 </span></a>
                         </li>
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="deliver.html"
+                                aria-expanded="false"><i data-feather="send" class="feather-icon"></i><span
+                                    class="hide-menu">Deliver Builds
+                                </span></a>
+                        </li>
                         <!-- Admin section (visible only to admins) -->
                         <li class="list-divider admin-only" style="display:none;"></li>
                         <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
@@ -946,8 +951,14 @@
                         <tr>
                             <td class="px-2 py-4">
                                 <div class="d-flex no-block align-items-center">
-                                    <div class="me-3">
-                                        <div class="btn btn-${color} rounded-circle btn-circle font-16 d-flex align-items-center justify-content-center" style="width:45px;height:45px;">${initial}</div>
+                                    <div class="me-3" style="width:45px;height:45px;position:relative;">
+                                        <img src="${API_BASE}/auth/profile-picture/${encodeURIComponent(info.username)}?t=${Date.now()}"
+                                            alt="${initial}"
+                                            class="rounded-circle"
+                                            width="45" height="45"
+                                            style="object-fit:cover;position:absolute;top:0;left:0;"
+                                            onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                                        <div class="btn btn-${color} rounded-circle btn-circle font-16 align-items-center justify-content-center" style="width:45px;height:45px;display:none;position:absolute;top:0;left:0;">${initial}</div>
                                     </div>
                                     <div>
                                         <h5 class="text-dark mb-0 font-16 font-weight-medium">${name}</h5>
