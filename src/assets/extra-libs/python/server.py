@@ -4660,6 +4660,213 @@ def dashboard_deliver_build():
     overall = all(r['success'] for r in results)
     return jsonify({"success": overall, "results": results})
 
+
+# ── Background delivery helpers ───────────────────────────────────────────────
+
+def _get_delivery_jobs_dir():
+    """Returns the directory used to track background delivery jobs."""
+    config = config_loader.load_config()
+    base_dir = config.get('system', 'base_dir')
+    jobs_dir = os.path.join(base_dir, 'delivery_jobs')
+    os.makedirs(jobs_dir, exist_ok=True)
+    return jobs_dir
+
+
+@app.route('/dashboard/builds/deliver/start', methods=['POST'])
+def dashboard_deliver_start():
+    """Start a background delivery job. Returns {success, delivery_id} immediately."""
+    data      = request.get_json()
+    username  = data.get('username', '').strip()
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+
+    project    = data.get('project', '').strip()
+    filename   = data.get('file', '').strip()
+    server_ids = data.get('server_ids', [])
+    route_id   = data.get('route_id')
+
+    if not project or not filename:
+        return jsonify({"success": False, "error": "Project and file required."})
+    if not server_ids or not route_id:
+        return jsonify({"success": False, "error": "Select at least one server and a delivery path."})
+    if '/' in project or '\\' in project or '..' in project:
+        return jsonify({"success": False, "error": "Invalid project name."}), 400
+    if '/' in filename or '\\' in filename or '..' in filename:
+        return jsonify({"success": False, "error": "Invalid file name."}), 400
+
+    config        = config_loader.load_config()
+    projects_path = config['scanner']['projects_path'].rstrip('/')
+    build_subdir  = config['scanner']['build_subdir']
+    local_path    = os.path.join(projects_path, project, build_subdir, filename)
+
+    if not os.path.isfile(local_path):
+        return jsonify({"success": False, "error": "Build file not found: %s" % filename})
+
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "Database unavailable."})
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT dr.path FROM delivery_routes dr "
+            "JOIN admin_projects ap ON ap.id = dr.project_id "
+            "WHERE dr.id = %s AND ap.folder = %s",
+            (route_id, project)
+        )
+        route_row = cur.fetchone()
+        if not route_row:
+            return jsonify({"success": False, "error": "Delivery route not found or does not match project."})
+        dest_path = route_row['path']
+
+        placeholders = ','.join(['%s'] * len(server_ids))
+        cur.execute(
+            "SELECT id, label, ip, ssh_user, ssh_password "
+            "FROM delivery_servers WHERE id IN (%s)" % placeholders,
+            list(server_ids)
+        )
+        servers = [dict(r) for r in cur.fetchall()]
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+    if not servers:
+        return jsonify({"success": False, "error": "No valid servers found."})
+
+    now         = datetime.datetime.now()
+    safe_proj   = re.sub(r'[^a-zA-Z0-9_-]', '_', project)
+    delivery_id = 'deliver_%s_%s' % (safe_proj, now.strftime('%Y%m%d_%H%M%S'))
+    jobs_dir    = _get_delivery_jobs_dir()
+    job_file    = os.path.join(jobs_dir, '%s.json' % delivery_id)
+
+    job = {
+        'id':         delivery_id,
+        'project':    project,
+        'filename':   filename,
+        'local_path': local_path,
+        'dest_path':  dest_path,
+        'servers':    servers,
+        'username':   username,
+        'started_at': now.strftime('%Y-%m-%d %H:%M:%S'),
+        'status':     'starting',
+        'results':    [],
+        'pid':        None
+    }
+    with open(job_file, 'w') as f:
+        json.dump(job, f, indent=2)
+
+    worker_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'delivery_worker.py')
+    proc = subprocess.Popen(
+        [sys.executable, worker_path, job_file],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True
+    )
+    job['pid']    = proc.pid
+    job['status'] = 'running'
+    with open(job_file, 'w') as f:
+        json.dump(job, f, indent=2)
+
+    _log_activity(username, 'deliver_start',
+                  'Started delivery %s: %s/%s → %s' % (delivery_id, project, filename, dest_path))
+    return jsonify({"success": True, "delivery_id": delivery_id})
+
+
+@app.route('/dashboard/builds/deliver/list')
+def dashboard_deliver_list():
+    """List recent delivery jobs (last 100). Checks PID liveness for running jobs."""
+    username = request.args.get('username', '').strip()
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+
+    jobs_dir = _get_delivery_jobs_dir()
+    jobs = []
+    try:
+        files = sorted(
+            [f for f in os.listdir(jobs_dir) if f.endswith('.json')],
+            reverse=True
+        )[:100]
+        for fname in files:
+            path = os.path.join(jobs_dir, fname)
+            try:
+                with open(path, 'r') as f:
+                    job = json.load(f)
+                # Check PID liveness
+                pid = job.get('pid')
+                if pid and job.get('status') in ('running', 'starting'):
+                    try:
+                        os.kill(pid, 0)
+                    except OSError:
+                        job['status'] = 'done' if job.get('results') and all(
+                            r.get('success') for r in job['results']
+                        ) else 'failed'
+                        with open(path, 'w') as fw:
+                            json.dump(job, fw, indent=2)
+                # Strip passwords before sending to client
+                for srv in job.get('servers', []):
+                    srv.pop('ssh_password', None)
+                jobs.append(job)
+            except Exception:
+                continue
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "jobs": []})
+    return jsonify({"success": True, "jobs": jobs})
+
+
+@app.route('/dashboard/builds/deliver/status/<delivery_id>')
+def dashboard_deliver_status(delivery_id):
+    """Get the current status of a single delivery job."""
+    if not re.match(r'^deliver_[a-zA-Z0-9_-]+$', delivery_id):
+        return jsonify({"success": False, "error": "Invalid delivery ID."})
+    jobs_dir = _get_delivery_jobs_dir()
+    job_file = os.path.join(jobs_dir, '%s.json' % delivery_id)
+    if not os.path.isfile(job_file):
+        return jsonify({"success": False, "error": "Not found."})
+    with open(job_file, 'r') as f:
+        job = json.load(f)
+    pid = job.get('pid')
+    if pid and job.get('status') in ('running', 'starting'):
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            job['status'] = 'done' if job.get('results') and all(
+                r.get('success') for r in job['results']
+            ) else 'failed'
+            with open(job_file, 'w') as fw:
+                json.dump(job, fw, indent=2)
+    for srv in job.get('servers', []):
+        srv.pop('ssh_password', None)
+    return jsonify({"success": True, "job": job})
+
+
+@app.route('/dashboard/builds/deliver/stop', methods=['POST'])
+def dashboard_deliver_stop():
+    """Stop a running background delivery job by sending SIGTERM."""
+    data        = request.get_json()
+    username    = data.get('username', '').strip()
+    delivery_id = data.get('delivery_id', '').strip()
+    if not username:
+        return jsonify({"success": False, "error": "Not authenticated."}), 401
+    if not delivery_id or not re.match(r'^deliver_[a-zA-Z0-9_-]+$', delivery_id):
+        return jsonify({"success": False, "error": "Invalid delivery ID."})
+
+    jobs_dir = _get_delivery_jobs_dir()
+    job_file = os.path.join(jobs_dir, '%s.json' % delivery_id)
+    if not os.path.isfile(job_file):
+        return jsonify({"success": False, "error": "Delivery job not found."})
+    with open(job_file, 'r') as f:
+        job = json.load(f)
+    pid = job.get('pid')
+    if pid:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+    job['status'] = 'stopped'
+    with open(job_file, 'w') as fw:
+        json.dump(job, fw, indent=2)
+    _log_activity(username, 'deliver_stop', 'Stopped delivery %s' % delivery_id)
+    return jsonify({"success": True})
+
 # End Deliver Builds endpoints
 # ============================================================
 

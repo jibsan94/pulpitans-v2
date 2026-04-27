@@ -15,6 +15,31 @@
         .route-radio-label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
         .delivery-result-item { border-radius: 6px; padding: 8px 12px; margin-bottom: 6px; font-size: 13px; }
         #deliver-progress { display: none; }
+        /* Route radio button — darker border for visibility */
+        .deliver-route-radio {
+            width: 1.15em; height: 1.15em;
+            border: 2px solid #495057 !important;
+            cursor: pointer;
+        }
+        .deliver-route-radio:checked {
+            background-color: #0d6efd;
+            border-color: #0d6efd !important;
+        }
+        /* Route option row background */
+        #deliver-routes-list .form-check {
+            background: #f1f3f5;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            padding: 8px 12px 8px 38px;
+            margin-bottom: 6px;
+        }
+        #deliver-routes-list .form-check:has(.deliver-route-radio:checked) {
+            background: #ddeeff;
+            border-color: #0d6efd;
+        }
+        /* Delivery status area in table */
+        .deliver-status-area .progress { height: 5px; min-width: 90px; }
+        .deliver-status-area { min-width: 140px; }
     </style>
 </head>
 
@@ -204,10 +229,10 @@
                                     <table class="table table-hover align-middle mb-0">
                                         <thead class="table-dark">
                                             <tr>
-                                                <th style="width:40%;">Build Name</th>
-                                                <th style="width:12%;">Size</th>
-                                                <th style="width:18%;">Date</th>
-                                                <th style="width:30%;">Actions</th>
+                                                <th style="width:38%;">Build Name</th>
+                                                <th style="width:11%;">Size</th>
+                                                <th style="width:16%;">Date</th>
+                                                <th style="width:35%;">Actions / Status</th>
                                             </tr>
                                         </thead>
                                         <tbody id="builds-tbody">
@@ -313,9 +338,11 @@
 
     <script>
     const API_BASE = '/api';
-    let _allBuilds = [];      // flat list: [{project, filename, size, size_bytes, date}]
-    let _deliverData = {};    // current build being delivered
+    let _allBuilds   = [];      // flat list: [{project, filename, size, size_bytes, date}]
+    let _deliverData = {};      // current build being delivered in modal
     let deliverModal;
+    let _runningDeliveries = {}; // key "project|filename" => delivery_id
+    let _pollInterval = null;
 
     function escHtml(t) {
         const d = document.createElement('div');
@@ -360,7 +387,7 @@
                 (proj.builds || []).forEach(b => {
                     _allBuilds.push({
                         project: folder,
-                        filename: b.filename,
+                        filename: b.name || b.filename,
                         size: b.size,
                         size_bytes: b.size_bytes || 0,
                         date: b.date || ''
@@ -396,7 +423,8 @@
                 </td>
             </tr>`;
             byProject[folder].forEach(b => {
-                html += `<tr>
+                const rowKey = escHtml(b.project + '|' + b.filename);
+                html += `<tr data-key="${rowKey}">
                     <td class="ps-4">
                         <i data-feather="archive" class="feather-sm me-1 text-muted"></i>
                         <span class="font-monospace" style="font-size:12px;">${escHtml(b.filename)}</span>
@@ -404,10 +432,15 @@
                     <td><small class="text-muted">${escHtml(b.size)}</small></td>
                     <td><small class="text-muted">${escHtml(b.date)}</small></td>
                     <td>
-                        <button class="btn btn-sm btn-primary" style="min-width:90px;"
-                            onclick="openDeliverModal(${JSON.stringify(escHtml(b.project))}, ${JSON.stringify(escHtml(b.filename))}, ${JSON.stringify(escHtml(b.size))})">
-                            <i data-feather="send" class="feather-sm me-1"></i> Deliver
-                        </button>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <button class="btn btn-sm btn-primary deliver-btn"
+                                data-project="${escHtml(b.project)}"
+                                data-filename="${escHtml(b.filename)}"
+                                data-size="${escHtml(b.size)}">
+                                <i data-feather="send" class="feather-sm me-1"></i> Deliver
+                            </button>
+                            <div class="deliver-status-area" style="display:none;"></div>
+                        </div>
                     </td>
                 </tr>`;
             });
@@ -521,18 +554,10 @@
     }
 
     async function confirmDeliver() {
-        // Gather selections
         const serverChecks = document.querySelectorAll('.deliver-server-check:checked');
         const routeRadio   = document.querySelector('.deliver-route-radio:checked');
-
-        if (!serverChecks.length) {
-            _deliverSetError('Please select at least one server.');
-            return;
-        }
-        if (!routeRadio) {
-            _deliverSetError('Please select a delivery path.');
-            return;
-        }
+        if (!serverChecks.length) { _deliverSetError('Please select at least one server.'); return; }
+        if (!routeRadio)          { _deliverSetError('Please select a delivery path.'); return; }
 
         const serverIds = Array.from(serverChecks).map(c => parseInt(c.value, 10));
         const routeId   = parseInt(routeRadio.value, 10);
@@ -540,15 +565,10 @@
         document.getElementById('deliver-modal-error').style.display = 'none';
         document.getElementById('btn-deliver-confirm').disabled = true;
         document.getElementById('btn-deliver-confirm').innerHTML =
-            '<span class="spinner-border spinner-border-sm me-1"></span> Delivering...';
-
-        document.getElementById('deliver-progress').style.display = '';
-        document.getElementById('deliver-results-list').innerHTML =
-            `<div class="text-muted"><span class="spinner-border spinner-border-sm me-2"></span>Copying file to ${serverIds.length} server(s)...</div>`;
-        feather.replace();
+            '<span class="spinner-border spinner-border-sm me-1"></span> Starting...';
 
         try {
-            const res = await fetch(`${API_BASE}/dashboard/builds/deliver`, {
+            const res = await fetch(`${API_BASE}/dashboard/builds/deliver/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -560,26 +580,23 @@
                 })
             });
             const data = await res.json();
-
-            // Show per-server results
-            if (data.results && data.results.length) {
-                document.getElementById('deliver-results-list').innerHTML = data.results.map(r => `
-                    <div class="delivery-result-item ${r.success ? 'alert alert-success' : 'alert alert-danger'} py-2">
-                        <i data-feather="${r.success ? 'check-circle' : 'x-circle'}" class="feather-sm me-1"></i>
-                        <strong>${escHtml(r.server)}</strong>
-                        <code class="ms-1 text-muted" style="font-size:12px;">${escHtml(r.ip)}</code>
-                        ${r.success ? '' : `<br><small class="ms-4 text-danger">${escHtml(r.error || '')}</small>`}
-                    </div>
-                `).join('');
-            } else if (!data.success) {
-                document.getElementById('deliver-results-list').innerHTML =
-                    `<div class="alert alert-danger py-2">${escHtml(data.error || 'Delivery failed.')}</div>`;
+            if (!data.success) {
+                _deliverSetError(data.error || 'Failed to start delivery.');
+                document.getElementById('btn-deliver-confirm').disabled = false;
+                document.getElementById('btn-deliver-confirm').innerHTML =
+                    '<i data-feather="send" class="feather-sm me-1"></i> Deliver';
+                feather.replace();
+                return;
             }
-
-            document.getElementById('btn-deliver-confirm').style.display = 'none';
-            document.getElementById('btn-deliver-cancel').textContent = 'Close';
-            document.getElementById('btn-deliver-done').style.display = '';
-            feather.replace();
+            // Close modal, show progress in table row
+            deliverModal.hide();
+            const key = _deliverData.project + '|' + _deliverData.filename;
+            _runningDeliveries[key] = data.delivery_id;
+            _updateRowStatus(key, {
+                id: data.delivery_id, status: 'running',
+                results: [], servers: serverIds.map(id => ({ id }))
+            });
+            _startPolling();
         } catch(e) {
             _deliverSetError('Request failed: ' + e.message);
             document.getElementById('btn-deliver-confirm').disabled = false;
@@ -587,6 +604,120 @@
                 '<i data-feather="send" class="feather-sm me-1"></i> Deliver';
             feather.replace();
         }
+    }
+
+    // ── Row status management ────────────────────────────────────
+    function _updateRowStatus(key, job) {
+        const row = document.querySelector(`tr[data-key="${CSS.escape(key)}"]`);
+        if (!row) return;
+        const btn  = row.querySelector('.deliver-btn');
+        const area = row.querySelector('.deliver-status-area');
+        if (!area) return;
+
+        const st = job.status;
+        if (st === 'running' || st === 'starting') {
+            btn.style.display  = 'none';
+            area.style.display = '';
+            const total = (job.servers || []).length;
+            const done  = (job.results || []).length;
+            const pct   = total > 0 ? Math.round(done / total * 100) : 0;
+            area.innerHTML = `
+                <div class="d-flex align-items-center gap-2 flex-wrap" style="min-width:160px;">
+                    <div style="flex:1;min-width:80px;">
+                        <div class="progress" style="height:5px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                 style="width:${pct > 0 ? pct : 100}%"></div>
+                        </div>
+                        <small class="text-muted" style="font-size:11px;">${done}/${total > 0 ? total : '?'} server(s)</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1 deliver-stop-btn"
+                        style="font-size:11px;line-height:1.6;"
+                        data-delivery-id="${escHtml(job.id)}" data-key="${escHtml(key)}">
+                        <i data-feather="x" class="feather-sm"></i> Stop
+                    </button>
+                </div>`;
+            feather.replace();
+        } else {
+            btn.style.display  = '';
+            area.style.display = '';
+            if (st === 'done') {
+                const allOk = (job.results || []).length > 0 && (job.results || []).every(r => r.success);
+                area.innerHTML = allOk
+                    ? `<span class="badge bg-success"><i data-feather="check" class="feather-sm me-1"></i>Delivered</span>`
+                    : `<span class="badge bg-warning text-dark" title="Some servers failed">Partial</span>`;
+            } else if (st === 'failed') {
+                area.innerHTML = `<span class="badge bg-danger"><i data-feather="x" class="feather-sm me-1"></i>Failed</span>`;
+            } else if (st === 'stopped') {
+                area.innerHTML = `<span class="badge bg-secondary">Stopped</span>`;
+            } else {
+                area.innerHTML = '';
+                area.style.display = 'none';
+            }
+            feather.replace();
+        }
+    }
+
+    async function stopDelivery(deliveryId, key) {
+        try {
+            await fetch(`${API_BASE}/dashboard/builds/deliver/stop`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: PulpitansAuth.getUsername(), delivery_id: deliveryId })
+            });
+        } catch(e) {}
+        delete _runningDeliveries[key];
+        _updateRowStatus(key, { id: deliveryId, status: 'stopped', results: [], servers: [] });
+    }
+
+    // ── Polling ──────────────────────────────────────────────────
+    function _startPolling() {
+        if (!_pollInterval) {
+            _pollInterval = setInterval(pollDeliveries, 2500);
+        }
+    }
+
+    async function pollDeliveries() {
+        if (Object.keys(_runningDeliveries).length === 0) {
+            clearInterval(_pollInterval);
+            _pollInterval = null;
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}/dashboard/builds/deliver/list?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data = await res.json();
+            if (!data.success) return;
+            data.jobs.forEach(job => {
+                const key = job.project + '|' + job.filename;
+                if (_runningDeliveries[key] === job.id) {
+                    _updateRowStatus(key, job);
+                    if (job.status !== 'running' && job.status !== 'starting') {
+                        delete _runningDeliveries[key];
+                    }
+                }
+            });
+        } catch(e) {}
+        if (Object.keys(_runningDeliveries).length === 0 && _pollInterval) {
+            clearInterval(_pollInterval);
+            _pollInterval = null;
+        }
+    }
+
+    // ── Restore delivery state on page load ──────────────────────
+    async function loadDeliveryState() {
+        try {
+            const res = await fetch(`${API_BASE}/dashboard/builds/deliver/list?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data = await res.json();
+            if (!data.success) return;
+            data.jobs.forEach(job => {
+                const key = job.project + '|' + job.filename;
+                if (job.status === 'running' || job.status === 'starting') {
+                    _runningDeliveries[key] = job.id;
+                }
+                _updateRowStatus(key, job);
+            });
+            if (Object.keys(_runningDeliveries).length > 0) {
+                _startPolling();
+            }
+        } catch(e) {}
     }
 
     function _deliverSetError(msg) {
@@ -600,7 +731,23 @@
         $(".preloader").fadeOut();
         deliverModal = new bootstrap.Modal(document.getElementById('deliverModal'));
         _startClock();
-        loadBuilds();
+
+        // Load builds then restore any running delivery states
+        await loadBuilds();
+        loadDeliveryState();
+
+        // Event delegation: Deliver button + Stop button
+        document.getElementById('builds-tbody').addEventListener('click', function(e) {
+            const stopBtn = e.target.closest('.deliver-stop-btn');
+            if (stopBtn) {
+                stopDelivery(stopBtn.dataset.deliveryId, stopBtn.dataset.key);
+                return;
+            }
+            const btn = e.target.closest('.deliver-btn');
+            if (btn) {
+                openDeliverModal(btn.dataset.project, btn.dataset.filename, btn.dataset.size);
+            }
+        });
 
         // Feather icons replacement after modal shown
         document.getElementById('deliverModal').addEventListener('shown.bs.modal', () => {
