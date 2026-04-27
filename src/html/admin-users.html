@@ -370,6 +370,10 @@
                         <label class="form-label text-muted">Display Name</label>
                         <input type="text" class="form-control" id="edit-user-displayname" placeholder="Leave empty to use username">
                     </div>
+                    <div class="mb-3" id="edit-user-password-group" style="display:none;">
+                        <label class="form-label text-muted">New Password <small class="text-muted">(leave empty to keep current)</small></label>
+                        <input type="password" class="form-control" id="edit-user-newpassword" placeholder="••••••••" autocomplete="new-password">
+                    </div>
                     <hr>
                     <h6 class="text-muted mb-2"><i data-feather="briefcase" class="feather-sm me-1"></i> Assigned Projects</h6>
                     <div id="edit-user-projects" class="mb-3">
@@ -637,6 +641,10 @@
         document.getElementById('edit-user-username-display').value = username;
         document.getElementById('edit-user-displayname').value = user.display_name === username ? '' : user.display_name;
         document.getElementById('edit-user-result').innerHTML = '';
+        document.getElementById('edit-user-newpassword').value = '';
+        // Show password field only in DB auth mode
+        document.getElementById('edit-user-password-group').style.display =
+            _storageMode === 'database' ? '' : 'none';
 
         // Render assigned projects with move + remove buttons
         const container = document.getElementById('edit-user-projects');
@@ -669,14 +677,18 @@
     async function saveEditUser() {
         const username = document.getElementById('edit-user-username').value;
         const displayName = document.getElementById('edit-user-displayname').value.trim();
+        const newPassword = document.getElementById('edit-user-newpassword').value;
         const adminUser = PulpitansAuth.getUsername();
         const resultDiv = document.getElementById('edit-user-result');
+
+        const payload = { admin_username: adminUser, username, display_name: displayName };
+        if (newPassword) payload.new_password = newPassword;
 
         try {
             const res = await fetch(`${API_BASE}/admin/users/update`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ admin_username: adminUser, username, display_name: displayName })
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
             if (data.success) {

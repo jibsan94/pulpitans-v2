@@ -1993,7 +1993,7 @@ def admin_remove_user_from_list():
 
 @app.route('/admin/users/update', methods=['POST'])
 def admin_update_user():
-    """Update display name for a user. Admin only."""
+    """Update display name (and optionally password) for a user. Admin only."""
     data = request.get_json()
     admin_user = data.get('admin_username', '').strip()
     if not user_manager.is_admin(admin_user):
@@ -2001,12 +2001,23 @@ def admin_update_user():
 
     target_user = data.get('username', '').strip()
     display_name = data.get('display_name', '').strip()
+    new_password = data.get('new_password', '').strip()
     if not target_user:
         return jsonify({"success": False, "error": "Username is required."})
     user_manager.update_display_name(target_user, display_name)  # always keep JSON in sync
     if _storage_is_db():
         _db_update_display_name(target_user, display_name)
-    _log_activity(admin_user, 'update_user', f'Updated display name for {target_user} to "{display_name}"')
+
+    # Admin password reset (DB auth mode only)
+    if new_password:
+        if not (_get_auth_method() == 'database' and _storage_is_db()):
+            return jsonify({"success": False, "error": "Password change is only available in Database auth mode."})
+        if len(new_password) < 4:
+            return jsonify({"success": False, "error": "Password must be at least 4 characters."})
+        _db_set_password_hash(target_user, _hash_password(new_password))
+        _log_activity(admin_user, 'admin_reset_password', 'Admin reset password for %s' % target_user)
+
+    _log_activity(admin_user, 'update_user', 'Updated display name for %s to "%s"' % (target_user, display_name))
     return jsonify({"success": True})
 
 
@@ -3252,8 +3263,8 @@ def settings_deploy_db():
         return jsonify({"success": False, "error": "Database not configured. Save the connection details first."})
 
     # Order matters: drop dependent tables first, then parent tables
-    drop_order = ['activity_log', 'user_config', 'user_projects', 'admin_projects', 'project_status', 'user_pictures', 'users']
-    create_order = ['users', 'user_pictures', 'project_status', 'admin_projects', 'user_projects', 'user_config', 'activity_log']
+    drop_order = ['activity_log', 'user_config', 'user_projects', 'admin_projects', 'project_status', 'user_pictures', 'delivery_servers', 'users']
+    create_order = ['users', 'user_pictures', 'project_status', 'admin_projects', 'user_projects', 'user_config', 'activity_log', 'delivery_servers']
 
     tables_sql = {
         'users': """
@@ -3346,6 +3357,17 @@ def settings_deploy_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 CONSTRAINT fk_pic_user FOREIGN KEY (user_id)
                     REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        """,
+        'delivery_servers': """
+            CREATE TABLE delivery_servers (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                label VARCHAR(100) NOT NULL,
+                ip VARCHAR(100) NOT NULL,
+                ssh_user VARCHAR(100) NOT NULL DEFAULT 'root',
+                ssh_password VARCHAR(500) DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         """
     }
@@ -3765,6 +3787,245 @@ def settings_save_auth():
     _save_system_settings(settings)
     user_manager.log_activity(username, 'auth_config_saved', 'Auth method: ' + method)
     return jsonify({"success": True})
+
+
+# ============================================================
+# Delivery Servers endpoints
+# ============================================================
+
+def _db_get_delivery_servers():
+    """Return all delivery servers from DB."""
+    conn = _db_connect()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id, label, ip, ssh_user, created_at FROM delivery_servers ORDER BY id")
+        rows = cur.fetchall()
+        return [{'id': r['id'], 'label': r['label'], 'ip': r['ip'],
+                 'ssh_user': r['ssh_user'], 'created_at': str(r['created_at'])} for r in rows]
+    except Exception:
+        return []
+    finally:
+        conn.close()
+
+
+@app.route('/settings/delivery-servers', methods=['GET'])
+def settings_get_delivery_servers():
+    """List all delivery servers. Admin only."""
+    username = request.args.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    servers = _db_get_delivery_servers()
+    return jsonify({"success": True, "servers": servers})
+
+
+@app.route('/settings/delivery-servers/add', methods=['POST'])
+def settings_add_delivery_server():
+    """Add a delivery server. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    label    = data.get('label', '').strip()
+    ip       = data.get('ip', '').strip()
+    ssh_user = data.get('ssh_user', 'root').strip() or 'root'
+    ssh_pass = data.get('ssh_password', '')
+
+    if not ip:
+        return jsonify({"success": False, "error": "IP address is required."})
+    if not label:
+        label = ip  # use IP as label if none provided
+    # Basic IP/hostname validation
+    if not re.match(r'^[a-zA-Z0-9._\-]+$', ip):
+        return jsonify({"success": False, "error": "Invalid IP address or hostname."})
+
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO delivery_servers (label, ip, ssh_user, ssh_password) VALUES (%s,%s,%s,%s)",
+            (label, ip, ssh_user, ssh_pass)
+        )
+        conn.commit()
+        _log_activity(username, 'add_delivery_server', 'Added delivery server: %s (%s)' % (label, ip))
+        return jsonify({"success": True, "id": cur.lastrowid})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/settings/delivery-servers/delete', methods=['POST'])
+def settings_delete_delivery_server():
+    """Delete a delivery server. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    server_id = data.get('id')
+    if not server_id:
+        return jsonify({"success": False, "error": "Server ID required."})
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT label, ip FROM delivery_servers WHERE id=%s", (server_id,))
+        row = cur.fetchone()
+        if not row:
+            return jsonify({"success": False, "error": "Server not found."})
+        cur.execute("DELETE FROM delivery_servers WHERE id=%s", (server_id,))
+        conn.commit()
+        _log_activity(username, 'delete_delivery_server', 'Deleted delivery server: %s (%s)' % (row['label'], row['ip']))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/settings/delivery-servers/update', methods=['POST'])
+def settings_update_delivery_server():
+    """Update an existing delivery server. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+    server_id = data.get('id')
+    if not server_id:
+        return jsonify({"success": False, "error": "Server ID required."})
+
+    label    = data.get('label', '').strip()
+    ip       = data.get('ip', '').strip()
+    ssh_user = data.get('ssh_user', 'root').strip() or 'root'
+    ssh_pass = data.get('ssh_password')  # None means "don't change"
+
+    if not ip:
+        return jsonify({"success": False, "error": "IP address is required."})
+    if not label:
+        label = ip
+    if not re.match(r'^[a-zA-Z0-9._\-]+$', ip):
+        return jsonify({"success": False, "error": "Invalid IP address or hostname."})
+
+    conn = _db_connect()
+    if not conn:
+        return jsonify({"success": False, "error": "DB not available."})
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM delivery_servers WHERE id=%s", (server_id,))
+        if not cur.fetchone():
+            return jsonify({"success": False, "error": "Server not found."})
+        if ssh_pass is not None:
+            cur.execute(
+                "UPDATE delivery_servers SET label=%s, ip=%s, ssh_user=%s, ssh_password=%s WHERE id=%s",
+                (label, ip, ssh_user, ssh_pass, server_id)
+            )
+        else:
+            cur.execute(
+                "UPDATE delivery_servers SET label=%s, ip=%s, ssh_user=%s WHERE id=%s",
+                (label, ip, ssh_user, server_id)
+            )
+        conn.commit()
+        _log_activity(username, 'update_delivery_server', 'Updated delivery server: %s (%s)' % (label, ip))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+@app.route('/settings/delivery-servers/test', methods=['POST'])
+def settings_test_delivery_server():
+    """Test SSH connection to a delivery server. Admin only."""
+    data = request.get_json()
+    username = data.get('username', '').strip()
+    if not user_manager.is_admin(username):
+        return jsonify({"success": False, "error": "Unauthorized."}), 403
+
+    ip       = data.get('ip', '').strip()
+    ssh_user = data.get('ssh_user', '').strip()
+    ssh_pass = data.get('ssh_password', '')
+    server_id = data.get('id')  # optional — if set, load from DB
+
+    # If testing an existing server, load its stored data
+    if server_id:
+        conn = _db_connect()
+        if conn:
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT ip, ssh_user, ssh_password FROM delivery_servers WHERE id=%s", (server_id,))
+                row = cur.fetchone()
+                if row:
+                    ip       = row['ip']
+                    ssh_user = row['ssh_user']
+                    ssh_pass = row['ssh_password']
+            except Exception:
+                pass
+            finally:
+                conn.close()
+
+    if not ip:
+        return jsonify({"success": False, "error": "IP is required."})
+    if not ssh_user:
+        ssh_user = 'root'
+
+    import subprocess
+    try:
+        if ssh_pass:
+            # Use sshpass if available
+            try:
+                result = subprocess.run(
+                    ['sshpass', '-p', ssh_pass, 'ssh',
+                     '-o', 'StrictHostKeyChecking=no',
+                     '-o', 'ConnectTimeout=5',
+                     '-o', 'BatchMode=no',
+                     '%s@%s' % (ssh_user, ip), 'echo OK'],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10
+                )
+            except FileNotFoundError:
+                # sshpass not installed — try key-based
+                result = subprocess.run(
+                    ['ssh',
+                     '-o', 'StrictHostKeyChecking=no',
+                     '-o', 'ConnectTimeout=5',
+                     '-o', 'BatchMode=yes',
+                     '%s@%s' % (ssh_user, ip), 'echo OK'],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10
+                )
+        else:
+            result = subprocess.run(
+                ['ssh',
+                 '-o', 'StrictHostKeyChecking=no',
+                 '-o', 'ConnectTimeout=5',
+                 '-o', 'BatchMode=yes',
+                 '%s@%s' % (ssh_user, ip), 'echo OK'],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10
+            )
+
+        stdout = result.stdout.decode('utf-8', errors='replace') if isinstance(result.stdout, bytes) else result.stdout
+        stderr = result.stderr.decode('utf-8', errors='replace') if isinstance(result.stderr, bytes) else result.stderr
+
+        if result.returncode == 0 and 'OK' in stdout:
+            return jsonify({"success": True, "output": stdout.strip()})
+        stderr = stderr.strip()
+        hint = ''
+        if 'Permission denied' in stderr or 'Authentication failed' in stderr:
+            hint = 'permission_denied'
+        elif 'Connection timed out' in stderr or 'Connection refused' in stderr:
+            hint = 'timeout'
+        elif 'Could not resolve' in stderr or 'Name or service not known' in stderr:
+            hint = 'dns'
+        else:
+            hint = 'unreachable'
+        return jsonify({"success": False, "error": stderr or 'Connection failed.', "hint": hint})
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": 'Connection timed out after 10 seconds.', "hint": 'timeout'})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "hint": 'error'})
 
 
 # End Settings endpoints
