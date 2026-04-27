@@ -14,6 +14,9 @@
     <title>PULPITANS</title>
     <!-- Custom CSS -->
     <link href="../dist/css/style.min.css" rel="stylesheet">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <style>.scroll-sidebar { overflow-y: auto !important; }</style>
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -200,33 +203,23 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown"
                                 aria-haspopup="true" aria-expanded="false">
-                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle"
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle user-profile-pic"
                                     width="40">
                                 <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span
-                                        class="text-dark">Jibsan Supreme Killer</span> <i data-feather="chevron-down"
+                                        class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down"
                                         class="svg-icon"></i></span>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="user"
+                                <a class="dropdown-item" href="my-profile.html"><i data-feather="user"
                                         class="svg-icon me-2 ms-1"></i>
                                     My Profile</a>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="credit-card"
+                                <a class="dropdown-item admin-only" style="display:none;" href="settings.html"><i data-feather="settings"
                                         class="svg-icon me-2 ms-1"></i>
-                                    My Balance</a>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="mail"
-                                        class="svg-icon me-2 ms-1"></i>
-                                    Inbox</a>
+                                    Settings</a>
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="settings"
-                                        class="svg-icon me-2 ms-1"></i>
-                                    Account Setting</a>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="power"
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power"
                                         class="svg-icon me-2 ms-1"></i>
                                     Logout</a>
-                                <div class="dropdown-divider"></div>
-                                <div class="pl-4 p-3"><a href="javascript:void(0)" class="btn btn-sm btn-info">View
-                                        Profile</a></div>
                             </div>
                         </li>
                         <!-- ============================================================== -->
@@ -273,6 +266,53 @@
                                 aria-expanded="false"><i data-feather="package" class="feather-icon"></i><span
                                     class="hide-menu">SRN
                                 </span></a>
+                        </li>
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="project-info.html"
+                                aria-expanded="false"><i data-feather="clipboard" class="feather-icon"></i><span
+                                    class="hide-menu">Project Info
+                                </span></a>
+                        </li>
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="processes.html"
+                                aria-expanded="false"><i data-feather="cpu" class="feather-icon"></i><span
+                                    class="hide-menu">Processes
+                                </span></a>
+                        </li>
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="delivery-routes.html"
+                                aria-expanded="false"><i data-feather="truck" class="feather-icon"></i><span
+                                    class="hide-menu">Delivery Routes
+                                </span></a>
+                        </li>
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="deliver.html"
+                                aria-expanded="false"><i data-feather="send" class="feather-icon"></i><span
+                                    class="hide-menu">Deliver Builds
+                                </span></a>
+                        </li>
+                        <!-- Admin section -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="settings.html" aria-expanded="false">
+                                <i data-feather="settings" class="feather-icon"></i>
+                                <span class="hide-menu">Settings</span>
+                            </a>
                         </li>
                         <!-- this will be hidden until we implement the feature if needed -->
                         <!-- <li class="list-divider"></li>
@@ -456,29 +496,104 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ── Delete a Tag ── -->
+                <div class="row mt-3">
+                    <div class="col-lg-12">
+                        <div class="card" style="border-top: 3px solid #e57373;">
+                            <div class="card-body">
+
+                                <!-- Header -->
+                                <div class="d-flex align-items-center mb-4">
+                                    <div>
+                                        <h4 class="card-title mb-0" style="color:#c0392b;">Delete a Tag</h4>
+                                        <h6 class="card-subtitle mt-1">Remove a tag from your local and remote repository</h6>
+                                    </div>
+                                    <div class="ms-auto">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadTags()">
+                                            <i data-feather="refresh-cw" class="feather-sm"></i> Refresh
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="row justify-content-center">
+                                    <div class="col-sm-12 col-md-6 col-lg-4">
+                                        <div class="card" style="background-color:#fff5f5; border-color:#f8d7da;">
+                                            <div class="card-body">
+                                                <h4 class="card-title" style="color:#c0392b;">Tag to Delete</h4>
+                                                <h6 class="card-subtitle">Select the <code>tag</code> you want to remove</h6>
+                                                <div class="form-group mt-4">
+                                                    <select class="form-select" id="delete_tag_select">
+                                                        <option value="">Loading tags...</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Delete Button -->
+                                <div class="row mt-2">
+                                    <div class="col-lg-12 text-center">
+                                        <div class="btn-list">
+                                            <button type="button" id="btn-delete-tag"
+                                                class="btn btn-lg btn-rounded waves-effect waves-light"
+                                                style="background-color:#e57373; color:#fff; border-color:#e57373;"
+                                                onmouseover="this.style.backgroundColor='#c0392b';this.style.borderColor='#c0392b';"
+                                                onmouseout="this.style.backgroundColor='#e57373';this.style.borderColor='#e57373';"
+                                                onclick="confirmDeleteTag()">
+                                                <i data-feather="trash-2"></i> Delete Tag
+                                            </button>
+                                        </div>
+                                        <div id="delete-tag-result" class="mt-3"></div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-            <!-- ============================================================== -->
-            <!-- End Container fluid  -->
-            <!-- ============================================================== -->
-            <!-- ============================================================== -->
-            <!-- footer -->
-            <!-- ============================================================== -->
+            <!-- End Container fluid -->
             <footer class="footer text-center text-muted">
                 All Rights Reserved by Freedash. Designed and Developed by <a
                     href="#">Jibsan the ruler of the Outlands</a>.
             </footer>
-            <!-- ============================================================== -->
-            <!-- End footer -->
-            <!-- ============================================================== -->
         </div>
-        <!-- ============================================================== -->
-        <!-- End Page wrapper  -->
-        <!-- ============================================================== -->
+        <!-- End Page wrapper -->
     </div>
-    <!-- ============================================================== -->
     <!-- End Wrapper -->
+    <!-- Modal Delete Tag Confirmation -->
     <!-- ============================================================== -->
-    <!-- End Wrapper -->
+    <div class="modal fade" id="modalDeleteTag" tabindex="-1" aria-labelledby="modalDeleteTagLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="modalDeleteTagLabel">
+                        <i data-feather="trash-2" class="feather-sm me-1"></i> Confirm Tag Deletion
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1">You are about to delete the local tag:</p>
+                    <p class="fs-5 fw-bold text-danger mb-3"><i data-feather="tag" class="feather-sm me-1"></i><span id="confirm-tag-name"></span></p>
+                    <div class="alert alert-warning py-2 mb-0">
+                        <i data-feather="alert-triangle" class="feather-sm me-1"></i>
+                        This will delete the tag both <strong>locally</strong> and from the <strong>remote</strong> repository.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-rounded" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="btn-confirm-delete-tag"
+                        class="btn btn-danger btn-rounded waves-effect waves-light"
+                        onclick="executeDeleteTag()">
+                        <i data-feather="trash-2"></i> Yes, Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- ============================================================== -->
     <!-- Modal Credentials -->
     <!-- ============================================================== -->
@@ -759,8 +874,10 @@
                 showMessage('tag-result', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
             } else {
                 showMessage('tag-result', `<div class="alert alert-success"><strong>Tag "${tagName}" applied successfully!</strong></div>`);
-                // Clear tag name after success
+                // Clear tag name after success and refresh tags list
                 document.getElementById('tag_name').value = '';
+                _lastTagsSnapshot = '';
+                loadTags();
             }
         } catch (e) {
             showMessage('tag-result', `<div class="alert alert-danger">Could not connect to the server.</div>`);
@@ -768,6 +885,85 @@
 
         btn.disabled = false;
         btn.innerHTML = '<i data-feather="tag"></i> Apply Tag';
+        feather.replace();
+    }
+
+    // ============================================================
+    // Tags list — load & real-time refresh
+    // ============================================================
+    let _tagsRefreshInterval = null;
+    let _lastTagsSnapshot = '';
+
+    async function loadTags() {
+        const sel = document.getElementById('delete_tag_select');
+        try {
+            const res  = await fetch(`${API_BASE}/git/get-tags`);
+            const data = await res.json();
+
+            const snapshot = JSON.stringify(data.tags || []);
+            if (snapshot === _lastTagsSnapshot) return;   // No change, skip re-render
+            _lastTagsSnapshot = snapshot;
+
+            if (!data.success || !data.tags || data.tags.length === 0) {
+                sel.innerHTML = '<option value="">— No tags found —</option>';
+                return;
+            }
+
+            const current = sel.value;
+            sel.innerHTML = '<option value="">Choose a tag...</option>' +
+                data.tags.map(t => `<option value="${t}"${t === current ? ' selected' : ''}>${t}</option>`).join('');
+        } catch (e) {
+            sel.innerHTML = '<option value="">Could not load tags</option>';
+        }
+    }
+
+    function startTagsPolling() {
+        loadTags();
+        _tagsRefreshInterval = setInterval(loadTags, 5000);
+    }
+
+    function confirmDeleteTag() {
+        const sel = document.getElementById('delete_tag_select');
+        const tag = sel.value;
+        if (!tag) {
+            showMessage('delete-tag-result', '<div class="alert alert-warning">Please select a tag to delete.</div>');
+            return;
+        }
+        document.getElementById('confirm-tag-name').textContent = tag;
+        const modal = new bootstrap.Modal(document.getElementById('modalDeleteTag'));
+        modal.show();
+    }
+
+    async function executeDeleteTag() {
+        const tag = document.getElementById('confirm-tag-name').textContent;
+        const btn = document.getElementById('btn-confirm-delete-tag');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+
+        try {
+            bootstrap.Modal.getInstance(document.getElementById('modalDeleteTag')).hide();
+            const res  = await fetch(`${API_BASE}/git/delete-tag`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tag_name: tag })
+            });
+            const data = await res.json();
+            if (data.success) {
+                const msg = data.warning
+                    ? `<div class="alert alert-warning"><strong>Tag "${tag}" deleted locally.</strong> ${data.warning}</div>`
+                    : `<div class="alert alert-success"><strong>Tag "${tag}" deleted successfully (local + remote).</strong></div>`;
+                showMessage('delete-tag-result', msg);
+                _lastTagsSnapshot = '';   // Force refresh
+                loadTags();
+            } else {
+                showMessage('delete-tag-result', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
+            }
+        } catch (e) {
+            showMessage('delete-tag-result', '<div class="alert alert-danger">Could not connect to the server.</div>');
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="trash-2"></i> Yes, Delete';
         feather.replace();
     }
 
@@ -784,8 +980,29 @@
             })
             .catch(() => {});
 
+        // Pre-fill credentials modal from user profile
+        document.getElementById('modalCredentials').addEventListener('show.bs.modal', async function () {
+            const currentUser = PulpitansAuth.getUsername();
+            if (currentUser) {
+                try {
+                    const profRes = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(currentUser)}`);
+                    const profData = await profRes.json();
+                    if (profData.success && profData.profile) {
+                        if (profData.profile.bitbucket_username && !document.getElementById('git_username').value) {
+                            document.getElementById('git_username').value = profData.profile.bitbucket_username;
+                        }
+                        if (profData.profile.bitbucket_password && !document.getElementById('git_password').value) {
+                            document.getElementById('git_password').value = profData.profile.bitbucket_password;
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+        });
+
         // Auto-load branches if repo already cloned
         loadBranches();
+        // Start real-time tag list polling (every 5s)
+        startTagsPolling();
     });
 
         // Live date/time from internet
@@ -817,6 +1034,90 @@
             tick();
             setInterval(tick, 1000);
         })();
+    </script>
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="profileModalLabel">My Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <input type="text" class="form-control" id="profile-username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Display Name <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="profile-display-name" placeholder="Leave empty to use username">
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i data-feather="git-branch" class="feather-sm me-1"></i> BitBucket Credentials</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Username</label>
+                        <input type="text" class="form-control" id="profile-bb-username" placeholder="Your BitBucket username">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Password / Token</label>
+                        <input type="password" class="form-control" id="profile-bb-password" placeholder="Your password or token">
+                    </div>
+                    <div id="profile-save-msg" class="d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-profile">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../dist/js/auth.js?v=2"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+
+        document.getElementById('profileModal').addEventListener('show.bs.modal', async function () {
+            const username = PulpitansAuth.getUsername();
+            document.getElementById('profile-username').value = username;
+            document.getElementById('profile-save-msg').classList.add('d-none');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                document.getElementById('profile-display-name').value = (data.success && data.profile.display_name) || '';
+                document.getElementById('profile-bb-username').value = (data.success && data.profile.bitbucket_username) || '';
+                document.getElementById('profile-bb-password').value = (data.success && data.profile.bitbucket_password) || '';
+            } catch (e) {
+                document.getElementById('profile-display-name').value = '';
+                document.getElementById('profile-bb-username').value = '';
+                document.getElementById('profile-bb-password').value = '';
+            }
+        });
+
+        document.getElementById('btn-save-profile').addEventListener('click', async function () {
+            const username = PulpitansAuth.getUsername();
+            const displayName = document.getElementById('profile-display-name').value.trim();
+            const msgEl = document.getElementById('profile-save-msg');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, display_name: displayName, bitbucket_username: document.getElementById('profile-bb-username').value.trim(), bitbucket_password: document.getElementById('profile-bb-password').value })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('header-user-display-name').textContent = data.display_name;
+                    msgEl.className = 'alert alert-success';
+                    msgEl.textContent = 'Profile saved.';
+                } else {
+                    msgEl.className = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error saving profile.';
+                }
+            } catch (e) {
+                msgEl.className = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
+        });
     </script>
 </body>
 

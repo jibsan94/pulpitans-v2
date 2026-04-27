@@ -63,24 +63,20 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown"
                                 aria-haspopup="true" aria-expanded="false">
-                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle"
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle user-profile-pic"
                                     width="40">
                                 <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span
-                                        class="text-dark">Jason Doe</span> <i data-feather="chevron-down"
+                                        class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down"
                                         class="svg-icon"></i></span>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="user"
+                                <a class="dropdown-item" href="my-profile.html"><i data-feather="user"
                                         class="svg-icon me-2 ms-1"></i> My Profile</a>
+                                <a class="dropdown-item admin-only" style="display:none;" href="settings.html"><i data-feather="settings"
+                                        class="svg-icon me-2 ms-1"></i> Settings</a>
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="settings"
-                                        class="svg-icon me-2 ms-1"></i> Account Setting</a>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="power"
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power"
                                         class="svg-icon me-2 ms-1"></i> Logout</a>
-                                <div class="dropdown-divider"></div>
-                                <div class="pl-4 p-3"><a href="javascript:void(0)" class="btn btn-sm btn-info">View
-                                        Profile</a></div>
                             </div>
                         </li>
                     </ul>
@@ -121,6 +117,57 @@
                             <a class="sidebar-link sidebar-link active" href="srn.html" aria-expanded="false">
                                 <i data-feather="file-text" class="feather-icon"></i>
                                 <span class="hide-menu">SRN</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="project-info.html" aria-expanded="false">
+                                <i data-feather="clipboard" class="feather-icon"></i>
+                                <span class="hide-menu">Project Info</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="processes.html" aria-expanded="false">
+                                <i data-feather="cpu" class="feather-icon"></i>
+                                <span class="hide-menu">Processes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="delivery-routes.html" aria-expanded="false">
+                                <i data-feather="truck" class="feather-icon"></i>
+                                <span class="hide-menu">Delivery Routes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="deliver.html" aria-expanded="false">
+                                <i data-feather="send" class="feather-icon"></i>
+                                <span class="hide-menu">Deliver Builds</span>
+                            </a>
+                        </li>
+                        <!-- Admin section -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="settings.html" aria-expanded="false">
+                                <i data-feather="settings" class="feather-icon"></i>
+                                <span class="hide-menu">Settings</span>
                             </a>
                         </li>
                         <!-- <li class="list-divider"></li>
@@ -225,7 +272,7 @@
                                 <h6 class="card-subtitle text-muted mb-3">All generated Software Release Notes.</h6>
                                 <div class="table-responsive">
                                     <table class="table table-hover table-success" id="srn-table">
-                                        <thead class="bg-success text-white">
+                                        <thead class="bg-success text-dark">
                                             <tr>
                                                 <th style="width:5%">#</th>
                                                 <th style="width:25%">Label</th>
@@ -237,7 +284,7 @@
                                         </thead>
                                         <tbody id="srn-table-body">
                                             <tr>
-                                                <td colspan="5" class="text-center text-muted py-3">
+                                                <td colspan="6" class="text-center text-muted py-3">
                                                     <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                                                     Loading...
                                                 </td>
@@ -251,22 +298,71 @@
                 </div>
 
                 <!-- ============================================================== -->
-                <!-- SRN Output Terminal -->
+                <!-- Running SRN Processes Table -->
                 <!-- ============================================================== -->
-                <div class="row mt-2 d-none" id="srn-output-row">
+                <div class="row mt-2">
                     <div class="col-12">
                         <div class="card">
-                            <div class="card-body p-0">
-                                <div class="d-flex justify-content-between align-items-center px-3 pt-2 pb-1">
-                                    <h5 class="mb-0 text-dark">Output</h5>
-                                    <button class="btn btn-sm btn-outline-secondary" id="btn-clear-output" type="button">
-                                        <i data-feather="x" class="svg-icon" style="width:14px;height:14px;"></i> Clear
-                                    </button>
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <h4 class="card-title mb-0">Running SRN Processes</h4>
+                                    <div class="ms-auto">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadSrnRuns()">
+                                            <i data-feather="refresh-cw" class="svg-icon" style="width:14px;height:14px;"></i> Refresh
+                                        </button>
+                                    </div>
                                 </div>
-                                <pre id="srn-output"
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Status</th>
+                                                <th>Tag</th>
+                                                <th>Branch</th>
+                                                <th>Owner</th>
+                                                <th>Started</th>
+                                                <th>PID</th>
+                                                <th class="text-center">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="srn-runs-table-body">
+                                            <tr>
+                                                <td colspan="7" class="text-center text-muted">Loading...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- SRN Log Viewer -->
+                <!-- ============================================================== -->
+                <div class="row mt-2" id="srn-log-viewer-row" style="display:none;">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <h5 class="mb-0 text-dark">
+                                        Log Viewer — <span id="srn-log-viewer-title" class="text-info">-</span>
+                                        <span id="srn-log-viewer-status" class="badge bg-secondary ms-2">-</span>
+                                    </h5>
+                                    <div class="ms-auto">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="closeSrnLogViewer()">
+                                            <i data-feather="x" class="svg-icon" style="width:14px;height:14px;"></i> Close
+                                        </button>
+                                        <button type="button" id="btn-stop-viewed-srn" class="btn btn-sm btn-danger"
+                                                onclick="stopViewedSrnRun()" style="display:none;">
+                                            <i data-feather="stop-circle" class="svg-icon" style="width:14px;height:14px;"></i> Stop
+                                        </button>
+                                    </div>
+                                </div>
+                                <pre id="srn-log-content"
                                     style="background:#1a1a2e;color:#a8f0d0;font-family:monospace;font-size:0.82rem;
-                                           padding:1rem;margin:0;max-height:350px;overflow-y:auto;
-                                           border-radius:0 0 0.375rem 0.375rem;"></pre>
+                                           padding:1rem;margin:0;min-height:200px;max-height:500px;overflow-y:auto;
+                                           border-radius:0.375rem;"></pre>
                             </div>
                         </div>
                     </div>
@@ -503,35 +599,6 @@
             await fetch(`${API_BASE}/srn/delete/${encodeURIComponent(label)}`, { method: 'DELETE' });
         }
 
-        // ---- Poll SRN list until a label appears (used after stream drop) ---
-        function pollSrnList(expectedLabel, intervalMs, maxMs) {
-            let elapsed = 0;
-            const timer = setInterval(async () => {
-                elapsed += intervalMs;
-                await loadSrnList();
-                // Stop polling once the expected label row appears
-                if (document.querySelector(`#srn-table-body tr[data-label="${CSS.escape(expectedLabel)}"]`)) {
-                    clearInterval(timer);
-                    return;
-                }
-                if (elapsed >= maxMs) clearInterval(timer);
-            }, intervalMs);
-        }
-        function appendOutput(msg) {
-            const out = document.getElementById('srn-output');
-            let color = '#a8f0d0';
-            if (msg.includes('[ERROR]'))        color = '#f62d51';
-            else if (msg.includes('[WARNING]')) color = '#ffbc34';
-            else if (msg.includes('[INFO]'))    color = '#8be9fd';
-            out.innerHTML += `<span style="color:${color}">${escHtml(msg)}</span>\n`;
-            out.scrollTop = out.scrollHeight;
-        }
-
-        document.getElementById('btn-clear-output').addEventListener('click', function () {
-            document.getElementById('srn-output').innerHTML = '';
-            document.getElementById('srn-output-row').classList.add('d-none');
-        });
-
         // ---- Deploy SRN button -----------------------------------------------
         document.getElementById('btn-deploy-srn').addEventListener('click', async function () {
             const btn = this;
@@ -557,65 +624,7 @@
             }
         });
 
-        // ---- Generate SRN button --------------------------------------------
-        async function runGenerate() {
-            const tag    = document.getElementById('srn-tag').value;
-            const branch = document.getElementById('srn-branch').value;
-
-            const btn = document.getElementById('btn-generate-srn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Generating...';
-
-            const out = document.getElementById('srn-output');
-            out.innerHTML = '';
-            document.getElementById('srn-output-row').classList.remove('d-none');
-            appendOutput(`[INFO] Starting SRN generation — tag: ${tag} | branch: ${branch}`);
-
-            try {
-                const res = await fetch(`${API_BASE}/srn/generate`, { method: 'POST' });
-                const reader = res.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    buffer += decoder.decode(value, { stream: true });
-                    const parts = buffer.split('\n\n');
-                    buffer = parts.pop();
-                    for (const part of parts) {
-                        if (!part.startsWith('data: ')) continue;
-                        const msg = part.slice(6);
-                        if (msg.startsWith('__EXIT__')) {
-                            const code = parseInt(msg.slice(8));
-                            const color = code === 0 ? '#06d79c' : '#f62d51';
-                            out.innerHTML += `<span style="color:${color};font-weight:bold">\n— Process exited with code ${code} —\n</span>`;
-                            out.scrollTop = out.scrollHeight;
-                            // Refresh now, then keep polling for up to 30s in case files aren't written yet
-                            await loadSrnList();
-                            pollSrnList(tag, 5000, 30000);
-                        } else {
-                            appendOutput(msg);
-                        }
-                    }
-                }
-            } catch (e) {
-                const msg = String(e);
-                if (msg.includes('network') || msg.includes('NetworkError') || msg.includes('Failed to fetch')) {
-                    out.innerHTML += `<span style="color:#ffbc34;font-weight:bold">\n⚠ Connection dropped (proxy timeout) — the process may still be running.\nPolling the SRN List until it appears...\n</span>`;
-                    out.scrollTop = out.scrollHeight;
-                    // Server process is still running; poll every 10s for up to 3 minutes
-                    await loadSrnList();
-                    pollSrnList(tag, 10000, 180000);
-                } else {
-                    out.innerHTML += `<span style="color:#f62d51">Stream error: ${escHtml(msg)}\n</span>`;
-                }
-            }
-
-            btn.disabled = false;
-            btn.innerHTML = '<i data-feather="file-plus" class="svg-icon me-1"></i> Generate SRN';
-            if (typeof feather !== 'undefined') feather.replace();
-        }
-
+        // ---- Generate SRN (background) --------------------------------------
         document.getElementById('btn-generate-srn').addEventListener('click', async function () {
             const tag    = document.getElementById('srn-tag').value;
             const branch = document.getElementById('srn-branch').value;
@@ -631,13 +640,210 @@
                 document.getElementById('modal-btn-overwrite').onclick = async function() {
                     bootstrap.Modal.getInstance(document.getElementById('modal-srn-duplicate')).hide();
                     await deleteSrn(tag);
-                    await runGenerate();
+                    await startSrnGenerate();
                 };
                 new bootstrap.Modal(document.getElementById('modal-srn-duplicate')).show();
             } else {
-                await runGenerate();
+                await startSrnGenerate();
             }
         });
+
+        async function startSrnGenerate() {
+            const btn = document.getElementById('btn-generate-srn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Starting...';
+
+            try {
+                const res  = await fetch(`${API_BASE}/srn/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ owner: PulpitansAuth.getUsername() || '' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Refresh runs list and open log viewer
+                    await loadSrnRuns();
+                    viewSrnLog(data.run_id);
+                } else {
+                    alert('Failed to start SRN: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Failed to start SRN: ' + e);
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i data-feather="file-plus" class="svg-icon me-1"></i> Generate SRN';
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+
+        // ============================================================
+        // SRN Runs Table
+        // ============================================================
+        async function loadSrnRuns() {
+            const tbody = document.getElementById('srn-runs-table-body');
+            try {
+                const res  = await fetch(`${API_BASE}/srn/runs/list`);
+                const data = await res.json();
+
+                if (!data.success || !data.runs.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No SRN processes found.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.runs.map(r => {
+                    const statusBadge = r.status === 'running'
+                        ? '<span class="badge bg-success">Running</span>'
+                        : r.status === 'stopped'
+                        ? '<span class="badge bg-warning text-dark">Stopped</span>'
+                        : '<span class="badge bg-secondary">Finished</span>';
+
+                    const ownerName = r.owner || '-';
+
+                    const actions = r.status === 'running'
+                        ? `<button class="btn btn-sm btn-info me-1" onclick="viewSrnLog('${escHtml(r.id)}')">
+                               <i data-feather="file-text" class="svg-icon" style="width:13px;height:13px;"></i> Log
+                           </button>
+                           <button class="btn btn-sm btn-danger" onclick="stopSrnRun('${escHtml(r.id)}')">
+                               <i data-feather="stop-circle" class="svg-icon" style="width:13px;height:13px;"></i> Stop
+                           </button>`
+                        : `<button class="btn btn-sm btn-info me-1" onclick="viewSrnLog('${escHtml(r.id)}')">
+                               <i data-feather="file-text" class="svg-icon" style="width:13px;height:13px;"></i> Log
+                           </button>
+                           <button class="btn btn-sm btn-outline-danger" onclick="deleteSrnRun('${escHtml(r.id)}')">
+                               <i data-feather="trash-2" class="svg-icon" style="width:13px;height:13px;"></i>
+                           </button>`;
+
+                    return `<tr>
+                        <td>${statusBadge}</td>
+                        <td><strong>${escHtml(r.tag)}</strong></td>
+                        <td><small>${escHtml(r.branch)}</small></td>
+                        <td><small>${ownerName}</small></td>
+                        <td><small>${escHtml(r.started_at)}</small></td>
+                        <td><code>${r.pid}</code></td>
+                        <td class="text-center text-nowrap">${actions}</td>
+                    </tr>`;
+                }).join('');
+
+                if (typeof feather !== 'undefined') feather.replace();
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading runs.</td></tr>';
+            }
+        }
+
+        // ============================================================
+        // Stop SRN Run
+        // ============================================================
+        async function stopSrnRun(runId) {
+            try {
+                const res  = await fetch(`${API_BASE}/srn/runs/stop`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ run_id: runId })
+                });
+                const data = await res.json();
+                if (!data.success) alert(data.error || 'Could not stop the process.');
+                loadSrnRuns();
+            } catch (e) {
+                alert('Could not connect to the server.');
+            }
+        }
+
+        // ============================================================
+        // Delete SRN Run
+        // ============================================================
+        async function deleteSrnRun(runId) {
+            if (!confirm('Delete this run and its log?')) return;
+            try {
+                const res  = await fetch(`${API_BASE}/srn/runs/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ run_id: runId })
+                });
+                const data = await res.json();
+                if (!data.success) alert(data.error || 'Could not delete the run.');
+                if (_srnCurrentViewRunId === runId) closeSrnLogViewer();
+                loadSrnRuns();
+            } catch (e) {
+                alert('Could not connect to the server.');
+            }
+        }
+
+        // ============================================================
+        // SRN Log Viewer
+        // ============================================================
+        let _srnCurrentViewRunId = null;
+        let _srnLogRefreshInterval = null;
+        const _ansiRegex = /\x1b\[[0-9;]*[mK]/g;
+
+        function viewSrnLog(runId) {
+            _srnCurrentViewRunId = runId;
+            const row = document.getElementById('srn-log-viewer-row');
+            row.style.display = '';
+            document.getElementById('srn-log-viewer-title').textContent = runId;
+            document.getElementById('srn-log-content').innerHTML = '<span class="text-muted">Loading log...</span>';
+
+            if (_srnLogRefreshInterval) clearInterval(_srnLogRefreshInterval);
+            fetchSrnLog(runId);
+            _srnLogRefreshInterval = setInterval(() => fetchSrnLog(runId), 3000);
+
+            row.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function fetchSrnLog(runId) {
+            try {
+                const res  = await fetch(`${API_BASE}/srn/runs/log/${runId}`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    document.getElementById('srn-log-content').textContent = data.error || 'Error loading log.';
+                    return;
+                }
+
+                const logEl     = document.getElementById('srn-log-content');
+                const wasBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 30;
+
+                // Strip ANSI codes and display
+                const clean = (data.log || 'Waiting for output...').replace(_ansiRegex, '');
+                logEl.textContent = clean;
+
+                if (wasBottom) logEl.scrollTop = logEl.scrollHeight;
+
+                // Update status badge
+                const statusEl = document.getElementById('srn-log-viewer-status');
+                const btnStop  = document.getElementById('btn-stop-viewed-srn');
+                if (data.status === 'running') {
+                    statusEl.className = 'badge bg-success ms-2';
+                    statusEl.textContent = 'Running';
+                    btnStop.style.display = '';
+                } else if (data.status === 'stopped') {
+                    statusEl.className = 'badge bg-warning text-dark ms-2';
+                    statusEl.textContent = 'Stopped';
+                    btnStop.style.display = 'none';
+                    if (_srnLogRefreshInterval) { clearInterval(_srnLogRefreshInterval); _srnLogRefreshInterval = null; }
+                    loadSrnRuns();
+                    loadSrnList();
+                } else {
+                    statusEl.className = 'badge bg-secondary ms-2';
+                    statusEl.textContent = 'Finished';
+                    btnStop.style.display = 'none';
+                    if (_srnLogRefreshInterval) { clearInterval(_srnLogRefreshInterval); _srnLogRefreshInterval = null; }
+                    loadSrnRuns();
+                    loadSrnList();
+                }
+            } catch (e) {
+                document.getElementById('srn-log-content').textContent = 'Error connecting to server.';
+            }
+        }
+
+        function closeSrnLogViewer() {
+            document.getElementById('srn-log-viewer-row').style.display = 'none';
+            if (_srnLogRefreshInterval) { clearInterval(_srnLogRefreshInterval); _srnLogRefreshInterval = null; }
+            _srnCurrentViewRunId = null;
+        }
+
+        function stopViewedSrnRun() {
+            if (_srnCurrentViewRunId) stopSrnRun(_srnCurrentViewRunId);
+        }
 
         // ---- Init ------------------------------------------------------------
         document.addEventListener('DOMContentLoaded', async function () {
@@ -652,7 +858,7 @@
                 if (cfg.success) { currentTag = cfg.tag; currentBranch = cfg.branch; }
             } catch (e) { console.error('Failed to load SRN config:', e); }
 
-            await Promise.all([loadBranches(currentBranch), loadSrnList()]);
+            await Promise.all([loadBranches(currentBranch), loadSrnList(), loadSrnRuns()]);
 
             // Load tags for the pre-selected branch
             if (currentBranch) await loadTagsForBranch(currentBranch, currentTag);
@@ -664,6 +870,96 @@
                 saveConfig();
             });
             document.getElementById('srn-tag').addEventListener('change', saveConfig);
+
+            // Auto-refresh runs list every 5s, SRN list every 10s
+            setInterval(loadSrnRuns, 5000);
+            setInterval(loadSrnList, 10000);
+        });
+    </script>
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="profileModalLabel">My Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <input type="text" class="form-control" id="profile-username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Display Name <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="profile-display-name" placeholder="Leave empty to use username">
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i data-feather="git-branch" class="feather-sm me-1"></i> BitBucket Credentials</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Username</label>
+                        <input type="text" class="form-control" id="profile-bb-username" placeholder="Your BitBucket username">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Password / Token</label>
+                        <input type="password" class="form-control" id="profile-bb-password" placeholder="Your password or token">
+                    </div>
+                    <div id="profile-save-msg" class="d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-profile">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../dist/js/auth.js?v=2"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+
+        document.getElementById('profileModal').addEventListener('show.bs.modal', async function () {
+            const username = PulpitansAuth.getUsername();
+            document.getElementById('profile-username').value = username;
+            document.getElementById('profile-save-msg').classList.add('d-none');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                document.getElementById('profile-display-name').value = (data.success && data.profile.display_name) || '';
+                document.getElementById('profile-bb-username').value = (data.success && data.profile.bitbucket_username) || '';
+                document.getElementById('profile-bb-password').value = (data.success && data.profile.bitbucket_password) || '';
+            } catch (e) {
+                document.getElementById('profile-display-name').value = '';
+                document.getElementById('profile-bb-username').value = '';
+                document.getElementById('profile-bb-password').value = '';
+            }
+        });
+
+        document.getElementById('btn-save-profile').addEventListener('click', async function () {
+            const username = PulpitansAuth.getUsername();
+            const displayName = document.getElementById('profile-display-name').value.trim();
+            const msgEl = document.getElementById('profile-save-msg');
+            try {
+                const bbUser = document.getElementById('profile-bb-username').value.trim();
+                const bbPass = document.getElementById('profile-bb-password').value;
+                const res = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, display_name: displayName, bitbucket_username: bbUser, bitbucket_password: bbPass })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('header-user-display-name').textContent = data.display_name;
+                    msgEl.className = 'alert alert-success';
+                    msgEl.textContent = 'Profile saved.';
+                } else {
+                    msgEl.className = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error saving profile.';
+                }
+            } catch (e) {
+                msgEl.className = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
         });
     </script>
 </body>

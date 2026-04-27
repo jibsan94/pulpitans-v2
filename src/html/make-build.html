@@ -200,33 +200,23 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown"
                                 aria-haspopup="true" aria-expanded="false">
-                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle"
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle user-profile-pic"
                                     width="40">
                                 <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span
-                                        class="text-dark">Jibsan Supreme Killer</span> <i data-feather="chevron-down"
+                                        class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down"
                                         class="svg-icon"></i></span>
                             </a>
                             <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="user"
+                                <a class="dropdown-item" href="my-profile.html"><i data-feather="user"
                                         class="svg-icon me-2 ms-1"></i>
                                     My Profile</a>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="credit-card"
+                                <a class="dropdown-item admin-only" style="display:none;" href="settings.html"><i data-feather="settings"
                                         class="svg-icon me-2 ms-1"></i>
-                                    My Balance</a>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="mail"
-                                        class="svg-icon me-2 ms-1"></i>
-                                    Inbox</a>
+                                    Settings</a>
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="settings"
-                                        class="svg-icon me-2 ms-1"></i>
-                                    Account Setting</a>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="javascript:void(0)"><i data-feather="power"
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power"
                                         class="svg-icon me-2 ms-1"></i>
                                     Logout</a>
-                                <div class="dropdown-divider"></div>
-                                <div class="pl-4 p-3"><a href="javascript:void(0)" class="btn btn-sm btn-info">View
-                                        Profile</a></div>
                             </div>
                         </li>
                         <!-- ============================================================== -->
@@ -273,6 +263,53 @@
                                 aria-expanded="false"><i data-feather="package" class="feather-icon"></i><span
                                     class="hide-menu">SRN
                                 </span></a>
+                        </li>
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="project-info.html"
+                                aria-expanded="false"><i data-feather="clipboard" class="feather-icon"></i><span
+                                    class="hide-menu">Project Info
+                                </span></a>
+                        </li>
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="processes.html"
+                                aria-expanded="false"><i data-feather="cpu" class="feather-icon"></i><span
+                                    class="hide-menu">Processes
+                                </span></a>
+                        </li>
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="delivery-routes.html"
+                                aria-expanded="false"><i data-feather="truck" class="feather-icon"></i><span
+                                    class="hide-menu">Delivery Routes
+                                </span></a>
+                        </li>
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="deliver.html"
+                                aria-expanded="false"><i data-feather="send" class="feather-icon"></i><span
+                                    class="hide-menu">Deliver Builds
+                                </span></a>
+                        </li>
+                        <!-- Admin section -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="settings.html" aria-expanded="false">
+                                <i data-feather="settings" class="feather-icon"></i>
+                                <span class="hide-menu">Settings</span>
+                            </a>
                         </li>
                         <!-- <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="app-chat.html"
                                 aria-expanded="false"><i data-feather="message-square" class="feather-icon"></i><span
@@ -435,7 +472,8 @@
                         <li class="list-divider"></li>
                         <li class="nav-small-cap"><span class="hide-menu">Extra</span></li>
                         
-                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="authentication-login1.html"
+                        <li class="sidebar-item"> <a class="sidebar-link sidebar-link" href="javascript:void(0)"
+                                onclick="PulpitansAuth.logout()"
                                 aria-expanded="false"><i data-feather="log-out" class="feather-icon"></i><span
                                     class="hide-menu">Logout</span></a></li>
                                     <li class="sidebar-item"> <a class="sidebar-link has-arrow" href="javascript:void(0)"
@@ -504,13 +542,18 @@
                                     <div class="col-sm-12 col-md-4 col-lg-4">
                                         <div class="card">
                                             <div class="card-body">
-                                                <h4 class="card-title">Branch Name</h4>
-                                                <h6 class="card-subtitle">Set the <code>branch name</code> to make the build</h6>
-                                                <form class="mt-4">
-                                                    <div class="form-group">
-                                                        <input type="text" id="branch_name" class="form-control" placeholder="Eg: avinor_dev">
+                                                <h4 class="card-title"><i data-feather="git-branch" class="feather-icon"></i> Branch Name</h4>
+                                                <h6 class="card-subtitle">Select the <code>branch name</code> from the repo</h6>
+                                                <div class="mt-4">
+                                                    <div class="input-group">
+                                                        <select id="branch_name" class="form-select">
+                                                            <option value="" selected>Loading branches...</option>
+                                                        </select>
+                                                        <button class="btn btn-outline-secondary" type="button" id="btn-load-branches" onclick="loadBranches()">
+                                                            <i data-feather="refresh-cw" class="feather-sm"></i>
+                                                        </button>
                                                     </div>
-                                                </form>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -701,24 +744,12 @@
                                             <div class="card-body">
                                                 <h4 class="card-title">Rol</h4>
                                                 <h6 class="card-subtitle">Select the <code>Rol</code> to make the build</h6>
-                                                <form>
-                                                    <div class="form-group mb-4">
-                                                        <label class="mr-sm-2" for="inlineFormCustomSelect">Select</label>
-                                                        <select class="form-select mr-sm-2" id="inlineFormCustomSelect">
-                                                            <option value="" selected>Choose ...</option>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-lg-12 text-center">
-                                                        <div class="btn-list">
-                                                            <button type="button" id="btn-search-roles"
-                                                                class="btn waves-effect waves-light btn-lg btn-rounded btn-primary"
-                                                                onclick="searchRoles()">
-                                                                <i class="fas fa-search"></i> Search Roles
-                                                            </button>
-                                                        </div>
-                                                        <div id="roles-result" class="mt-3"></div>
-                                                    </div>
-                                                </form>
+                                                <input type="hidden" id="selectedRoleInput" value="">
+                                                <div id="roles-loading" class="text-center text-muted py-3">
+                                                    <span class="spinner-border spinner-border-sm me-2"></span> Loading roles...
+                                                </div>
+                                                <div id="roles-list" class="list-group" style="max-height:260px;overflow-y:auto;display:none;"></div>
+                                                <div id="roles-result" class="mt-3"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -742,16 +773,62 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Running Builds Table -->
                     <div class="row">
-                        <div class="col-lg-12" id="debug-area">
+                        <div class="col-lg-12">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="d-flex align-items-center mb-3">
-                                        <h4 class="card-title mb-0">Debug area</h4>
+                                        <h4 class="card-title mb-0">Running Builds</h4>
                                         <div class="ms-auto">
-                                            <button type="button" id="btn-stop-build"
-                                                class="btn btn-danger btn-rounded waves-effect waves-light"
-                                                onclick="stopBuild()" disabled>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                onclick="loadBuilds()">
+                                                <i data-feather="refresh-cw" class="feather-sm"></i> Refresh
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Status</th>
+                                                    <th>Branch</th>
+                                                    <th>Role</th>
+                                                    <th>Owner</th>
+                                                    <th>Started</th>
+                                                    <th>PID</th>
+                                                    <th class="text-center">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="builds-table-body">
+                                                <tr>
+                                                    <td colspan="7" class="text-center text-muted">Loading builds...</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- End Running Builds Table -->
+                    <!-- Log Viewer -->
+                    <div class="row" id="log-viewer-row" style="display:none;">
+                        <div class="col-lg-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <h4 class="card-title mb-0">
+                                            Log Viewer — <span id="log-viewer-title" class="text-info">-</span>
+                                            <span id="log-viewer-status" class="badge bg-secondary ms-2">-</span>
+                                        </h4>
+                                        <div class="ms-auto">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary me-2"
+                                                onclick="closeLogViewer()">
+                                                <i data-feather="x"></i> Close
+                                            </button>
+                                            <button type="button" id="btn-stop-viewed-build"
+                                                class="btn btn-sm btn-danger" onclick="stopViewedBuild()" style="display:none;">
                                                 <i data-feather="stop-circle"></i> Stop Build
                                             </button>
                                         </div>
@@ -763,7 +840,6 @@
                                                     border-radius:5px; min-height:200px;
                                                     max-height:500px; overflow-y:auto;
                                                     font-size:13px; font-family:monospace; white-space:pre-wrap;">
-                                                Waiting for build output...
                                             </div>
                                         </div>
                                     </div>
@@ -771,6 +847,7 @@
                             </div>
                         </div>
                     </div>
+                    <!-- End Log Viewer -->
                     <!-- column -->
                 </div>
                 <!-- ============================================================== -->
@@ -807,6 +884,37 @@
     <!-- ============================================================== -->
     <!-- End Wrapper -->
     <!-- ============================================================== -->
+    <!-- Credentials Modal -->
+    <div class="modal fade" id="credentialsModal" tabindex="-1" aria-labelledby="credentialsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="credentialsModalLabel">
+                        <i data-feather="lock" class="feather-sm"></i> Git Credentials
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Enter your Bitbucket credentials to clone/update the repository.</p>
+                    <div class="mb-3">
+                        <label for="git-username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="git-username" placeholder="username">
+                    </div>
+                    <div class="mb-3">
+                        <label for="git-password" class="form-label">Password / Token</label>
+                        <input type="password" class="form-control" id="git-password" placeholder="password or token">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="btn-confirm-build" onclick="confirmBuild()">
+                        <i data-feather="play"></i> Start Build
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- End Credentials Modal -->
     <!-- All Jquery -->
     <!-- ============================================================== -->
     <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
@@ -839,7 +947,7 @@
     // Config & helper
     // ============================================================
     const API_BASE = '/api';
-    let MESSAGE_TIMEOUT = 10000; // default 10s fallback
+    let MESSAGE_TIMEOUT = 10000;
     fetch(`${API_BASE}/get-config`)
         .then(r => r.json())
         .then(data => { MESSAGE_TIMEOUT = data.message_timeout * 1000; })
@@ -859,39 +967,86 @@
     }
 
     // ============================================================
-    // Search Roles
+    // Load Branches
     // ============================================================
-    async function searchRoles() {
-        const btn = document.getElementById('btn-search-roles');
-        const select = document.getElementById('inlineFormCustomSelect');
-
+    async function loadBranches() {
+        const select = document.getElementById('branch_name');
+        const btn = document.getElementById('btn-load-branches');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+        select.innerHTML = '<option value="" selected>Loading...</option>';
 
         try {
-            const response = await fetch(`${API_BASE}/search-roles`);
+            const response = await fetch(`${API_BASE}/git/get-branches`);
             const data = await response.json();
 
-            if (data.error && data.error.trim() !== '') {
-                showMessage('roles-result', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
-            } else if (data.routes.length === 0) {
-                showMessage('roles-result', `<div class="alert alert-warning">No routes found.</div>`);
-            } else {
-                select.innerHTML = '<option value="" selected>Choose ...</option>';
-                data.routes.forEach(function(route) {
+            if (data.success && data.branches.length > 0) {
+                select.innerHTML = '<option value="" selected>Select branch...</option>';
+                data.branches.slice().sort(function(a, b) { return a.localeCompare(b); }).forEach(function(branch) {
                     const option = document.createElement('option');
-                    option.value = route;
-                    option.textContent = route;
+                    option.value = branch;
+                    option.textContent = branch;
                     select.appendChild(option);
                 });
-                showMessage('roles-result', `<div class="alert alert-success">${data.routes.length} route(s) found.</div>`);
+            } else {
+                select.innerHTML = '<option value="" selected>No branches found</option>';
+                if (data.error) {
+                    showMessage('resultado', `<div class="alert alert-warning">${data.error}</div>`);
+                }
             }
         } catch (e) {
-            showMessage('roles-result', `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`);
+            select.innerHTML = '<option value="" selected>Error loading branches</option>';
         }
 
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-search"></i> Search Roles';
+    }
+
+    // ============================================================
+    // Load Roles (auto on page load)
+    // ============================================================
+    async function searchRoles() {
+        const listEl = document.getElementById('roles-list');
+        const loadEl = document.getElementById('roles-loading');
+        const resEl  = document.getElementById('roles-result');
+        const hidden = document.getElementById('selectedRoleInput');
+
+        loadEl.style.display = '';
+        listEl.style.display = 'none';
+        listEl.innerHTML = '';
+        hidden.value = '';
+        resEl.innerHTML = '';
+
+        try {
+            const currentUser = PulpitansAuth.getUsername();
+            const response = await fetch(`${API_BASE}/search-roles${currentUser ? '?username=' + encodeURIComponent(currentUser) : ''}`);
+            const data = await response.json();
+
+            loadEl.style.display = 'none';
+
+            if (data.error && data.error.trim() !== '') {
+                resEl.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
+            } else if (data.routes.length === 0) {
+                resEl.innerHTML = `<div class="alert alert-warning">No roles found in your home directory.</div>`;
+            } else {
+                data.routes.forEach(function(route) {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
+                    item.dataset.role = route;
+                    item.innerHTML = `<i data-feather="package" style="width:16px;height:16px;flex-shrink:0;"></i> <span class="text-truncate" title="${route}">${route}</span>`;
+                    item.addEventListener('click', function() {
+                        listEl.querySelectorAll('.list-group-item').forEach(el => el.classList.remove('active'));
+                        this.classList.add('active');
+                        hidden.value = route;
+                    });
+                    listEl.appendChild(item);
+                });
+                listEl.style.display = '';
+                feather.replace();
+            }
+        } catch (e) {
+            loadEl.style.display = 'none';
+            resEl.innerHTML = `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`;
+        }
     }
 
     // ============================================================
@@ -899,17 +1054,14 @@
     // ============================================================
     async function generatePlaybook() {
         const btn = document.getElementById('btn-generate-playbook');
-        const select = document.getElementById('inlineFormCustomSelect');
-        const selectedRole = select.value;
+        const selectedRole = document.getElementById('selectedRoleInput').value;
         const branchName = document.getElementById('branch_name').value;
 
-        // Validate role
         if (!selectedRole || selectedRole.trim() === '') {
             showMessage('resultado', `<div class="alert alert-warning">Please select a role before generating the playbook.</div>`);
             return;
         }
 
-        // Validate branch name
         if (!branchName || branchName.trim() === '') {
             document.getElementById('branch_name').classList.add('is-invalid');
             showMessage('resultado', `<div class="alert alert-warning">Branch Name is required.</div>`);
@@ -964,130 +1116,409 @@
     }
 
     // ============================================================
-    // Make Build
+    // Make Build (background process)
     // ============================================================
     async function makeBuild() {
+        const selectedRole = document.getElementById('selectedRoleInput').value;
+        const branchName = document.getElementById('branch_name').value;
+
+        if (!selectedRole || selectedRole.trim() === '') {
+            showMessage('resultado', `<div class="alert alert-warning">Please select a role first.</div>`);
+            return;
+        }
+        if (!branchName || branchName.trim() === '') {
+            document.getElementById('branch_name').classList.add('is-invalid');
+            showMessage('resultado', `<div class="alert alert-warning">Branch Name is required.</div>`);
+            return;
+        }
+        document.getElementById('branch_name').classList.remove('is-invalid');
+
+        // Show credentials modal and pre-fill from saved profile
+        const modal = new bootstrap.Modal(document.getElementById('credentialsModal'));
+        modal.show();
+
+        // Pre-fill credentials from user profile
+        const currentUser = PulpitansAuth.getUsername();
+        if (currentUser) {
+            try {
+                const profRes = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(currentUser)}`);
+                const profData = await profRes.json();
+                if (profData.success && profData.profile) {
+                    if (profData.profile.bitbucket_username) {
+                        document.getElementById('git-username').value = profData.profile.bitbucket_username;
+                    }
+                    if (profData.profile.bitbucket_password) {
+                        document.getElementById('git-password').value = profData.profile.bitbucket_password;
+                    }
+                }
+            } catch (e) { /* ignore - user will fill manually */ }
+        }
+
+        setTimeout(() => { document.getElementById('git-username').focus(); }, 500);
+    }
+
+    async function confirmBuild() {
         const btn = document.getElementById('btn-make-build');
-        const btnStop = document.getElementById('btn-stop-build');
-        const debugLog = document.getElementById('debug-log');
+        const btnConfirm = document.getElementById('btn-confirm-build');
+        const selectedRole = document.getElementById('selectedRoleInput').value;
+        const branchName = document.getElementById('branch_name').value;
+        const gitUser = document.getElementById('git-username').value;
+        const gitPass = document.getElementById('git-password').value;
+
+        if (!gitUser || !gitPass) {
+            showMessage('resultado', `<div class="alert alert-warning">Username and password are required.</div>`);
+            return;
+        }
+
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('credentialsModal')).hide();
 
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+        btnConfirm.disabled = true;
+
+        function getRadioValue(name) {
+            const selected = document.querySelector(`input[name="${name}"]:checked`);
+            return selected ? selected.value : 'disabled';
+        }
+
+        const payload = {
+            role:              selectedRole,
+            branch_name:       branchName,
+            git_username:      gitUser,
+            git_password:      gitPass,
+            owner:             PulpitansAuth.getUsername() || '',
+            gitrepo_local_dir: document.getElementById('gitrepo_local_dir').value,
+            mkbuild_project:   document.getElementById('mkbuild_project').value,
+            gitrepo_update:    getRadioValue('gitrepo_update'),
+            gitrepo_checkitc:  getRadioValue('gitrepo_checkitc'),
+            gitrepo_git2cc:    getRadioValue('gitrepo_git2cc'),
+            idasrpm_build:     getRadioValue('idasrpm_build'),
+            idasrepo_build:    getRadioValue('idasrepo_build'),
+            idasbuild_build:   getRadioValue('idasbuild_build'),
+        };
 
         try {
-            const checkResponse = await fetch(`${API_BASE}/check-playbook`);
-            const checkData = await checkResponse.json();
+            const response = await fetch(`${API_BASE}/mkbuild/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
 
-            if (!checkData.exists) {
+            if (data.success) {
                 showMessage('resultado', `
-                    <div class="alert alert-danger">
-                        <strong>Playbook not found.</strong>
-                        Please generate the playbook first using
-                        <strong>Generate Playbook</strong> before running the build.
+                    <div class="alert alert-success">
+                        <strong>Build started in background!</strong> PID: ${data.pid}<br>
+                        Build ID: <code>${data.build_id}</code>
                     </div>`);
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+                loadBuilds();
+                viewLog(data.build_id);
+            } else {
+                showMessage('resultado', `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`);
+            }
+        } catch (e) {
+            showMessage('resultado', `<div class="alert alert-danger">Could not connect to the server.</div>`);
+        }
+
+        // Clear password field for security
+        document.getElementById('git-password').value = '';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+        btnConfirm.disabled = false;
+    }
+
+    // ============================================================
+    // Builds Table
+    // ============================================================
+    async function loadBuilds() {
+        try {
+            const response = await fetch(`${API_BASE}/mkbuild/list`);
+            const data = await response.json();
+            const tbody = document.getElementById('builds-table-body');
+
+            if (!data.success || data.builds.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No builds found.</td></tr>';
                 return;
             }
 
-            showMessage('resultado', `
-                <div class="alert alert-info">
-                    <strong>Running playbook:</strong> <code>${checkData.path}</code>
-                </div>`);
+            tbody.innerHTML = data.builds.map(b => {
+                const statusBadge = b.status === 'running'
+                    ? '<span class="badge bg-success"><i class="fas fa-circle fa-xs"></i> Running</span>'
+                    : b.status === 'stopped'
+                    ? '<span class="badge bg-warning text-dark">Stopped</span>'
+                    : '<span class="badge bg-secondary">Finished</span>';
 
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
-            debugLog.innerHTML = '';
-            btnStop.disabled = false;
-            feather.replace();
+                const roleName = b.role.split('/').pop();
+                const ownerName = b.owner || '-';
 
-            const eventSource = new EventSource(`${API_BASE}/run-build`);
+                const actions = b.status === 'running'
+                    ? `<button class="btn btn-sm btn-info me-1" onclick="viewLog('${b.id}')"><i class="fas fa-file-alt"></i> Log</button>
+                       <button class="btn btn-sm btn-danger" onclick="stopBuild('${b.id}')"><i class="fas fa-stop"></i> Stop</button>`
+                    : `<button class="btn btn-sm btn-info me-1" onclick="viewLog('${b.id}')"><i class="fas fa-file-alt"></i> Log</button>
+                       <button class="btn btn-sm btn-outline-danger" onclick="deleteBuild('${b.id}')"><i class="fas fa-trash"></i></button>`;
 
-            eventSource.onmessage = function(event) {
-                if (event.data === '__END__') {
-                    eventSource.close();
-                    btn.disabled = false;
-                    btnStop.disabled = true;
-                    btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
-                    showMessage('resultado', `<div class="alert alert-success"><strong>Build finished.</strong></div>`);
-                    debugLog.scrollTop = debugLog.scrollHeight;
-                } else {
-                    const html = ansi_up.ansi_to_html(event.data);
-                    debugLog.innerHTML += html + '<br>';
-                    debugLog.scrollTop = debugLog.scrollHeight;
-                }
-            };
-
-            eventSource.onerror = function() {
-                eventSource.close();
-                btn.disabled = false;
-                btnStop.disabled = true;
-                btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
-                if (!document.getElementById('resultado').innerHTML.includes('stopped') &&
-                    !document.getElementById('resultado').innerHTML.includes('finished')) {
-                    showMessage('resultado', `<div class="alert alert-danger">Connection to server lost during build.</div>`);
-                }
-            };
+                return `<tr>
+                    <td>${statusBadge}</td>
+                    <td><strong>${b.branch}</strong></td>
+                    <td><small>${roleName}</small></td>
+                    <td><small>${ownerName}</small></td>
+                    <td><small>${b.started_at}</small></td>
+                    <td><code>${b.pid}</code></td>
+                    <td class="text-center">${actions}</td>
+                </tr>`;
+            }).join('');
 
         } catch (e) {
-            showMessage('resultado', `<div class="alert alert-danger">Could not connect to the server. Is <code>server.py</code> running?</div>`);
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check"></i> Make Build';
+            document.getElementById('builds-table-body').innerHTML =
+                '<tr><td colspan="7" class="text-center text-danger">Error loading builds.</td></tr>';
         }
     }
 
     // ============================================================
     // Stop Build
     // ============================================================
-    async function stopBuild() {
-        const btnStop = document.getElementById('btn-stop-build');
-
+    async function stopBuild(buildId) {
         try {
-            const response = await fetch(`${API_BASE}/stop-build`, {
-                method: 'POST'
+            const response = await fetch(`${API_BASE}/mkbuild/stop`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ build_id: buildId })
             });
             const data = await response.json();
 
             if (data.success) {
-                showMessage('resultado', `<div class="alert alert-warning"><strong>Build stopped by user.</strong></div>`);
+                showMessage('resultado', `<div class="alert alert-warning"><strong>Build stopped.</strong></div>`);
             } else {
-                showMessage('resultado', `<div class="alert alert-info">${data.message}</div>`);
+                showMessage('resultado', `<div class="alert alert-info">${data.error || data.message}</div>`);
             }
+            loadBuilds();
         } catch (e) {
             showMessage('resultado', `<div class="alert alert-danger">Could not connect to the server.</div>`);
         }
-
-        btnStop.disabled = true;
     }
 
-        // Live date/time from internet
-        (async function initClock() {
-            const el = document.getElementById('live-datetime');
-            let serverOffset = 0;
+    // ============================================================
+    // Delete Build
+    // ============================================================
+    async function deleteBuild(buildId) {
+        if (!confirm('Delete this build and its log?')) return;
+        try {
+            const response = await fetch(`${API_BASE}/mkbuild/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ build_id: buildId })
+            });
+            const data = await response.json();
+            if (data.success) {
+                showMessage('resultado', `<div class="alert alert-success">Build deleted.</div>`);
+                if (_currentViewBuildId === buildId) closeLogViewer();
+            } else {
+                showMessage('resultado', `<div class="alert alert-danger">${data.error}</div>`);
+            }
+            loadBuilds();
+        } catch (e) {
+            showMessage('resultado', `<div class="alert alert-danger">Could not connect to the server.</div>`);
+        }
+    }
 
-            try {
-                const res = await fetch('https://worldtimeapi.org/api/ip');
-                const json = await res.json();
-                const serverNow = new Date(json.datetime).getTime();
-                serverOffset = serverNow - Date.now();
-            } catch (e) {}
+    // ============================================================
+    // Log Viewer
+    // ============================================================
+    let _currentViewBuildId = null;
+    let _logRefreshInterval = null;
 
-            function tick() {
-                const now = new Date(Date.now() + serverOffset);
-                const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                const d = days[now.getDay()];
-                const day = String(now.getDate()).padStart(2,'0');
-                const mon = months[now.getMonth()];
-                const yr = now.getFullYear();
-                const h = String(now.getHours()).padStart(2,'0');
-                const m = String(now.getMinutes()).padStart(2,'0');
-                const s = String(now.getSeconds()).padStart(2,'0');
-                el.textContent = `${d}, ${day} ${mon} ${yr}  ${h}:${m}:${s}`;
+    function viewLog(buildId) {
+        _currentViewBuildId = buildId;
+        document.getElementById('log-viewer-row').style.display = '';
+        document.getElementById('log-viewer-title').textContent = buildId;
+        document.getElementById('debug-log').innerHTML = '<span class="text-muted">Loading log...</span>';
+
+        // Clear any previous interval
+        if (_logRefreshInterval) clearInterval(_logRefreshInterval);
+
+        fetchLog(buildId);
+        _logRefreshInterval = setInterval(() => fetchLog(buildId), 3000);
+
+        // Scroll to log viewer
+        document.getElementById('log-viewer-row').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function fetchLog(buildId) {
+        try {
+            const response = await fetch(`${API_BASE}/mkbuild/log/${buildId}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                document.getElementById('debug-log').textContent = data.error || 'Error loading log.';
+                return;
             }
 
-            tick();
-            setInterval(tick, 1000);
-        })();
+            const logEl = document.getElementById('debug-log');
+            const wasAtBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 30;
+
+            logEl.innerHTML = ansi_up.ansi_to_html(data.log || 'Waiting for output...');
+
+            if (wasAtBottom) logEl.scrollTop = logEl.scrollHeight;
+
+            // Update status badge
+            const statusEl = document.getElementById('log-viewer-status');
+            const btnStop = document.getElementById('btn-stop-viewed-build');
+            if (data.status === 'running') {
+                statusEl.className = 'badge bg-success ms-2';
+                statusEl.textContent = 'Running';
+                btnStop.style.display = '';
+            } else if (data.status === 'stopped') {
+                statusEl.className = 'badge bg-warning text-dark ms-2';
+                statusEl.textContent = 'Stopped';
+                btnStop.style.display = 'none';
+                if (_logRefreshInterval) { clearInterval(_logRefreshInterval); _logRefreshInterval = null; }
+                loadBuilds();
+            } else {
+                statusEl.className = 'badge bg-secondary ms-2';
+                statusEl.textContent = 'Finished';
+                btnStop.style.display = 'none';
+                if (_logRefreshInterval) { clearInterval(_logRefreshInterval); _logRefreshInterval = null; }
+                loadBuilds();
+            }
+        } catch (e) {
+            document.getElementById('debug-log').textContent = 'Error connecting to server.';
+        }
+    }
+
+    function closeLogViewer() {
+        document.getElementById('log-viewer-row').style.display = 'none';
+        if (_logRefreshInterval) { clearInterval(_logRefreshInterval); _logRefreshInterval = null; }
+        _currentViewBuildId = null;
+    }
+
+    function stopViewedBuild() {
+        if (_currentViewBuildId) stopBuild(_currentViewBuildId);
+    }
+
+    // ============================================================
+    // Init
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        loadBuilds();
+        loadBranches();
+        searchRoles();
+        setInterval(loadBuilds, 5000);
+    });
+
+    // Live date/time from internet
+    (async function initClock() {
+        const el = document.getElementById('live-datetime');
+        let serverOffset = 0;
+
+        try {
+            const res = await fetch('https://worldtimeapi.org/api/ip');
+            const json = await res.json();
+            const serverNow = new Date(json.datetime).getTime();
+            serverOffset = serverNow - Date.now();
+        } catch (e) {}
+
+        function tick() {
+            const now = new Date(Date.now() + serverOffset);
+            const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const d = days[now.getDay()];
+            const day = String(now.getDate()).padStart(2,'0');
+            const mon = months[now.getMonth()];
+            const yr = now.getFullYear();
+            const h = String(now.getHours()).padStart(2,'0');
+            const m = String(now.getMinutes()).padStart(2,'0');
+            const s = String(now.getSeconds()).padStart(2,'0');
+            el.textContent = `${d}, ${day} ${mon} ${yr}  ${h}:${m}:${s}`;
+        }
+
+        tick();
+        setInterval(tick, 1000);
+    })();
+    </script>
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="profileModalLabel">My Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <input type="text" class="form-control" id="profile-username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Display Name <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="profile-display-name" placeholder="Leave empty to use username">
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i data-feather="git-branch" class="feather-sm me-1"></i> BitBucket Credentials</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Username</label>
+                        <input type="text" class="form-control" id="profile-bb-username" placeholder="Your BitBucket username">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Password / Token</label>
+                        <input type="password" class="form-control" id="profile-bb-password" placeholder="Your password or token">
+                    </div>
+                    <div id="profile-save-msg" class="d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-profile">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../dist/js/auth.js?v=2"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+
+        document.getElementById('profileModal').addEventListener('show.bs.modal', async function () {
+            const username = PulpitansAuth.getUsername();
+            document.getElementById('profile-username').value = username;
+            document.getElementById('profile-save-msg').classList.add('d-none');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                document.getElementById('profile-display-name').value = (data.success && data.profile.display_name) || '';
+                document.getElementById('profile-bb-username').value = (data.success && data.profile.bitbucket_username) || '';
+                document.getElementById('profile-bb-password').value = (data.success && data.profile.bitbucket_password) || '';
+            } catch (e) {
+                document.getElementById('profile-display-name').value = '';
+                document.getElementById('profile-bb-username').value = '';
+                document.getElementById('profile-bb-password').value = '';
+            }
+        });
+
+        document.getElementById('btn-save-profile').addEventListener('click', async function () {
+            const username = PulpitansAuth.getUsername();
+            const displayName = document.getElementById('profile-display-name').value.trim();
+            const msgEl = document.getElementById('profile-save-msg');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, display_name: displayName, bitbucket_username: document.getElementById('profile-bb-username').value.trim(), bitbucket_password: document.getElementById('profile-bb-password').value })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('header-user-display-name').textContent = data.display_name;
+                    msgEl.className = 'alert alert-success';
+                    msgEl.textContent = 'Profile saved.';
+                } else {
+                    msgEl.className = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error saving profile.';
+                }
+            } catch (e) {
+                msgEl.className = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
+        });
     </script>
 </body>
 

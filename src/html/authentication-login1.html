@@ -4,96 +4,162 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <!-- Tell the browser to be responsive to screen width -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
     <meta name="author" content="">
-    <!-- Favicon icon -->
     <link rel="icon" type="image/svg+xml" href="../assets/images/pulpitans-logo.svg">
-    <title>Freedash Template - The Ultimate Multipurpose admin template</title>
-    <!-- Custom CSS -->
+    <title>PULPITANS — Login</title>
     <link href="../dist/css/style.min.css" rel="stylesheet">
-    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-    <!--[if lt IE 9]>
-    <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-    <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
-<![endif]-->
 </head>
 
 <body>
     <div class="main-wrapper">
-        <!-- ============================================================== -->
-        <!-- Preloader - style you can find in spinners.css -->
-        <!-- ============================================================== -->
         <div class="preloader">
             <div class="lds-ripple">
                 <div class="lds-pos"></div>
                 <div class="lds-pos"></div>
             </div>
         </div>
-        <!-- ============================================================== -->
-        <!-- Preloader - style you can find in spinners.css -->
-        <!-- ============================================================== -->
-        <!-- ============================================================== -->
-        <!-- Login box.scss -->
-        <!-- ============================================================== -->
+
         <div class="auth-wrapper d-flex no-block justify-content-center align-items-center position-relative"
-            style="background:url(../assets/images/big/auth-bg.jpg) no-repeat center center;">
-            <div class="auth-box row">
-                <div class="col-lg-7 col-md-5 modal-bg-img" style="background-image: url(../assets/images/big/3.jpg);">
-                </div>
-                <div class="col-lg-5 col-md-7 bg-white">
-                    <div class="p-3">
-                        <div class="text-center">
-                            <img src="../assets/images/big/icon.png" alt="wrapkit">
+            style="background:url(../assets/images/big/auth-bg.jpg) no-repeat center center; background-size:cover;">
+            <div class="auth-box row" style="max-width:480px;">
+                <div class="col-12 bg-white rounded shadow">
+                    <div class="p-4">
+                        <div class="text-center mb-3">
+                            <img src="../assets/images/pulpitans-logo.svg" alt="Pulpitans" style="height:60px;">
                         </div>
-                        <h2 class="mt-3 text-center">Sign In</h2>
-                        <p class="text-center">Enter your email address and password to access admin panel.</p>
-                        <form class="mt-4">
-                            <div class="row">
-                                <div class="col-lg-12">
-                                    <div class="form-group mb-3">
-                                        <label class="form-label text-dark" for="uname">Username</label>
-                                        <input class="form-control" id="uname" type="text"
-                                            placeholder="enter your username">
-                                    </div>
-                                </div>
-                                <div class="col-lg-12">
-                                    <div class="form-group mb-3">
-                                        <label class="form-label text-dark" for="pwd">Password</label>
-                                        <input class="form-control" id="pwd" type="password"
-                                            placeholder="enter your password">
-                                    </div>
-                                </div>
-                                <div class="col-lg-12 text-center">
-                                    <button type="submit" class="btn w-100 btn-dark">Sign In</button>
-                                </div>
-                                <div class="col-lg-12 text-center mt-5">
-                                    Don't have an account? <a href="#" class="text-danger">Sign Up</a>
-                                </div>
+                        <h2 class="text-center">Sign In</h2>
+                        <p class="text-center text-muted">Enter your credentials to sign in.</p>
+
+                        <div id="login-error" class="alert alert-danger d-none" role="alert"></div>
+
+                        <form id="login-form" class="mt-4">
+                            <div class="form-group mb-3">
+                                <label class="form-label text-dark" for="uname">User</label>
+                                <input type="text" class="form-control" id="uname" placeholder="Enter your username" autocomplete="username">
+                            </div>
+                            <div class="form-group mb-3" id="pass-group">
+                                <label class="form-label text-dark" for="upass">Password</label>
+                                <input type="password" class="form-control" id="upass" placeholder="Password" autocomplete="current-password">
+                            </div>
+                            <div class="col-lg-12 text-center">
+                                <button type="submit" id="btn-login" class="btn w-100 btn-dark">
+                                    Sign In
+                                </button>
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- ============================================================== -->
-        <!-- Login box.scss -->
-        <!-- ============================================================== -->
     </div>
-    <!-- ============================================================== -->
-    <!-- All Required js -->
-    <!-- ============================================================== -->
-    <script src="../assets/libs/jquery/dist/jquery.min.js "></script>
-    <!-- Bootstrap tether Core JavaScript -->
-    <script src="../assets/libs/popper.js/dist/umd/popper.min.js "></script>
-    <script src="../assets/libs/bootstrap/dist/js/bootstrap.min.js "></script>
-    <!-- ============================================================== -->
-    <!-- This page plugin js -->
-    <!-- ============================================================== -->
+
+    <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="../assets/libs/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="../dist/js/auth.js?v=2"></script>
     <script>
-        $(".preloader ").fadeOut();
+        const API_BASE = window.PULPITANS_API_BASE || '/api';
+
+        // If already logged in, go to dashboard
+        if (PulpitansAuth.getUsername()) {
+            window.location.href = 'index.html';
+        }
+
+        // Hide preloader
+        $(".preloader").fadeOut();
+
+        // Check on username blur whether this is a new user needing initial password
+        let _isNewUser = false;
+
+        function _resetLoginForm() {
+            _isNewUser = false;
+            document.getElementById('pass-group').classList.remove('d-none');
+            document.getElementById('btn-login').textContent = 'Sign In';
+        }
+
+        // Reset immediately when the user edits the username field
+        document.getElementById('uname').addEventListener('input', _resetLoginForm);
+
+        document.getElementById('uname').addEventListener('blur', async function () {
+            const username = this.value.trim();
+            _isNewUser = false;
+            if (!username) return;
+            try {
+                const res  = await fetch(`${API_BASE}/auth/needs-password?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                // Ignore stale result if username changed while fetch was in flight
+                if (document.getElementById('uname').value.trim() !== username) return;
+                if (data.needs_password) {
+                    _isNewUser = true;
+                    document.getElementById('pass-group').classList.add('d-none');
+                    document.getElementById('btn-login').textContent = 'Continue';
+                } else {
+                    _resetLoginForm();
+                }
+            } catch (e) {}
+        });
+
+        document.getElementById('login-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const errBox = document.getElementById('login-error');
+            errBox.classList.add('d-none');
+
+            const username = document.getElementById('uname').value.trim();
+
+            if (!username) {
+                errBox.textContent = 'Please enter your username.';
+                errBox.classList.remove('d-none');
+                return;
+            }
+
+            // New user — skip login and go straight to set password
+            if (_isNewUser) {
+                window.location.href = `set-password.html?u=${encodeURIComponent(username)}`;
+                return;
+            }
+
+            const password = document.getElementById('upass').value;
+            if (!password) {
+                errBox.textContent = 'Please enter your password.';
+                errBox.classList.remove('d-none');
+                return;
+            }
+
+            const btn = document.getElementById('btn-login');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Signing in...';
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    PulpitansAuth.login(username, data.pam_valid);
+                    window.location.href = 'index.html';
+                } else if (data.needs_password) {
+                    // Fallback: server says needs_password (e.g. username was typed without triggering blur)
+                    window.location.href = `set-password.html?u=${encodeURIComponent(data.username || username)}`;
+                } else {
+                    errBox.textContent = data.error || 'Login failed.';
+                    errBox.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Sign In';
+                    document.getElementById('upass').value = '';
+                    document.getElementById('upass').focus();
+                }
+            } catch (err) {
+                errBox.textContent = 'Could not connect to the server.';
+                errBox.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = 'Sign In';
+            }
+        });
     </script>
 </body>
 

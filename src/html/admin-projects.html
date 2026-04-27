@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="../assets/images/pulpitans-logo.svg">
+    <title>PULPITANS — Projects</title>
+    <link href="../dist/css/style.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="preloader">
+        <div class="lds-ripple">
+            <div class="lds-pos"></div>
+            <div class="lds-pos"></div>
+        </div>
+    </div>
+
+    <div id="main-wrapper" data-theme="light" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
+        data-sidebar-position="fixed" data-header-position="fixed" data-boxed-layout="full">
+
+        <!-- Topbar -->
+        <header class="topbar" data-navbarbg="skin6">
+            <nav class="navbar top-navbar navbar-expand-lg">
+                <div class="navbar-header" data-logobg="skin6">
+                    <a class="nav-toggler waves-effect waves-light d-block d-lg-none" href="javascript:void(0)"><i class="ti-menu ti-close"></i></a>
+                    <div class="navbar-brand">
+                        <img src="../assets/images/pulpitans-name.svg" alt="" class="img-fluid">
+                    </div>
+                    <a class="topbartoggler d-block d-lg-none waves-effect waves-light" href="javascript:void(0)"
+                        data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><i class="ti-more"></i></a>
+                </div>
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left me-auto ms-3 ps-1">
+                        <li class="nav-item d-flex align-items-center ms-3">
+                            <div>
+                                <h6 class="mb-0 font-weight-medium text-dark">Projects</h6>
+                                <small class="text-muted">Admin / Projects</small>
+                            </div>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav float-end">
+                        <li class="nav-item d-none d-md-flex align-items-center me-3">
+                            <span id="live-datetime" class="text-muted font-14" style="white-space:nowrap;">Loading...</span>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle user-profile-pic" width="40">
+                                <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down" class="svg-icon"></i></span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
+                                <a class="dropdown-item" href="my-profile.html"><i data-feather="user" class="svg-icon me-2 ms-1"></i> My Profile</a>
+                                <a class="dropdown-item admin-only" style="display:none;" href="settings.html"><i data-feather="settings" class="svg-icon me-2 ms-1"></i> Settings</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power" class="svg-icon me-2 ms-1"></i> Logout</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Left Sidebar -->
+        <aside class="left-sidebar" data-sidebarbg="skin6">
+            <div class="scroll-sidebar" data-sidebarbg="skin6">
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="index.html" aria-expanded="false">
+                                <i data-feather="home" class="feather-icon"></i>
+                                <span class="hide-menu">Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="list-divider"></li>
+                        <li class="nav-small-cap"><span class="hide-menu">Applications</span></li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="git-controller.html" aria-expanded="false">
+                                <i data-feather="git-branch" class="feather-icon"></i>
+                                <span class="hide-menu">Git Controller</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="make-build.html" aria-expanded="false">
+                                <i data-feather="package" class="feather-icon"></i>
+                                <span class="hide-menu">Make Build</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="srn.html" aria-expanded="false">
+                                <i data-feather="file-text" class="feather-icon"></i>
+                                <span class="hide-menu">SRN</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="project-info.html" aria-expanded="false">
+                                <i data-feather="clipboard" class="feather-icon"></i>
+                                <span class="hide-menu">Project Info</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="processes.html" aria-expanded="false">
+                                <i data-feather="cpu" class="feather-icon"></i>
+                                <span class="hide-menu">Processes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="delivery-routes.html" aria-expanded="false">
+                                <i data-feather="truck" class="feather-icon"></i>
+                                <span class="hide-menu">Delivery Routes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="deliver.html" aria-expanded="false">
+                                <i data-feather="send" class="feather-icon"></i>
+                                <span class="hide-menu">Deliver Builds</span>
+                            </a>
+                        </li>
+                        <!-- Admin section -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only active" style="display:none;">
+                            <a class="sidebar-link sidebar-link active" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="settings.html" aria-expanded="false">
+                                <i data-feather="settings" class="feather-icon"></i>
+                                <span class="hide-menu">Settings</span>
+                            </a>
+                        </li>                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Page wrapper -->
+        <div class="page-wrapper">
+            <div class="container-fluid">
+
+                <!-- Projects Table -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <h4 class="card-title mb-0">Projects</h4>
+                                    <div class="ms-auto">
+                                        <button class="btn btn-sm btn-success me-2" onclick="showCreateProject()">
+                                            <i data-feather="plus" class="feather-sm"></i> New Project
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="loadProjects()">
+                                            <i data-feather="refresh-cw" class="feather-sm"></i> Refresh
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="bg-dark text-white">
+                                            <tr>
+                                                <th style="width:25%">Project Name</th>
+                                                <th style="width:20%">Folder</th>
+                                                <th style="width:20%">Assigned To</th>
+                                                <th style="width:15%">Status</th>
+                                                <th style="width:20%">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="projects-tbody">
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted py-3">
+                                                    <span class="spinner-border spinner-border-sm me-1"></span> Loading...
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="footer text-center text-muted">
+                All Rights Reserved by Freedash. Designed and Developed by <a href="#">Jibsan the ruler of the Outlands</a>.
+            </footer>
+        </div>
+    </div>
+
+    <!-- Create / Edit Project Modal -->
+    <div class="modal fade" id="projectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="projectModalTitle"><i data-feather="plus" class="feather-sm me-1"></i> New Project</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="project-old-name" value="">
+                    <div class="mb-3">
+                        <label class="form-label">Project Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="project-name" placeholder="e.g. AVINOR">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Folder <small class="text-muted">(path in /iDASREPO/PROJECTS/)</small></label>
+                        <input type="text" class="form-control" id="project-folder" placeholder="Auto-generated if empty">
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label class="form-label">Assign to user <small class="text-muted">(optional)</small></label>
+                        <select class="form-select" id="project-assign-user">
+                            <option value="">-- Unassigned --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="project-assign-status">
+                            <option value="wip">WIP (Blue)</option>
+                            <option value="idle">Idle (Yellow)</option>
+                            <option value="done">Done (Green)</option>
+                            <option value="not_ok">Not OK (Red)</option>
+                        </select>
+                    </div>
+                    <div id="project-result"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="btn-save-project" onclick="saveProject()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="../assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../dist/js/app-style-switcher.js"></script>
+    <script src="../dist/js/feather.min.js"></script>
+    <script src="../assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="../assets/extra-libs/sparkline/sparkline.js"></script>
+    <script src="../dist/js/sidebarmenu.js"></script>
+    <script src="../dist/js/custom.min.js"></script>
+
+    <script>
+    const API_BASE = '/api';
+    let STATUS_COLORS = { done: 'success', not_ok: 'danger', idle: 'warning', wip: 'primary' };
+    let STATUS_LABELS = { done: 'Done', not_ok: 'Not OK', idle: 'Idle', wip: 'WIP' };
+    async function _loadDynamicStatuses() {
+        try {
+            const res = await fetch(`${API_BASE}/settings/project-statuses`);
+            const data = await res.json();
+            if (data.success && data.statuses && data.statuses.length) {
+                STATUS_COLORS = {}; STATUS_LABELS = {};
+                data.statuses.forEach(s => {
+                    const key = s.name.toLowerCase().replace(/\s+/g, '_');
+                    STATUS_COLORS[key] = s.color;
+                    STATUS_LABELS[key] = s.name;
+                });
+            }
+        } catch(e) {}
+    }
+    _loadDynamicStatuses();
+
+    let _managedUsers = [];
+
+    async function loadProjects() {
+        try {
+            // Load managed users for the assign dropdown
+            const usersRes = await fetch(`${API_BASE}/admin/users`);
+            const usersData = await usersRes.json();
+            if (usersData.success) _managedUsers = usersData.users;
+
+            const res = await fetch(`${API_BASE}/admin/projects/master`);
+            const data = await res.json();
+            if (!data.success) return;
+
+            const tbody = document.getElementById('projects-tbody');
+            tbody.innerHTML = '';
+
+            if (data.projects.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No projects. Click <strong>New Project</strong> to create one.</td></tr>';
+                return;
+            }
+
+            data.projects.forEach((p, i) => {
+                const statusBadge = p.status
+                    ? `<span class="badge bg-${STATUS_COLORS[p.status] || 'secondary'} ${p.status === 'idle' ? 'text-dark' : ''}">${STATUS_LABELS[p.status] || p.status}</span>`
+                    : '<span class="text-muted">—</span>';
+
+                const assignedTo = p.assigned_to
+                    ? `<span class="fw-medium">${p.assigned_to}</span>`
+                    : '<span class="text-muted fst-italic">Unassigned</span>';
+
+                tbody.innerHTML += `
+                    <tr class="${i % 2 === 0 ? 'bg-light' : ''}">
+                        <td class="fw-medium">${p.name}</td>
+                        <td><code class="text-muted">${p.folder}</code></td>
+                        <td>${assignedTo}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="showEditProject('${p.name.replace(/'/g, "\\'")}', '${p.folder.replace(/'/g, "\\'")}', '${p.assigned_to}', '${p.status}')">
+                                <i data-feather="edit-2" class="feather-sm"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteProject('${p.name.replace(/'/g, "\\'")}')">
+                                <i data-feather="trash-2" class="feather-sm"></i>
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+
+            feather.replace();
+        } catch (e) {
+            document.getElementById('projects-tbody').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error connecting to server.</td></tr>';
+        }
+    }
+
+    function _populateUserSelect(selectedUser) {
+        const select = document.getElementById('project-assign-user');
+        select.innerHTML = '<option value="">-- Unassigned --</option>';
+        _managedUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.username;
+            opt.textContent = `${u.display_name} (${u.username})`;
+            if (u.username === selectedUser) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+
+    function showCreateProject() {
+        document.getElementById('projectModalTitle').innerHTML = '<i data-feather="plus" class="feather-sm me-1"></i> New Project';
+        document.getElementById('project-old-name').value = '';
+        document.getElementById('project-name').value = '';
+        document.getElementById('project-name').readOnly = false;
+        document.getElementById('project-folder').value = '';
+        document.getElementById('project-assign-status').value = 'wip';
+        document.getElementById('project-result').innerHTML = '';
+        document.getElementById('btn-save-project').textContent = 'Create';
+
+        _populateUserSelect('');
+
+        const modal = new bootstrap.Modal(document.getElementById('projectModal'));
+        modal.show();
+        feather.replace();
+    }
+
+    function showEditProject(name, folder, assignedTo, status) {
+        document.getElementById('projectModalTitle').innerHTML = '<i data-feather="edit-2" class="feather-sm me-1"></i> Edit Project';
+        document.getElementById('project-old-name').value = name;
+        document.getElementById('project-name').value = name;
+        document.getElementById('project-name').readOnly = false;
+        document.getElementById('project-folder').value = folder;
+        document.getElementById('project-assign-status').value = status || 'wip';
+        document.getElementById('project-result').innerHTML = '';
+        document.getElementById('btn-save-project').textContent = 'Save';
+
+        _populateUserSelect(assignedTo);
+        document.getElementById('project-assign-user').dataset.original = assignedTo || '';
+
+        const modal = new bootstrap.Modal(document.getElementById('projectModal'));
+        modal.show();
+        feather.replace();
+    }
+
+    async function saveProject() {
+        const adminUser = PulpitansAuth.getUsername();
+        const oldName = document.getElementById('project-old-name').value;
+        const name = document.getElementById('project-name').value.trim();
+        const folder = document.getElementById('project-folder').value.trim();
+        const assignTo = document.getElementById('project-assign-user').value;
+        const status = document.getElementById('project-assign-status').value;
+
+        if (!name) {
+            document.getElementById('project-result').innerHTML = '<div class="alert alert-warning">Project name is required.</div>';
+            return;
+        }
+
+        try {
+            if (oldName) {
+                // Update existing project
+                const res = await fetch(`${API_BASE}/admin/projects/master/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_username: adminUser, old_name: oldName, name, folder })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    document.getElementById('project-result').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    return;
+                }
+
+                // Handle assignment change
+                const currentAssigned = document.getElementById('project-assign-user').dataset.original || '';
+                if (assignTo !== currentAssigned) {
+                    // Remove from current user if assigned
+                    if (currentAssigned) {
+                        await fetch(`${API_BASE}/admin/projects/remove`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ admin_username: adminUser, username: currentAssigned, project_name: name })
+                        });
+                    }
+                    // Assign to new user if selected
+                    if (assignTo) {
+                        await fetch(`${API_BASE}/admin/projects/add`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ admin_username: adminUser, username: assignTo, project_name: name, status })
+                        });
+                    }
+                } else if (assignTo && status) {
+                    // Just update status
+                    await fetch(`${API_BASE}/admin/projects/status`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ admin_username: adminUser, username: assignTo, project_name: name, status })
+                    });
+                }
+            } else {
+                // Create new project
+                const res = await fetch(`${API_BASE}/admin/projects/master/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_username: adminUser, name, folder, assign_to: assignTo, status })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    document.getElementById('project-result').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                    return;
+                }
+            }
+
+            bootstrap.Modal.getInstance(document.getElementById('projectModal')).hide();
+            loadProjects();
+        } catch (e) {
+            document.getElementById('project-result').innerHTML = '<div class="alert alert-danger">Error connecting to server.</div>';
+        }
+    }
+
+    async function deleteProject(name) {
+        if (!confirm(`Delete project "${name}"? It will be removed from all user assignments.`)) return;
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            const res = await fetch(`${API_BASE}/admin/projects/master/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, name })
+            });
+            const data = await res.json();
+            if (data.success) loadProjects();
+        } catch (e) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        loadProjects();
+    });
+
+    // Live clock
+    (async function initClock() {
+        const el = document.getElementById('live-datetime');
+        let serverOffset = 0;
+        try {
+            const res = await fetch('https://worldtimeapi.org/api/ip');
+            const json = await res.json();
+            serverOffset = new Date(json.datetime).getTime() - Date.now();
+        } catch (e) {}
+        function tick() {
+            const now = new Date(Date.now() + serverOffset);
+            const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            el.textContent = `${days[now.getDay()]}, ${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}  ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
+    </script>
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="profileModalLabel">My Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <input type="text" class="form-control" id="profile-username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Display Name <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="profile-display-name" placeholder="Leave empty to use username">
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i data-feather="git-branch" class="feather-sm me-1"></i> BitBucket Credentials</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Username</label>
+                        <input type="text" class="form-control" id="profile-bb-username" placeholder="Your BitBucket username">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Password / Token</label>
+                        <input type="password" class="form-control" id="profile-bb-password" placeholder="Your password or token">
+                    </div>
+                    <div id="profile-save-msg" class="d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-profile">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../dist/js/auth.js?v=2"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+
+        // Check admin access
+        (async function checkAdmin() {
+            const username = PulpitansAuth.getUsername();
+            try {
+                const res = await fetch(`${API_BASE}/admin/check?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                if (data.is_admin) {
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+                    feather.replace();
+                } else {
+                    window.location.href = 'index.html';
+                }
+            } catch (e) {
+                window.location.href = 'index.html';
+            }
+        })();
+
+        document.getElementById('profileModal').addEventListener('show.bs.modal', async function () {
+            const username = PulpitansAuth.getUsername();
+            document.getElementById('profile-username').value = username;
+            document.getElementById('profile-save-msg').classList.add('d-none');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                document.getElementById('profile-display-name').value = (data.success && data.profile.display_name) || '';
+                document.getElementById('profile-bb-username').value = (data.success && data.profile.bitbucket_username) || '';
+                document.getElementById('profile-bb-password').value = (data.success && data.profile.bitbucket_password) || '';
+            } catch (e) {
+                document.getElementById('profile-display-name').value = '';
+                document.getElementById('profile-bb-username').value = '';
+                document.getElementById('profile-bb-password').value = '';
+            }
+        });
+
+        document.getElementById('btn-save-profile').addEventListener('click', async function () {
+            const username = PulpitansAuth.getUsername();
+            const displayName = document.getElementById('profile-display-name').value.trim();
+            const msgEl = document.getElementById('profile-save-msg');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, display_name: displayName, bitbucket_username: document.getElementById('profile-bb-username').value.trim(), bitbucket_password: document.getElementById('profile-bb-password').value })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('header-user-display-name').textContent = data.display_name;
+                    msgEl.className = 'alert alert-success';
+                    msgEl.textContent = 'Profile saved.';
+                } else {
+                    msgEl.className = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error saving profile.';
+                }
+            } catch (e) {
+                msgEl.className = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
+        });
+    </script>
+</body>
+
+</html>

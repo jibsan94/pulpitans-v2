@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="../assets/images/pulpitans-logo.svg">
+    <title>PULPITANS — User Management</title>
+    <link href="../dist/css/style.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        .bulk-cb, #select-all-cb {
+            border: 2px solid #212529 !important;
+            background-color: #fff;
+        }
+        .bulk-cb:checked, #select-all-cb:checked {
+            background-color: #0d6efd;
+            border-color: #0d6efd !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="preloader">
+        <div class="lds-ripple">
+            <div class="lds-pos"></div>
+            <div class="lds-pos"></div>
+        </div>
+    </div>
+
+    <div id="main-wrapper" data-theme="light" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
+        data-sidebar-position="fixed" data-header-position="fixed" data-boxed-layout="full">
+
+        <!-- Topbar -->
+        <header class="topbar" data-navbarbg="skin6">
+            <nav class="navbar top-navbar navbar-expand-lg">
+                <div class="navbar-header" data-logobg="skin6">
+                    <a class="nav-toggler waves-effect waves-light d-block d-lg-none" href="javascript:void(0)"><i class="ti-menu ti-close"></i></a>
+                    <div class="navbar-brand">
+                        <img src="../assets/images/pulpitans-name.svg" alt="" class="img-fluid">
+                    </div>
+                    <a class="topbartoggler d-block d-lg-none waves-effect waves-light" href="javascript:void(0)"
+                        data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><i class="ti-more"></i></a>
+                </div>
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left me-auto ms-3 ps-1">
+                        <li class="nav-item d-flex align-items-center ms-3">
+                            <div>
+                                <h6 class="mb-0 font-weight-medium text-dark">User Management</h6>
+                                <small class="text-muted">Admin / User Management</small>
+                            </div>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav float-end">
+                        <li class="nav-item d-none d-md-flex align-items-center me-3">
+                            <span id="live-datetime" class="text-muted font-14" style="white-space:nowrap;">Loading...</span>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle user-profile-pic" width="40">
+                                <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down" class="svg-icon"></i></span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
+                                <a class="dropdown-item" href="my-profile.html"><i data-feather="user" class="svg-icon me-2 ms-1"></i> My Profile</a>
+                                <a class="dropdown-item admin-only" style="display:none;" href="settings.html"><i data-feather="settings" class="svg-icon me-2 ms-1"></i> Settings</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power" class="svg-icon me-2 ms-1"></i> Logout</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Left Sidebar -->
+        <aside class="left-sidebar" data-sidebarbg="skin6">
+            <div class="scroll-sidebar" data-sidebarbg="skin6">
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="index.html" aria-expanded="false">
+                                <i data-feather="home" class="feather-icon"></i>
+                                <span class="hide-menu">Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="list-divider"></li>
+                        <li class="nav-small-cap"><span class="hide-menu">Applications</span></li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="git-controller.html" aria-expanded="false">
+                                <i data-feather="git-branch" class="feather-icon"></i>
+                                <span class="hide-menu">Git Controller</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="make-build.html" aria-expanded="false">
+                                <i data-feather="package" class="feather-icon"></i>
+                                <span class="hide-menu">Make Build</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="srn.html" aria-expanded="false">
+                                <i data-feather="file-text" class="feather-icon"></i>
+                                <span class="hide-menu">SRN</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="project-info.html" aria-expanded="false">
+                                <i data-feather="clipboard" class="feather-icon"></i>
+                                <span class="hide-menu">Project Info</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="processes.html" aria-expanded="false">
+                                <i data-feather="cpu" class="feather-icon"></i>
+                                <span class="hide-menu">Processes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="delivery-routes.html" aria-expanded="false">
+                                <i data-feather="truck" class="feather-icon"></i>
+                                <span class="hide-menu">Delivery Routes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="deliver.html" aria-expanded="false">
+                                <i data-feather="send" class="feather-icon"></i>
+                                <span class="hide-menu">Deliver Builds</span>
+                            </a>
+                        </li>
+                        <!-- Admin section -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only active" style="display:none;">
+                            <a class="sidebar-link sidebar-link active" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="settings.html" aria-expanded="false">
+                                <i data-feather="settings" class="feather-icon"></i>
+                                <span class="hide-menu">Settings</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Page wrapper -->
+        <div class="page-wrapper">
+            <div class="container-fluid">
+
+                <!-- Legend -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body py-3">
+                                <div class="d-flex align-items-center flex-wrap gap-3" id="status-legend">
+                                    <h6 class="mb-0 me-3 text-muted">Project Status Legend:</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <h4 class="card-title mb-0">Managed Users</h4>
+                                    <div class="ms-auto d-flex gap-2">
+                                        <button class="btn btn-sm btn-success" onclick="showAddUser()">
+                                            <i data-feather="user-plus" class="feather-sm"></i> Add User
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="loadUsers()">
+                                            <i data-feather="refresh-cw" class="feather-sm"></i> Refresh
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Bulk Actions Bar (visible when rows are selected) -->
+                                <div id="bulk-bar" class="d-none mb-3 p-2 rounded d-flex align-items-center gap-2"
+                                    style="background:#f0f4ff; border:1px solid #c7d2f6;">
+                                    <span class="fw-semibold me-1" id="bulk-count">0 selected</span>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="bulkSelectAll(false)">
+                                        <i data-feather="square" class="feather-sm"></i> Deselect All
+                                    </button>
+                                    <div class="vr"></div>
+                                    <button class="btn btn-sm btn-dark" onclick="bulkSetRole(true)">
+                                        <i data-feather="shield" class="feather-sm"></i> Set Admin
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary" onclick="bulkSetRole(false)">
+                                        <i data-feather="user" class="feather-sm"></i> Set User
+                                    </button>
+                                    <button class="btn btn-sm btn-danger ms-auto" onclick="bulkDelete()">
+                                        <i data-feather="trash-2" class="feather-sm"></i> Delete Selected
+                                    </button>
+                                </div>
+
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="bg-dark text-white">
+                                            <tr>
+                                                <th style="width:36px;">
+                                                    <input class="form-check-input" type="checkbox" id="select-all-cb"
+                                                        style="width:1.2em;height:1.2em;cursor:pointer;border:2px solid #fff !important;"
+                                                        onchange="bulkSelectAll(this.checked)">
+                                                </th>
+                                                <th style="width:20%">User</th>
+                                                <th style="width:10%">Role</th>
+                                                <th>Projects</th>
+                                                <th style="width:22%">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="users-tbody">
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted py-3">
+                                                    <span class="spinner-border spinner-border-sm me-1"></span> Loading...
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="footer text-center text-muted">
+                All Rights Reserved by Freedash. Designed and Developed by <a href="#">Jibsan the ruler of the Outlands</a>.
+            </footer>
+        </div>
+    </div>
+
+    <!-- Move Project Modal -->
+    <div class="modal fade" id="moveProjectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i data-feather="move" class="feather-sm me-1"></i> Move Project</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Moving <strong id="move-project-name"></strong> from <strong id="move-from-user"></strong></p>
+                    <div class="mb-3">
+                        <label class="form-label">Move to user:</label>
+                        <select class="form-select" id="move-to-user"></select>
+                    </div>
+                    <div id="move-result"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmMoveProject()">Move</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Projects Modal (multi-select) -->
+    <div class="modal fade" id="addProjectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i data-feather="plus-circle" class="feather-sm me-1"></i> Add Projects</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="px-3 pt-3 pb-2">
+                        <p class="mb-1">Assign projects to <strong id="add-project-user"></strong></p>
+                        <small class="text-muted">Only unassigned projects are shown. Select one or more.</small>
+                    </div>
+                    <div id="add-project-list" style="max-height:350px; overflow-y:auto;">
+                        <div class="text-center text-muted py-3">
+                            <span class="spinner-border spinner-border-sm me-1"></span> Loading...
+                        </div>
+                    </div>
+                    <div class="px-3 pt-2 pb-1">
+                        <label class="form-label mb-1">Initial status for all selected:</label>
+                        <select class="form-select form-select-sm" id="add-project-status">
+                            <option value="wip">WIP (Blue)</option>
+                            <option value="idle">Idle (Yellow)</option>
+                            <option value="done">Done (Green)</option>
+                            <option value="not_ok">Not OK (Red)</option>
+                        </select>
+                    </div>
+                    <div class="px-3" id="add-result"></div>
+                </div>
+                <div class="modal-footer">
+                    <span class="text-muted me-auto" id="add-project-count">0 selected</span>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-info text-white" onclick="confirmAddProjects()">
+                        <i data-feather="check" class="feather-sm me-1"></i> Add Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i data-feather="user-plus" class="feather-sm me-1"></i> Add User</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- DB mode: create new user by username -->
+                    <div id="add-user-db-panel">
+                        <p class="text-muted mb-3">Enter a username for the new user. They will set their password on first login.</p>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Username</label>
+                            <input type="text" class="form-control" id="new-db-username"
+                                placeholder="e.g. jsmith" autocomplete="off"
+                                oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_.\-]/g,'')">
+                            <div class="form-text">Only lowercase letters, numbers, <code>_</code> <code>.</code> <code>-</code></div>
+                        </div>
+                        <div id="add-db-user-result"></div>
+                    </div>
+                    <!-- System mode: pick from available OS users -->
+                    <div id="add-user-sys-panel">
+                        <p class="text-muted mb-2">Select one or more system users to add.</p>
+                        <input type="text" class="form-control form-control-sm mb-2" id="add-user-search"
+                            placeholder="Search users..." oninput="filterUserList()">
+                        <div id="add-user-list" style="max-height:320px; overflow-y:auto;">
+                            <div class="text-center text-muted py-3">
+                                <span class="spinner-border spinner-border-sm me-1"></span> Loading...
+                            </div>
+                        </div>
+                        <div id="add-user-result"></div>
+                    </div>
+                </div>
+                <div class="modal-footer" id="add-user-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <!-- DB mode footer -->
+                    <button type="button" class="btn btn-success" id="btn-add-db-user" onclick="confirmAddDbUser()">
+                        <i data-feather="user-plus" class="feather-sm me-1"></i> Create User
+                    </button>
+                    <!-- System mode footer -->
+                    <span class="text-muted me-auto d-none" id="add-user-count">0 selected</span>
+                    <button type="button" class="btn btn-success d-none" id="btn-add-sys-users" onclick="confirmAddUsers()">
+                        <i data-feather="check" class="feather-sm me-1"></i> Add Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i data-feather="edit" class="feather-sm me-1"></i> Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit-user-username">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <input type="text" class="form-control" id="edit-user-username-display" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Display Name</label>
+                        <input type="text" class="form-control" id="edit-user-displayname" placeholder="Leave empty to use username">
+                    </div>
+                    <div class="mb-3" id="edit-user-password-group" style="display:none;">
+                        <label class="form-label text-muted">New Password <small class="text-muted">(leave empty to keep current)</small></label>
+                        <input type="password" class="form-control" id="edit-user-newpassword" placeholder="••••••••" autocomplete="new-password">
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-2"><i data-feather="briefcase" class="feather-sm me-1"></i> Assigned Projects</h6>
+                    <div id="edit-user-projects" class="mb-3">
+                        <span class="text-muted">No projects</span>
+                    </div>
+                    <div id="edit-user-result"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger me-auto" onclick="removeUserFromEdit()">
+                        <i data-feather="user-minus" class="feather-sm me-1"></i> Remove User
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning text-dark" onclick="saveEditUser()">
+                        <i data-feather="save" class="feather-sm me-1"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="../assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../dist/js/app-style-switcher.js"></script>
+    <script src="../dist/js/feather.min.js"></script>
+    <script src="../assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="../assets/extra-libs/sparkline/sparkline.js"></script>
+    <script src="../dist/js/sidebarmenu.js"></script>
+    <script src="../dist/js/custom.min.js"></script>
+
+    <script>
+    const API_BASE = '/api';
+
+    let STATUS_COLORS = { done: 'success', not_ok: 'danger', idle: 'warning', wip: 'primary' };
+    let STATUS_LABELS = { done: 'Done', not_ok: 'Not OK', idle: 'Idle', wip: 'WIP' };
+    let STATUS_ICONS  = {
+        done:   '<i data-feather="check-circle" class="feather-sm me-1"></i>',
+        not_ok: '<i data-feather="x-circle" class="feather-sm me-1"></i>',
+        idle:   '<i data-feather="pause-circle" class="feather-sm me-1"></i>',
+        wip:    '<i data-feather="loader" class="feather-sm me-1"></i>',
+    };
+    async function _loadDynamicStatuses() {
+        try {
+            const res = await fetch(`${API_BASE}/settings/project-statuses`);
+            const data = await res.json();
+            if (data.success && data.statuses && data.statuses.length) {
+                STATUS_COLORS = {}; STATUS_LABELS = {}; STATUS_ICONS = {};
+                data.statuses.forEach(s => {
+                    const key = s.name.toLowerCase().replace(/\s+/g, '_');
+                    STATUS_COLORS[key] = s.color;
+                    STATUS_LABELS[key] = s.name;
+                    STATUS_ICONS[key] = `<i data-feather="${s.icon}" class="feather-sm me-1"></i>`;
+                });
+            }
+        } catch(e) {}
+    }
+    _loadDynamicStatuses();
+
+    let _allUsers = [];
+    let _storageMode = 'local'; // 'local' | 'database'
+
+    async function _detectStorageMode() {
+        try {
+            const res  = await fetch(`${API_BASE}/settings/storage?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data = await res.json();
+            _storageMode = (data.success && data.storage_mode === 'database') ? 'database' : 'local';
+        } catch (e) {}
+    }
+
+    async function loadUsers() {
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            const res = await fetch(`${API_BASE}/admin/users`);
+            const data = await res.json();
+            if (!data.success) return;
+
+            _allUsers = data.users;
+            const tbody = document.getElementById('users-tbody');
+            tbody.innerHTML = '';
+            document.getElementById('select-all-cb').checked = false;
+            _updateBulkBar();
+
+            if (data.users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No managed users. Click <strong>Add User</strong> to get started.</td></tr>';
+                return;
+            }
+
+            data.users.forEach(u => {
+                const projectBadges = u.projects.map(p => {
+                    const color    = STATUS_COLORS[p.status] || 'secondary';
+                    const label    = STATUS_LABELS[p.status] || p.status;
+                    const icon     = STATUS_ICONS[p.status]  || '';
+                    const textCls  = p.status === 'idle' ? 'text-dark' : '';
+                    const safeName = p.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const opts = Object.entries(STATUS_LABELS).map(([k, lbl]) =>
+                        `<li><a class="dropdown-item" href="javascript:void(0)" onclick="setProjectStatus('${u.username}','${safeName}','${k}')">` +
+                        `<span class="badge bg-${STATUS_COLORS[k]} ${k==='idle'?'text-dark':''} me-1">${STATUS_ICONS[k]||''}${lbl}</span></a></li>`
+                    ).join('');
+                    return `<div class="dropdown d-inline-block me-1 mb-1">` +
+                        `<button type="button" class="badge bg-${color} ${textCls} border-0 dropdown-toggle px-2 py-1" ` +
+                        `data-bs-toggle="dropdown" aria-expanded="false" style="cursor:pointer;font-size:0.85em;">` +
+                        `${icon}${p.name}</button>` +
+                        `<ul class="dropdown-menu">${opts}</ul></div>`;
+                }).join('');
+
+                const isSelf = u.username === adminUser;
+                const roleCell = isSelf
+                    ? '<span class="badge bg-dark">Admin (you)</span>'
+                    : `<div style="display:inline-flex;align-items:center;gap:8px;">
+                        <div class="form-check form-switch mb-0" style="padding-left:2.5em;min-height:auto;">
+                            <input class="form-check-input" type="checkbox" ${u.is_admin ? 'checked' : ''}
+                                onchange="toggleAdmin('${u.username}',this.checked)"
+                                style="width:2.5em;height:1.3em;cursor:pointer;border:2px solid #495057;">
+                        </div>
+                        <span class="fw-medium text-dark">${u.is_admin ? 'Admin' : 'User'}</span>
+                    </div>`;
+
+                const actions = `<button class="btn btn-sm btn-warning me-1" onclick="showEditUser('${u.username}')">
+                        <i data-feather="edit" class="feather-sm"></i> Edit
+                    </button>
+                    <button class="btn btn-sm btn-info me-1" onclick="showAddProject('${u.username}')">
+                        <i data-feather="plus" class="feather-sm"></i> Project
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeUserFromList('${u.username}')" title="Remove user">
+                        <i data-feather="user-minus" class="feather-sm"></i>
+                    </button>`;
+
+                const cbCell = isSelf
+                    ? '<td></td>'
+                    : `<td><input class="form-check-input bulk-cb" type="checkbox" value="${u.username}"
+                            style="width:1.2em;height:1.2em;cursor:pointer;"
+                            onchange="_updateBulkBar()"></td>`;
+
+                tbody.innerHTML += `
+                    <tr>
+                        ${cbCell}
+                        <td>
+                            <strong>${u.display_name}</strong><br>
+                            <small class="text-muted">${u.username}</small>
+                        </td>
+                        <td>${roleCell}</td>
+                        <td>${projectBadges || '<span class="text-muted">No projects</span>'}</td>
+                        <td>${actions}</td>
+                    </tr>`;
+            });
+
+            feather.replace();
+
+        } catch (e) {
+            document.getElementById('users-tbody').innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error connecting to server.</td></tr>';
+        }
+    }
+
+    function _getSelectedUsernames() {
+        return Array.from(document.querySelectorAll('.bulk-cb:checked')).map(cb => cb.value);
+    }
+
+    function _updateBulkBar() {
+        const selected = document.querySelectorAll('.bulk-cb:checked').length;
+        const bar = document.getElementById('bulk-bar');
+        if (selected > 0) {
+            bar.classList.remove('d-none');
+            document.getElementById('bulk-count').textContent = selected + ' selected';
+            feather.replace();
+        } else {
+            bar.classList.add('d-none');
+        }
+    }
+
+    function bulkSelectAll(checked) {
+        document.querySelectorAll('.bulk-cb').forEach(cb => cb.checked = checked);
+        document.getElementById('select-all-cb').checked = checked;
+        _updateBulkBar();
+    }
+
+    async function bulkSetRole(makeAdmin) {
+        const names = _getSelectedUsernames();
+        if (!names.length) return;
+        const label = makeAdmin ? 'Admin' : 'User';
+        if (!confirm(`Set ${names.length} user(s) as ${label}?\n\n${names.join(', ')}`)) return;
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            const res = await fetch(`${API_BASE}/admin/users/bulk-action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, action: makeAdmin ? 'set_admin' : 'set_user', usernames: names })
+            });
+            const data = await res.json();
+            if (data.success) loadUsers();
+        } catch (e) {}
+    }
+
+    async function bulkDelete() {
+        const names = _getSelectedUsernames();
+        if (!names.length) return;
+        if (!confirm(`Delete ${names.length} user(s)?\nThis will remove them and all their project assignments.\n\n${names.join(', ')}`)) return;
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            const res = await fetch(`${API_BASE}/admin/users/bulk-action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, action: 'delete', usernames: names })
+            });
+            const data = await res.json();
+            if (data.success) loadUsers();
+        } catch (e) {}
+    }
+
+    async function setProjectStatus(username, projectName, newStatus) {
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            const res = await fetch(`${API_BASE}/admin/projects/status`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, username, project_name: projectName, status: newStatus })
+            });
+            const data = await res.json();
+            if (data.success) loadUsers();
+        } catch (e) {}
+    }
+
+    async function toggleAdmin(username, makeAdmin) {
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            await fetch(`${API_BASE}/admin/users/toggle-admin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, username, is_admin: makeAdmin })
+            });
+            loadUsers();
+        } catch (e) {}
+    }
+
+    async function addUserToList(username) {
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            await fetch(`${API_BASE}/admin/users/add-to-list`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, username })
+            });
+            loadUsers();
+        } catch (e) {}
+    }
+
+    async function removeUserFromList(username) {
+        if (!confirm(`Remove ${username} from the managed list? They will lose login access and all their project assignments.`)) return;
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            await fetch(`${API_BASE}/admin/users/remove-from-list`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, username })
+            });
+            loadUsers();
+        } catch (e) {}
+    }
+
+    // ── Edit User ──
+    function showEditUser(username) {
+        const user = _allUsers.find(u => u.username === username);
+        if (!user) return;
+
+        document.getElementById('edit-user-username').value = username;
+        document.getElementById('edit-user-username-display').value = username;
+        document.getElementById('edit-user-displayname').value = user.display_name === username ? '' : user.display_name;
+        document.getElementById('edit-user-result').innerHTML = '';
+        document.getElementById('edit-user-newpassword').value = '';
+        // Show password field only in DB auth mode
+        document.getElementById('edit-user-password-group').style.display =
+            _storageMode === 'database' ? '' : 'none';
+
+        // Render assigned projects with move + remove buttons
+        const container = document.getElementById('edit-user-projects');
+        if (user.projects.length === 0) {
+            container.innerHTML = '<span class="text-muted fst-italic">No projects assigned</span>';
+        } else {
+            container.innerHTML = user.projects.map(p => {
+                const color = STATUS_COLORS[p.status] || 'secondary';
+                const label = STATUS_LABELS[p.status] || p.status;
+                const textCls = p.status === 'idle' ? 'text-dark' : '';
+                const safeName = p.name.replace(/'/g, "\\'");
+                return `<div class="d-flex align-items-center mb-2 py-1 px-2 rounded" style="background:#f8f9fa;">
+                    <span class="badge bg-${color} ${textCls} me-2">${label}</span>
+                    <span class="fw-medium flex-grow-1">${p.name}</span>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="showMoveProject('${username}','${safeName}')" title="Move to another user">
+                        <i data-feather="move" class="feather-sm"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="removeProjectFromEdit('${username}','${safeName}')" title="Remove project">
+                        <i data-feather="x" class="feather-sm"></i>
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+        modal.show();
+        feather.replace();
+    }
+
+    async function saveEditUser() {
+        const username = document.getElementById('edit-user-username').value;
+        const displayName = document.getElementById('edit-user-displayname').value.trim();
+        const newPassword = document.getElementById('edit-user-newpassword').value;
+        const adminUser = PulpitansAuth.getUsername();
+        const resultDiv = document.getElementById('edit-user-result');
+
+        const payload = { admin_username: adminUser, username, display_name: displayName };
+        if (newPassword) payload.new_password = newPassword;
+
+        try {
+            const res = await fetch(`${API_BASE}/admin/users/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+                loadUsers();
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger mt-2">${data.error}</div>`;
+            }
+        } catch (e) {
+            resultDiv.innerHTML = '<div class="alert alert-danger mt-2">Error connecting to server.</div>';
+        }
+    }
+
+    async function removeProjectFromEdit(username, projectName) {
+        if (!confirm(`Remove project "${projectName}" from ${username}?`)) return;
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            const res = await fetch(`${API_BASE}/admin/projects/remove`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, username, project_name: projectName })
+            });
+            const data = await res.json();
+            if (data.success) {
+                // Re-open edit modal with fresh data
+                bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+                await loadUsers();
+                showEditUser(username);
+            }
+        } catch (e) {}
+    }
+
+    function removeUserFromEdit() {
+        const username = document.getElementById('edit-user-username').value;
+        bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+        removeUserFromList(username);
+    }
+
+    async function showAddUser() {
+        // Reset both panels
+        document.getElementById('new-db-username').value = '';
+        document.getElementById('add-db-user-result').innerHTML = '';
+        document.getElementById('add-user-result').innerHTML = '';
+        document.getElementById('add-user-search').value = '';
+        document.getElementById('add-user-count').textContent = '0 selected';
+
+        const dbPanel  = document.getElementById('add-user-db-panel');
+        const sysPanel = document.getElementById('add-user-sys-panel');
+        const btnDb    = document.getElementById('btn-add-db-user');
+        const btnSys   = document.getElementById('btn-add-sys-users');
+        const cntLabel = document.getElementById('add-user-count');
+
+        if (_storageMode === 'database') {
+            dbPanel.classList.remove('d-none');
+            sysPanel.classList.add('d-none');
+            btnDb.classList.remove('d-none');
+            btnSys.classList.add('d-none');
+            cntLabel.classList.add('d-none');
+        } else {
+            dbPanel.classList.add('d-none');
+            sysPanel.classList.remove('d-none');
+            btnDb.classList.add('d-none');
+            btnSys.classList.remove('d-none');
+            cntLabel.classList.remove('d-none');
+
+            const container = document.getElementById('add-user-list');
+            container.innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span> Loading...</div>';
+            try {
+                const res = await fetch(`${API_BASE}/admin/users/available`);
+                const data = await res.json();
+                if (data.success && data.users.length > 0) {
+                    container.innerHTML = '<div class="list-group list-group-flush">' +
+                        data.users.map((u, i) => `
+                            <label class="list-group-item list-group-item-action d-flex align-items-center py-2 user-row ${i % 2 === 0 ? 'bg-light' : ''}" style="cursor:pointer;">
+                                <input class="form-check-input add-user-check me-3 flex-shrink-0" type="checkbox" value="${u}"
+                                    style="width:1.2em;height:1.2em;border:2px solid #495057;"
+                                    onchange="updateUserCount()">
+                                <span class="fw-medium">${u}</span>
+                            </label>`).join('') + '</div>';
+                } else {
+                    container.innerHTML = '<div class="text-center text-muted py-3">All system users are already in the managed list.</div>';
+                }
+            } catch (e) {
+                container.innerHTML = '<div class="text-center text-danger py-3">Error loading users.</div>';
+            }
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('addUserModal'));
+        modal.show();
+        feather.replace();
+    }
+
+    async function confirmAddDbUser() {
+        const username  = document.getElementById('new-db-username').value.trim().toLowerCase();
+        const resultDiv = document.getElementById('add-db-user-result');
+        resultDiv.innerHTML = '';
+
+        if (!username) {
+            resultDiv.innerHTML = '<div class="alert alert-warning">Enter a username.</div>';
+            return;
+        }
+        if (!/^[a-zA-Z0-9_.\-]+$/.test(username)) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Invalid username. Use only letters, numbers, _ . -</div>';
+            return;
+        }
+
+        const adminUser = PulpitansAuth.getUsername();
+        const btn = document.getElementById('btn-add-db-user');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Creating...';
+
+        try {
+            const res = await fetch(`${API_BASE}/admin/users/add-db-user`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, username })
+            });
+            const data = await res.json();
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('addUserModal')).hide();
+                loadUsers();
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger">${data.error || 'Error creating user.'}</div>`;
+            }
+        } catch (e) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Error connecting to server.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="user-plus" class="feather-sm me-1"></i> Create User';
+        feather.replace();
+    }
+
+    function filterUserList() {
+        const q = document.getElementById('add-user-search').value.toLowerCase();
+        document.querySelectorAll('.user-row').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+    }
+
+    function updateUserCount() {
+        const count = document.querySelectorAll('.add-user-check:checked').length;
+        document.getElementById('add-user-count').textContent = count + ' selected';
+    }
+
+    async function confirmAddUsers() {
+        const checked = document.querySelectorAll('.add-user-check:checked');
+        if (checked.length === 0) {
+            document.getElementById('add-user-result').innerHTML = '<div class="alert alert-warning mt-2">Select at least one user.</div>';
+            return;
+        }
+
+        const adminUser = PulpitansAuth.getUsername();
+        const usernames = Array.from(checked).map(cb => cb.value);
+
+        try {
+            for (const username of usernames) {
+                await fetch(`${API_BASE}/admin/users/add-to-list`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_username: adminUser, username })
+                });
+            }
+            bootstrap.Modal.getInstance(document.getElementById('addUserModal')).hide();
+            loadUsers();
+        } catch (e) {
+            document.getElementById('add-user-result').innerHTML = '<div class="alert alert-danger mt-2">Error adding users.</div>';
+        }
+    }
+
+    function showMoveProject(fromUser, projectName) {
+        document.getElementById('move-project-name').textContent = projectName;
+        document.getElementById('move-from-user').textContent = fromUser;
+        document.getElementById('move-result').innerHTML = '';
+
+        const select = document.getElementById('move-to-user');
+        select.innerHTML = '';
+        _allUsers.filter(u => u.username !== fromUser).forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.username;
+            opt.textContent = `${u.display_name} (${u.username})`;
+            select.appendChild(opt);
+        });
+
+        const modal = new bootstrap.Modal(document.getElementById('moveProjectModal'));
+        modal.show();
+    }
+
+    async function confirmMoveProject() {
+        const adminUser = PulpitansAuth.getUsername();
+        const projectName = document.getElementById('move-project-name').textContent;
+        const fromUser = document.getElementById('move-from-user').textContent;
+        const toUser = document.getElementById('move-to-user').value;
+
+        if (!toUser) {
+            document.getElementById('move-result').innerHTML = '<div class="alert alert-warning">Select a destination user.</div>';
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_BASE}/admin/projects/move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, project_name: projectName, from_user: fromUser, to_user: toUser })
+            });
+            const data = await res.json();
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('moveProjectModal')).hide();
+                loadUsers();
+            } else {
+                document.getElementById('move-result').innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+            }
+        } catch (e) {
+            document.getElementById('move-result').innerHTML = '<div class="alert alert-danger">Error connecting to server.</div>';
+        }
+    }
+
+    async function showAddProject(username) {
+        document.getElementById('add-project-user').textContent = username;
+        document.getElementById('add-project-status').value = 'wip';
+        document.getElementById('add-result').innerHTML = '';
+        document.getElementById('add-project-count').textContent = '0 selected';
+
+        const container = document.getElementById('add-project-list');
+        container.innerHTML = '<div class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span> Loading...</div>';
+
+        const modal = new bootstrap.Modal(document.getElementById('addProjectModal'));
+        modal.show();
+
+        try {
+            const res = await fetch(`${API_BASE}/admin/projects/available`);
+            const data = await res.json();
+            if (data.success && data.projects.length > 0) {
+                container.innerHTML = '<div class="list-group list-group-flush">' +
+                    data.projects.map((p, i) => `
+                        <label class="list-group-item list-group-item-action d-flex align-items-center py-2 ${i % 2 === 0 ? 'bg-light' : ''}" style="cursor:pointer;">
+                            <input class="form-check-input add-project-check me-3 flex-shrink-0" type="checkbox" value="${p.name}"
+                                style="width:1.2em; height:1.2em; border:2px solid #495057;"
+                                onchange="updateProjectCount()">
+                            <span class="fw-medium">${p.name}</span>
+                            <small class="text-muted ms-2">(${p.folder})</small>
+                        </label>`).join('') + '</div>';
+            } else {
+                container.innerHTML = '<div class="text-center text-muted py-3">All projects are assigned.</div>';
+            }
+        } catch (e) {
+            container.innerHTML = '<div class="text-center text-danger py-3">Error loading projects.</div>';
+        }
+
+        feather.replace();
+    }
+
+    function updateProjectCount() {
+        const count = document.querySelectorAll('.add-project-check:checked').length;
+        document.getElementById('add-project-count').textContent = count + ' selected';
+    }
+
+    async function confirmAddProjects() {
+        const checked = document.querySelectorAll('.add-project-check:checked');
+        if (checked.length === 0) {
+            document.getElementById('add-result').innerHTML = '<div class="alert alert-warning mt-2">Select at least one project.</div>';
+            return;
+        }
+
+        const adminUser = PulpitansAuth.getUsername();
+        const username = document.getElementById('add-project-user').textContent;
+        const status = document.getElementById('add-project-status').value;
+        const projectNames = Array.from(checked).map(cb => cb.value);
+
+        try {
+            for (const projectName of projectNames) {
+                await fetch(`${API_BASE}/admin/projects/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ admin_username: adminUser, username, project_name: projectName, status })
+                });
+            }
+            bootstrap.Modal.getInstance(document.getElementById('addProjectModal')).hide();
+            loadUsers();
+        } catch (e) {
+            document.getElementById('add-result').innerHTML = '<div class="alert alert-danger mt-2">Error adding projects.</div>';
+        }
+    }
+
+    async function removeProject(username, projectName) {
+        if (!confirm(`Remove project "${projectName}" from ${username}?`)) return;
+        const adminUser = PulpitansAuth.getUsername();
+        try {
+            const res = await fetch(`${API_BASE}/admin/projects/remove`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ admin_username: adminUser, username, project_name: projectName })
+            });
+            const data = await res.json();
+            if (data.success) loadUsers();
+        } catch (e) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', async function () {
+        await _detectStorageMode();
+        loadUsers();
+        _loadStatusLegend();
+    });
+
+    async function _loadStatusLegend() {
+        try {
+            const res = await fetch(`${API_BASE}/settings/project-statuses`);
+            const data = await res.json();
+            if (!data.success || !data.statuses) return;
+            const legend = document.getElementById('status-legend');
+            data.statuses.forEach(function (s) {
+                const badge = document.createElement('span');
+                const colorClass = s.color ? `bg-${s.color}` : 'bg-secondary';
+                const textClass = s.color === 'warning' ? 'text-dark' : '';
+                badge.className = `badge ${colorClass} ${textClass} me-1 px-3 py-2`.trim();
+                badge.textContent = s.name;
+                legend.appendChild(badge);
+            });
+        } catch (e) {}
+    }
+
+    // Live clock
+    (async function initClock() {
+        const el = document.getElementById('live-datetime');
+        let serverOffset = 0;
+        try {
+            const res = await fetch('https://worldtimeapi.org/api/ip');
+            const json = await res.json();
+            serverOffset = new Date(json.datetime).getTime() - Date.now();
+        } catch (e) {}
+        function tick() {
+            const now = new Date(Date.now() + serverOffset);
+            const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            el.textContent = `${days[now.getDay()]}, ${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}  ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
+    </script>
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="profileModalLabel">My Profile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <input type="text" class="form-control" id="profile-username" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Display Name <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="profile-display-name" placeholder="Leave empty to use username">
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i data-feather="git-branch" class="feather-sm me-1"></i> BitBucket Credentials</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Username</label>
+                        <input type="text" class="form-control" id="profile-bb-username" placeholder="Your BitBucket username">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">BitBucket Password / Token</label>
+                        <input type="password" class="form-control" id="profile-bb-password" placeholder="Your password or token">
+                    </div>
+                    <div id="profile-save-msg" class="d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="btn-save-profile">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../dist/js/auth.js?v=2"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+
+        // Check admin access
+        (async function checkAdmin() {
+            const username = PulpitansAuth.getUsername();
+            try {
+                const res = await fetch(`${API_BASE}/admin/check?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                if (data.is_admin) {
+                    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+                    feather.replace();
+                } else {
+                    window.location.href = 'index.html';
+                }
+            } catch (e) {
+                window.location.href = 'index.html';
+            }
+        })();
+
+        document.getElementById('profileModal').addEventListener('show.bs.modal', async function () {
+            const username = PulpitansAuth.getUsername();
+            document.getElementById('profile-username').value = username;
+            document.getElementById('profile-save-msg').classList.add('d-none');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                document.getElementById('profile-display-name').value = (data.success && data.profile.display_name) || '';
+                document.getElementById('profile-bb-username').value = (data.success && data.profile.bitbucket_username) || '';
+                document.getElementById('profile-bb-password').value = (data.success && data.profile.bitbucket_password) || '';
+            } catch (e) {
+                document.getElementById('profile-display-name').value = '';
+                document.getElementById('profile-bb-username').value = '';
+                document.getElementById('profile-bb-password').value = '';
+            }
+        });
+
+        document.getElementById('btn-save-profile').addEventListener('click', async function () {
+            const username = PulpitansAuth.getUsername();
+            const displayName = document.getElementById('profile-display-name').value.trim();
+            const msgEl = document.getElementById('profile-save-msg');
+            try {
+                const res = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, display_name: displayName, bitbucket_username: document.getElementById('profile-bb-username').value.trim(), bitbucket_password: document.getElementById('profile-bb-password').value })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('header-user-display-name').textContent = data.display_name;
+                    msgEl.className = 'alert alert-success';
+                    msgEl.textContent = 'Profile saved.';
+                } else {
+                    msgEl.className = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error saving profile.';
+                }
+            } catch (e) {
+                msgEl.className = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
+        });
+    </script>
+</body>
+
+</html>

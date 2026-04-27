@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="../assets/images/pulpitans-logo.svg">
+    <title>PULPITANS — Delivery Routes</title>
+    <link href="../dist/css/style.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="preloader">
+        <div class="lds-ripple"><div class="lds-pos"></div><div class="lds-pos"></div></div>
+    </div>
+
+    <div id="main-wrapper" data-theme="light" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
+        data-sidebar-position="fixed" data-header-position="fixed" data-boxed-layout="full">
+
+        <!-- Topbar -->
+        <header class="topbar" data-navbarbg="skin6">
+            <nav class="navbar top-navbar navbar-expand-lg">
+                <div class="navbar-header" data-logobg="skin6">
+                    <a class="nav-toggler waves-effect waves-light d-block d-lg-none" href="javascript:void(0)"><i class="ti-menu ti-close"></i></a>
+                    <div class="navbar-brand">
+                        <img src="../assets/images/pulpitans-name.svg" alt="" class="img-fluid">
+                    </div>
+                    <a class="topbartoggler d-block d-lg-none waves-effect waves-light" href="javascript:void(0)"
+                        data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><i class="ti-more"></i></a>
+                </div>
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left me-auto ms-3 ps-1">
+                        <li class="nav-item d-flex align-items-center ms-3">
+                            <div>
+                                <h6 class="mb-0 font-weight-medium text-dark">Delivery Routes</h6>
+                                <small class="text-muted">Applications / Delivery Routes</small>
+                            </div>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav float-end">
+                        <li class="nav-item d-none d-md-flex align-items-center me-3">
+                            <span id="live-datetime" class="text-muted font-14" style="white-space:nowrap;">Loading...</span>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle user-profile-pic" width="40">
+                                <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down" class="svg-icon"></i></span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
+                                <a class="dropdown-item" href="my-profile.html"><i data-feather="user" class="svg-icon me-2 ms-1"></i> My Profile</a>
+                                <a class="dropdown-item admin-only" style="display:none;" href="settings.html"><i data-feather="settings" class="svg-icon me-2 ms-1"></i> Settings</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power" class="svg-icon me-2 ms-1"></i> Logout</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Left Sidebar -->
+        <aside class="left-sidebar" data-sidebarbg="skin6">
+            <div class="scroll-sidebar" data-sidebarbg="skin6">
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="index.html" aria-expanded="false">
+                                <i data-feather="home" class="feather-icon"></i>
+                                <span class="hide-menu">Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="list-divider"></li>
+                        <li class="nav-small-cap"><span class="hide-menu">Applications</span></li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="git-controller.html" aria-expanded="false">
+                                <i data-feather="git-branch" class="feather-icon"></i>
+                                <span class="hide-menu">Git Controller</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="make-build.html" aria-expanded="false">
+                                <i data-feather="package" class="feather-icon"></i>
+                                <span class="hide-menu">Make Build</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="srn.html" aria-expanded="false">
+                                <i data-feather="file-text" class="feather-icon"></i>
+                                <span class="hide-menu">SRN</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="project-info.html" aria-expanded="false">
+                                <i data-feather="clipboard" class="feather-icon"></i>
+                                <span class="hide-menu">Project Info</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link" href="processes.html" aria-expanded="false">
+                                <i data-feather="cpu" class="feather-icon"></i>
+                                <span class="hide-menu">Processes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item active">
+                            <a class="sidebar-link active" href="delivery-routes.html" aria-expanded="false">
+                                <i data-feather="truck" class="feather-icon"></i>
+                                <span class="hide-menu">Delivery Routes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="deliver.html" aria-expanded="false">
+                                <i data-feather="send" class="feather-icon"></i>
+                                <span class="hide-menu">Deliver Builds</span>
+                            </a>
+                        </li>
+                        <!-- Admin section -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link" href="settings.html" aria-expanded="false">
+                                <i data-feather="settings" class="feather-icon"></i>
+                                <span class="hide-menu">Settings</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Page wrapper -->
+        <div class="page-wrapper">
+            <div class="container-fluid">
+
+                <!-- Toolbar: only visible to admins -->
+                <div class="row mb-3 admin-only" style="display:none;" id="admin-toolbar">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <h5 class="card-title mb-0">
+                                    <i data-feather="truck" class="feather-sm me-1"></i> Delivery Routes
+                                </h5>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-success btn-sm" onclick="showAddRoute()">
+                                        <i data-feather="plus" class="feather-sm me-1"></i> Add Route
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="loadRoutes()">
+                                        <i data-feather="refresh-cw" class="feather-sm me-1"></i> Refresh
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Non-admin header -->
+                <div class="row mb-3" id="user-header">
+                    <div class="col-12">
+                        <div class="card d-none" id="user-header-card">
+                            <div class="card-body py-3 d-flex align-items-center justify-content-between">
+                                <h5 class="card-title mb-0">
+                                    <i data-feather="truck" class="feather-sm me-1"></i> Delivery Routes
+                                </h5>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="loadRoutes()">
+                                    <i data-feather="refresh-cw" class="feather-sm me-1"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filter bar -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <input type="text" class="form-control form-control-sm" id="filter-input"
+                                placeholder="Filter by project or path..." style="max-width:320px;"
+                                oninput="filterRoutes()">
+                            <select class="form-select form-select-sm" id="filter-project" style="max-width:240px;"
+                                onchange="filterRoutes()">
+                                <option value="">All Projects</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Routes Table -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th style="width:40px;">#</th>
+                                                <th>Project</th>
+                                                <th>Delivery Path</th>
+                                                <th>Description</th>
+                                                <th class="admin-only" style="display:none; width:120px;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="routes-tbody">
+                                            <tr><td colspan="5" class="text-center text-muted py-4">Loading...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="routes-result" class="p-3"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- container-fluid -->
+
+            <footer class="footer text-center text-muted">
+                All Rights Reserved by Freedash.
+            </footer>
+        </div><!-- page-wrapper -->
+    </div><!-- main-wrapper -->
+
+    <!-- Add Route Modal -->
+    <div class="modal fade" id="addRouteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i data-feather="plus-circle" class="feather-sm me-1"></i> Add Delivery Route</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Project <span class="text-danger">*</span></label>
+                        <select class="form-select" id="add-route-project">
+                            <option value="">Select project...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Delivery Path <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control font-monospace" id="add-route-path"
+                            placeholder="/home/user/delivery/project">
+                        <div class="form-text">Must be an absolute path starting with /</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Description <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="add-route-description"
+                            placeholder="e.g. Production server, Staging...">
+                    </div>
+                    <div id="add-route-result"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="confirmAddRoute()" id="btn-add-route">
+                        <i data-feather="plus" class="feather-sm me-1"></i> Add Route
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Route Modal -->
+    <div class="modal fade" id="editRouteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i data-feather="edit-2" class="feather-sm me-1"></i> Edit Delivery Route</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="edit-route-id">
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Project <span class="text-danger">*</span></label>
+                        <select class="form-select" id="edit-route-project">
+                            <option value="">Select project...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Delivery Path <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control font-monospace" id="edit-route-path"
+                            placeholder="/home/user/delivery/project">
+                        <div class="form-text">Must be an absolute path starting with /</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-medium">Description <small class="text-muted">(optional)</small></label>
+                        <input type="text" class="form-control" id="edit-route-description" placeholder="e.g. Production server, Staging...">
+                    </div>
+                    <div id="edit-route-result"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning text-dark" onclick="confirmEditRoute()" id="btn-edit-route">
+                        <i data-feather="save" class="feather-sm me-1"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="../assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../dist/js/app-style-switcher.js"></script>
+    <script src="../dist/js/feather.min.js"></script>
+    <script src="../assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="../assets/extra-libs/sparkline/sparkline.js"></script>
+    <script src="../dist/js/sidebarmenu.js"></script>
+    <script src="../dist/js/custom.min.js"></script>
+
+    <script>
+    const API_BASE = '/api';
+    let _isAdmin = false;
+    let _allRoutes = [];
+    let _allProjects = [];
+
+    function escHtml(t) {
+        const d = document.createElement('div');
+        d.textContent = String(t || '');
+        return d.innerHTML;
+    }
+
+    // ── Load projects for selects ─────────────────────────────
+    async function _loadProjects() {
+        try {
+            const res = await fetch(`${API_BASE}/admin/projects?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data = await res.json();
+            if (!data.success) return;
+            // admin/projects returns assignments {username: [projects]}
+            // We need unique project names. Use master list instead.
+            const res2 = await fetch(`${API_BASE}/admin/projects/master?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data2 = await res2.json();
+            if (data2.success && data2.projects) {
+                _allProjects = data2.projects; // [{id, name, folder, ...}]
+            }
+        } catch(e) {}
+        _populateProjectSelects();
+    }
+
+    function _populateProjectSelects() {
+        const opts = _allProjects.map(p =>
+            `<option value="${p.id}">${escHtml(p.name)}</option>`
+        ).join('');
+        ['add-route-project', 'edit-route-project', 'filter-project'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const prefix = id === 'filter-project'
+                ? '<option value="">All Projects</option>'
+                : '<option value="">Select project...</option>';
+            el.innerHTML = prefix + opts;
+        });
+    }
+
+    // ── Load & render routes ──────────────────────────────────
+    async function loadRoutes() {
+        const tbody = document.getElementById('routes-tbody');
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">
+            <span class="spinner-border spinner-border-sm me-2"></span>Loading...</td></tr>`;
+        document.getElementById('routes-result').innerHTML = '';
+        try {
+            const res = await fetch(`${API_BASE}/delivery-routes?username=${encodeURIComponent(PulpitansAuth.getUsername())}`);
+            const data = await res.json();
+            if (!data.success) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">${escHtml(data.error)}</td></tr>`;
+                return;
+            }
+            _allRoutes = data.routes;
+            renderRoutes(_allRoutes);
+        } catch(e) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Could not load delivery routes.</td></tr>`;
+        }
+    }
+
+    function renderRoutes(routes) {
+        const tbody = document.getElementById('routes-tbody');
+        if (!routes.length) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">
+                No delivery routes configured yet.${_isAdmin ? ' Click <strong>Add Route</strong> to create one.' : ''}</td></tr>`;
+            feather.replace();
+            return;
+        }
+        tbody.innerHTML = routes.map((r, i) => `
+            <tr>
+                <td class="text-muted">${i + 1}</td>
+                <td>
+                    <span class="badge bg-primary px-2 py-1">${escHtml(r.project_name)}</span>
+                </td>
+                <td>
+                    <code class="user-select-all" style="font-size:13px;">${escHtml(r.path)}</code>
+                </td>
+                <td class="text-muted" style="font-size:13px;">${escHtml(r.description)}</td>
+                ${_isAdmin ? `
+                <td class="admin-only">
+                    <button class="btn btn-sm btn-outline-warning me-1" onclick="showEditRoute(${r.id})" title="Edit">
+                        <i data-feather="edit-2" style="width:14px;height:14px;"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteRoute(${r.id}, '${escHtml(r.path).replace(/'/g,"\\'")}', '${escHtml(r.project_name).replace(/'/g,"\\'")}')">
+                        <i data-feather="trash-2" style="width:14px;height:14px;"></i>
+                    </button>
+                </td>` : '<td class="admin-only" style="display:none;"></td>'}
+            </tr>
+        `).join('');
+        feather.replace();
+    }
+
+    function filterRoutes() {
+        const text    = document.getElementById('filter-input').value.toLowerCase();
+        const projId  = document.getElementById('filter-project').value;
+        const filtered = _allRoutes.filter(r => {
+            const matchProj = !projId || String(r.project_id) === projId;
+            const matchText = !text ||
+                r.project_name.toLowerCase().includes(text) ||
+                r.path.toLowerCase().includes(text) ||
+                (r.description || '').toLowerCase().includes(text);
+            return matchProj && matchText;
+        });
+        renderRoutes(filtered);
+    }
+
+    // ── Add route ─────────────────────────────────────────────
+    function showAddRoute() {
+        document.getElementById('add-route-project').value = '';
+        document.getElementById('add-route-path').value = '';
+        document.getElementById('add-route-description').value = '';
+        document.getElementById('add-route-result').innerHTML = '';
+        new bootstrap.Modal(document.getElementById('addRouteModal')).show();
+        feather.replace();
+    }
+
+    async function confirmAddRoute() {
+        const projectId   = document.getElementById('add-route-project').value;
+        const path        = document.getElementById('add-route-path').value.trim();
+        const description = document.getElementById('add-route-description').value.trim();
+        const resultEl    = document.getElementById('add-route-result');
+        const btn         = document.getElementById('btn-add-route');
+
+        if (!projectId) { resultEl.innerHTML = '<div class="alert alert-warning py-2">Please select a project.</div>'; return; }
+        if (!path)      { resultEl.innerHTML = '<div class="alert alert-warning py-2">Path is required.</div>'; return; }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Adding...';
+        try {
+            const res = await fetch(`${API_BASE}/delivery-routes/add`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    admin_username: PulpitansAuth.getUsername(),
+                    project_id: parseInt(projectId),
+                    path, description
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('addRouteModal')).hide();
+                loadRoutes();
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-danger py-2">${escHtml(data.error)}</div>`;
+            }
+        } catch(e) {
+            resultEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="plus" class="feather-sm me-1"></i> Add Route';
+        feather.replace();
+    }
+
+    // ── Edit route ────────────────────────────────────────────
+    function showEditRoute(id) {
+        const r = _allRoutes.find(x => x.id === id);
+        if (!r) return;
+        document.getElementById('edit-route-id').value = r.id;
+        document.getElementById('edit-route-project').value = r.project_id;
+        document.getElementById('edit-route-path').value = r.path;
+        document.getElementById('edit-route-description').value = r.description || '';
+        document.getElementById('edit-route-result').innerHTML = '';
+        new bootstrap.Modal(document.getElementById('editRouteModal')).show();
+        feather.replace();
+    }
+
+    async function confirmEditRoute() {
+        const id          = parseInt(document.getElementById('edit-route-id').value);
+        const projectId   = document.getElementById('edit-route-project').value;
+        const path        = document.getElementById('edit-route-path').value.trim();
+        const description = document.getElementById('edit-route-description').value.trim();
+        const resultEl    = document.getElementById('edit-route-result');
+        const btn         = document.getElementById('btn-edit-route');
+
+        if (!path) { resultEl.innerHTML = '<div class="alert alert-warning py-2">Path is required.</div>'; return; }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+        try {
+            const res = await fetch(`${API_BASE}/delivery-routes/update`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    admin_username: PulpitansAuth.getUsername(),
+                    id, project_id: parseInt(projectId), path, description
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('editRouteModal')).hide();
+                loadRoutes();
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-danger py-2">${escHtml(data.error)}</div>`;
+            }
+        } catch(e) {
+            resultEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i data-feather="save" class="feather-sm me-1"></i> Save Changes';
+        feather.replace();
+    }
+
+    // ── Delete route ──────────────────────────────────────────
+    async function deleteRoute(id, path, projectName) {
+        if (!confirm(`Delete route for "${projectName}"?\n\n${path}`)) return;
+        const resultEl = document.getElementById('routes-result');
+        try {
+            const res = await fetch(`${API_BASE}/delivery-routes/delete`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({admin_username: PulpitansAuth.getUsername(), id})
+            });
+            const data = await res.json();
+            if (data.success) {
+                loadRoutes();
+            } else {
+                resultEl.innerHTML = `<div class="alert alert-danger py-2">${escHtml(data.error)}</div>`;
+            }
+        } catch(e) {
+            resultEl.innerHTML = '<div class="alert alert-danger py-2">Network error.</div>';
+        }
+    }
+
+    // ── Init ──────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', async function () {
+        $(".preloader").fadeOut();
+
+        const username = PulpitansAuth.getUsername();
+        try {
+            const res  = await fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`);
+            const data = await res.json();
+            _isAdmin = data.success && data.profile && data.profile.is_admin;
+        } catch(e) {}
+
+        if (_isAdmin) {
+            document.querySelectorAll('.admin-only').forEach(el => {
+                el.style.display = '';
+            });
+        }
+        // Always show user header refresh when not admin
+        if (!_isAdmin) {
+            document.getElementById('user-header-card').classList.remove('d-none');
+        }
+
+        await _loadProjects();
+        loadRoutes();
+        feather.replace();
+    });
+
+    // Live clock
+    (async function initClock() {
+        const el = document.getElementById('live-datetime');
+        let serverOffset = 0;
+        try {
+            const res  = await fetch('https://worldtimeapi.org/api/ip');
+            const json = await res.json();
+            serverOffset = new Date(json.datetime).getTime() - Date.now();
+        } catch(e) {}
+        function tick() {
+            const now = new Date(Date.now() + serverOffset);
+            const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            el.textContent = `${days[now.getDay()]}, ${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}  ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
+    </script>
+
+    <script src="../dist/js/auth.js?v=2"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+    </script>
+</body>
+
+</html>

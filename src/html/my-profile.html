@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="../assets/images/pulpitans-logo.svg">
+    <title>PULPITANS — My Profile</title>
+    <link href="../dist/css/style.min.css" rel="stylesheet">
+    <style>
+        .profile-avatar {
+            width: 90px; height: 90px; border-radius: 50%;
+            object-fit: cover; border: 3px solid #dee2e6;
+        }
+        .section-card { margin-bottom: 24px; }
+        .section-title {
+            font-size: 15px; font-weight: 600; margin-bottom: 16px;
+            padding-bottom: 8px; border-bottom: 1px solid #dee2e6;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .auth-badge {
+            font-size: 11px; padding: 3px 8px; border-radius: 12px;
+            font-weight: 600; letter-spacing: .4px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="preloader">
+        <div class="lds-ripple"><div class="lds-pos"></div><div class="lds-pos"></div></div>
+    </div>
+
+    <div id="main-wrapper" data-theme="light" data-layout="vertical" data-navbarbg="skin6"
+        data-sidebartype="full" data-sidebar-position="fixed" data-header-position="fixed" data-boxed-layout="full">
+
+        <!-- ====== Topbar ====== -->
+        <header class="topbar" data-navbarbg="skin6">
+            <nav class="navbar top-navbar navbar-expand-lg">
+                <div class="navbar-header" data-logobg="skin6">
+                    <a class="nav-toggler waves-effect waves-light d-block d-lg-none" href="javascript:void(0)"><i class="ti-menu ti-close"></i></a>
+                    <div class="navbar-brand">
+                        <img src="../assets/images/pulpitans-name.svg" alt="" class="img-fluid">
+                    </div>
+                    <a class="topbartoggler d-block d-lg-none waves-effect waves-light" href="javascript:void(0)"
+                        data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><i class="ti-more"></i></a>
+                </div>
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left me-auto ms-3 ps-1">
+                        <li class="nav-item d-flex align-items-center ms-3">
+                            <div>
+                                <h6 class="mb-0 font-weight-medium text-dark">My Profile</h6>
+                                <small class="text-muted">Account Settings</small>
+                            </div>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav float-end">
+                        <li class="nav-item d-none d-md-flex align-items-center me-3">
+                            <span id="live-datetime" class="text-muted font-14" style="white-space:nowrap;">Loading...</span>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="javascript:void(0)" data-bs-toggle="dropdown">
+                                <img src="../assets/images/users/profile-pic.jpg" alt="user" class="rounded-circle user-profile-pic" width="40">
+                                <span class="ms-2 d-none d-lg-inline-block"><span>Hello,</span> <span class="text-dark" id="header-user-display-name">...</span> <i data-feather="chevron-down" class="svg-icon"></i></span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-right user-dd animated flipInY">
+                                <a class="dropdown-item active" href="my-profile.html"><i data-feather="user" class="svg-icon me-2 ms-1"></i> My Profile</a>
+                                <a class="dropdown-item admin-only" style="display:none;" href="settings.html"><i data-feather="settings" class="svg-icon me-2 ms-1"></i> Settings</a>
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="javascript:void(0)" onclick="PulpitansAuth.logout()"><i data-feather="power" class="svg-icon me-2 ms-1"></i> Logout</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </header>
+
+        <!-- ====== Left Sidebar ====== -->
+        <aside class="left-sidebar" data-sidebarbg="skin6">
+            <div class="scroll-sidebar" data-sidebarbg="skin6">
+                <nav class="sidebar-nav">
+                    <ul id="sidebarnav">
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="index.html" aria-expanded="false">
+                                <i data-feather="home" class="feather-icon"></i>
+                                <span class="hide-menu">Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="list-divider"></li>
+                        <li class="nav-small-cap"><span class="hide-menu">Applications</span></li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="git-controller.html" aria-expanded="false">
+                                <i data-feather="git-branch" class="feather-icon"></i>
+                                <span class="hide-menu">Git Controller</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="make-build.html" aria-expanded="false">
+                                <i data-feather="package" class="feather-icon"></i>
+                                <span class="hide-menu">Make Build</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="srn.html" aria-expanded="false">
+                                <i data-feather="file-text" class="feather-icon"></i>
+                                <span class="hide-menu">SRN</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="project-info.html" aria-expanded="false">
+                                <i data-feather="clipboard" class="feather-icon"></i>
+                                <span class="hide-menu">Project Info</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="processes.html" aria-expanded="false">
+                                <i data-feather="cpu" class="feather-icon"></i>
+                                <span class="hide-menu">Processes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="delivery-routes.html" aria-expanded="false">
+                                <i data-feather="truck" class="feather-icon"></i>
+                                <span class="hide-menu">Delivery Routes</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a class="sidebar-link sidebar-link" href="deliver.html" aria-expanded="false">
+                                <i data-feather="send" class="feather-icon"></i>
+                                <span class="hide-menu">Deliver Builds</span>
+                            </a>
+                        </li>
+                        <!-- Admin section -->
+                        <li class="list-divider admin-only" style="display:none;"></li>
+                        <li class="nav-small-cap admin-only" style="display:none;"><span class="hide-menu">Admin</span></li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-log.html" aria-expanded="false">
+                                <i data-feather="activity" class="feather-icon"></i>
+                                <span class="hide-menu">Activity Log</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-users.html" aria-expanded="false">
+                                <i data-feather="users" class="feather-icon"></i>
+                                <span class="hide-menu">User Management</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="admin-projects.html" aria-expanded="false">
+                                <i data-feather="briefcase" class="feather-icon"></i>
+                                <span class="hide-menu">Projects</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item admin-only" style="display:none;">
+                            <a class="sidebar-link sidebar-link" href="settings.html" aria-expanded="false">
+                                <i data-feather="settings" class="feather-icon"></i>
+                                <span class="hide-menu">Settings</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- ====== Page Wrapper ====== -->
+        <div class="page-wrapper">
+            <div class="container-fluid">
+
+                <div class="row justify-content-center mt-4">
+                    <div class="col-lg-8 col-xl-7">
+
+                        <!-- Avatar + name header -->
+                        <div class="d-flex align-items-center mb-4 gap-3">
+                            <div class="position-relative" style="width:90px;height:90px;">
+                                <img src="../assets/images/users/profile-pic.jpg" alt="avatar" class="profile-avatar user-profile-pic" id="avatar-large" style="cursor:pointer;" onclick="document.getElementById('pic-input').click()" title="Click to change picture">
+                                <div class="position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width:26px;height:26px;cursor:pointer;" onclick="document.getElementById('pic-input').click()">
+                                    <i data-feather="camera" style="width:14px;height:14px;color:#fff;"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="mb-0" id="profile-heading-name">...</h4>
+                                <small class="text-muted" id="profile-heading-username"></small>
+                                <div class="mt-1">
+                                    <span id="auth-method-badge" class="auth-badge bg-secondary text-white">Loading...</span>
+                                </div>
+                                <div class="mt-2">
+                                    <input type="file" id="pic-input" accept="image/*" style="display:none;" onchange="uploadPicture(this)">
+                                    <small id="pic-upload-msg" class="text-muted"></small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ---- Section 1: Personal Info ---- -->
+                        <div class="card section-card">
+                            <div class="card-body">
+                                <div class="section-title">
+                                    <i data-feather="user" style="width:18px;height:18px;"></i>
+                                    Personal Information
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="profile-username" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Display Name</label>
+                                    <input type="text" class="form-control" id="profile-display-name" placeholder="Leave empty to use username">
+                                    <div class="form-text">This is the name shown in the header and throughout the application.</div>
+                                </div>
+                                <div id="profile-save-msg" class="d-none mb-2"></div>
+                                <button class="btn btn-primary" onclick="saveProfile()">
+                                    <i data-feather="save" style="width:16px;height:16px;margin-right:6px;"></i>Save Profile
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ---- Section 2: Change Password (DB auth only) ---- -->
+                        <div class="card section-card" id="section-change-password" style="display:none;">
+                            <div class="card-body">
+                                <div class="section-title">
+                                    <i data-feather="lock" style="width:18px;height:18px;"></i>
+                                    Change Password
+                                    <span class="auth-badge bg-primary text-white ms-1">Database Auth</span>
+                                </div>
+                                <p class="text-muted" style="font-size:13px;">
+                                    Your account uses database authentication. You can change your password here at any time.
+                                </p>
+                                <div class="mb-3">
+                                    <label class="form-label">Current Password</label>
+                                    <input type="password" class="form-control" id="current-password" autocomplete="current-password">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">New Password</label>
+                                    <input type="password" class="form-control" id="new-password" autocomplete="new-password">
+                                    <div class="form-text">Minimum 6 characters.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Confirm New Password</label>
+                                    <input type="password" class="form-control" id="confirm-password" autocomplete="new-password">
+                                </div>
+                                <div id="password-msg" class="d-none mb-2"></div>
+                                <button class="btn btn-warning" onclick="changePassword()">
+                                    <i data-feather="key" style="width:16px;height:16px;margin-right:6px;"></i>Change Password
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ---- System auth password note ---- -->
+                        <div class="card section-card" id="section-system-password" style="display:none;">
+                            <div class="card-body">
+                                <div class="section-title">
+                                    <i data-feather="lock" style="width:18px;height:18px;"></i>
+                                    Password
+                                    <span class="auth-badge bg-secondary text-white ms-1">System Auth</span>
+                                </div>
+                                <div class="alert alert-info d-flex align-items-center gap-2 mb-0" style="font-size:13px;">
+                                    <i data-feather="info" style="width:18px;height:18px;flex-shrink:0;"></i>
+                                    <span>Your account uses <strong>system authentication</strong>. The password is managed by the operating system and cannot be changed here.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ---- Section 3: BitBucket Credentials ---- -->
+                        <div class="card section-card">
+                            <div class="card-body">
+                                <div class="section-title">
+                                    <i data-feather="git-merge" style="width:18px;height:18px;"></i>
+                                    BitBucket Credentials
+                                </div>
+                                <p class="text-muted" style="font-size:13px;">
+                                    Used by the Git Controller to authenticate with BitBucket repositories.
+                                </p>
+                                <div class="mb-3">
+                                    <label class="form-label">BitBucket Username</label>
+                                    <input type="text" class="form-control" id="profile-bb-username" placeholder="Your BitBucket username" autocomplete="username">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">BitBucket Password / Token</label>
+                                    <input type="password" class="form-control" id="profile-bb-password" placeholder="App password or personal token" autocomplete="current-password">
+                                </div>
+                                <div id="bb-save-msg" class="d-none mb-2"></div>
+                                <button class="btn btn-primary" onclick="saveBitBucket()">
+                                    <i data-feather="save" style="width:16px;height:16px;margin-right:6px;"></i>Save Credentials
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <footer class="footer text-center text-muted">
+                All Rights Reserved by Freedash. Designed and Developed by <a href="#">Jibsan the ruler of the Outlands</a>.
+            </footer>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="../assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="../assets/libs/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../dist/js/app-style-switcher.js"></script>
+    <script src="../dist/js/feather.min.js"></script>
+    <script src="../assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="../assets/extra-libs/sparkline/sparkline.js"></script>
+    <script src="../dist/js/sidebarmenu.js"></script>
+    <script src="../dist/js/custom.min.js"></script>
+    <script>
+        const API_BASE = '/api';
+    </script>
+    <script src="../dist/js/auth.js?v=2"></script>
+    <script>
+        PulpitansAuth.requireLogin();
+
+        let _authMethod = 'system';
+
+        async function uploadPicture(input) {
+            if (!input.files || !input.files[0]) return;
+            const username = PulpitansAuth.getUsername();
+            const msgEl    = document.getElementById('pic-upload-msg');
+            msgEl.textContent = 'Uploading...';
+            msgEl.style.color  = '#6c757d';
+
+            // Show local preview immediately
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.querySelectorAll('.user-profile-pic').forEach(img => img.src = e.target.result);
+            };
+            reader.readAsDataURL(input.files[0]);
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('picture', input.files[0]);
+            try {
+                const res  = await fetch(`${API_BASE}/auth/profile-picture`, { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.success) {
+                    msgEl.textContent = 'Picture updated!';
+                    msgEl.style.color  = '#198754';
+                    // Reload from server to confirm
+                    const t = Date.now();
+                    document.querySelectorAll('.user-profile-pic').forEach(img => {
+                        img.src = `${API_BASE}/auth/profile-picture/${encodeURIComponent(username)}?t=${t}`;
+                    });
+                } else {
+                    msgEl.textContent = data.error || 'Upload failed.';
+                    msgEl.style.color  = '#dc3545';
+                }
+            } catch (e) {
+                msgEl.textContent = 'Could not connect to server.';
+                msgEl.style.color  = '#dc3545';
+            }
+            feather.replace();
+        }
+
+        async function loadProfile() {
+            const username = PulpitansAuth.getUsername();
+            document.getElementById('profile-username').value = username;
+            document.getElementById('profile-heading-username').textContent = '@' + username;
+
+            // Load profile picture immediately
+            const picUrl = `${API_BASE}/auth/profile-picture/${encodeURIComponent(username)}?t=${Date.now()}`;
+            document.querySelectorAll('.user-profile-pic').forEach(img => { img.src = picUrl; });
+
+            try {
+                const [profRes, methodRes] = await Promise.all([
+                    fetch(`${API_BASE}/auth/profile?username=${encodeURIComponent(username)}`),
+                    fetch(`${API_BASE}/auth/method`)
+                ]);
+                const profData   = await profRes.json();
+                const methodData = await methodRes.json();
+
+                if (profData.success) {
+                    const dn = (profData.profile.display_name || username);
+                    document.getElementById('profile-display-name').value = profData.profile.display_name || '';
+                    document.getElementById('profile-heading-name').textContent = dn;
+                    document.getElementById('header-user-display-name').textContent = dn;
+                    document.getElementById('profile-bb-username').value = profData.profile.bitbucket_username || '';
+                    document.getElementById('profile-bb-password').value = profData.profile.bitbucket_password || '';
+                    if (profData.profile.is_admin) {
+                        document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+                    }
+                }
+
+                if (methodData.success) {
+                    _authMethod = methodData.method;
+                }
+
+                // Show auth badge
+                const badge = document.getElementById('auth-method-badge');
+                if (_authMethod === 'database') {
+                    badge.textContent = 'Database Auth';
+                    badge.className   = 'auth-badge bg-primary text-white';
+                    document.getElementById('section-change-password').style.display = '';
+                    document.getElementById('section-system-password').style.display = 'none';
+                } else {
+                    badge.textContent = 'System Auth';
+                    badge.className   = 'auth-badge bg-secondary text-white';
+                    document.getElementById('section-change-password').style.display = 'none';
+                    document.getElementById('section-system-password').style.display = '';
+                }
+            } catch (e) {
+                console.error('Error loading profile:', e);
+            }
+
+            feather.replace();
+        }
+
+        async function saveProfile() {
+            const username    = PulpitansAuth.getUsername();
+            const displayName = document.getElementById('profile-display-name').value.trim();
+            const msgEl       = document.getElementById('profile-save-msg');
+            msgEl.className   = 'd-none';
+            try {
+                const res  = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, display_name: displayName })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const dn = data.display_name || username;
+                    document.getElementById('header-user-display-name').textContent = dn;
+                    document.getElementById('profile-heading-name').textContent     = dn;
+                    msgEl.className   = 'alert alert-success';
+                    msgEl.textContent = 'Profile saved successfully.';
+                } else {
+                    msgEl.className   = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error saving profile.';
+                }
+            } catch (e) {
+                msgEl.className   = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
+            msgEl.classList.remove('d-none');
+            feather.replace();
+        }
+
+        async function saveBitBucket() {
+            const username = PulpitansAuth.getUsername();
+            const msgEl    = document.getElementById('bb-save-msg');
+            msgEl.className = 'd-none';
+            try {
+                const res  = await fetch(`${API_BASE}/auth/profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        display_name: document.getElementById('profile-display-name').value.trim(),
+                        bitbucket_username: document.getElementById('profile-bb-username').value.trim(),
+                        bitbucket_password: document.getElementById('profile-bb-password').value
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msgEl.className   = 'alert alert-success';
+                    msgEl.textContent = 'BitBucket credentials saved.';
+                } else {
+                    msgEl.className   = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error saving credentials.';
+                }
+            } catch (e) {
+                msgEl.className   = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
+            msgEl.classList.remove('d-none');
+        }
+
+        async function changePassword() {
+            const username        = PulpitansAuth.getUsername();
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword     = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const msgEl           = document.getElementById('password-msg');
+            msgEl.className       = 'd-none';
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                msgEl.className   = 'alert alert-warning';
+                msgEl.textContent = 'Please fill in all password fields.';
+                msgEl.classList.remove('d-none');
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                msgEl.className   = 'alert alert-warning';
+                msgEl.textContent = 'New password and confirmation do not match.';
+                msgEl.classList.remove('d-none');
+                return;
+            }
+            if (newPassword.length < 6) {
+                msgEl.className   = 'alert alert-warning';
+                msgEl.textContent = 'New password must be at least 6 characters.';
+                msgEl.classList.remove('d-none');
+                return;
+            }
+            try {
+                const res  = await fetch(`${API_BASE}/auth/change-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, current_password: currentPassword, new_password: newPassword })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('current-password').value = '';
+                    document.getElementById('new-password').value     = '';
+                    document.getElementById('confirm-password').value = '';
+                    msgEl.className   = 'alert alert-success';
+                    msgEl.textContent = 'Password changed successfully.';
+                } else {
+                    msgEl.className   = 'alert alert-danger';
+                    msgEl.textContent = data.error || 'Error changing password.';
+                }
+            } catch (e) {
+                msgEl.className   = 'alert alert-danger';
+                msgEl.textContent = 'Could not connect to the server.';
+            }
+            msgEl.classList.remove('d-none');
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const user = PulpitansAuth.getUsername();
+            if (user) {
+                loadProfile();
+            }
+            feather.replace();
+        });
+
+        // Live clock
+        (async function initClock() {
+            const el = document.getElementById('live-datetime');
+            let serverOffset = 0;
+            try {
+                const res  = await fetch('https://worldtimeapi.org/api/ip');
+                const json = await res.json();
+                serverOffset = new Date(json.datetime).getTime() - Date.now();
+            } catch (e) {}
+            function tick() {
+                const now    = new Date(Date.now() + serverOffset);
+                const days   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                el.textContent = `${days[now.getDay()]}, ${String(now.getDate()).padStart(2,'0')} ${months[now.getMonth()]} ${now.getFullYear()}  ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+            }
+            tick();
+            setInterval(tick, 1000);
+        })();
+    </script>
+</body>
+
+</html>
